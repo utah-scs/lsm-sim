@@ -16,3 +16,6 @@ compute: $(OBJS)
 
 clean:
 	-rm compute *.o
+
+debug: CXXFLAGS += -DDEBUG
+debug: compute

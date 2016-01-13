@@ -14,6 +14,8 @@
 #include <ctime>
 #include <chrono>
 
+
+
 namespace bi = boost::intrusive;
 namespace ch = std::chrono;
 
@@ -67,6 +69,15 @@ float                 lsm_util = 1.0;                 // default lsm utilization
 std::string           trace    = "data/m.cap.out.head";    // default filepath
 float                 run_time = 0.0;                 // keep track of execution time
 std::string           app_str;                        // just for logging which apps we're proc'ing
+double                hit_start_time = 86400;         // default time (to begin counting hits)
+uint32_t              req_count = 0;                  // counter for number of reqs seen 
+
+  
+#ifdef DEBUG
+  bool debug = true;
+#else
+  bool debug = false;
+#endif
 
 const std::string     usage  = "-p    specify path\n"
                                "-a    specify apps to eval\n"
@@ -103,7 +114,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::string sets;
-  while ((c = getopt(argc, argv, "p:a:ru:h")) != -1) {
+  while ((c = getopt(argc, argv, "p:a:ru:w:h")) != -1) {
     switch (c)
     {
       case 'p':
@@ -126,8 +137,12 @@ int main(int argc, char *argv[]) {
       case 'u':
         lsm_util = atof(optarg);
         break;
+      case 'w':
+        hit_start_time = atof(optarg);
+        break;
       case 'h': 
         std::cout << usage << std::endl;
+        break;
     }
   }
 
@@ -150,7 +165,8 @@ int main(int argc, char *argv[]) {
   std::cout << "performing trace analysis on app\\s: " << app_str << std::endl
             << "using trace file: " << trace << std::endl
             << "rounding: " << (roundup ? "on" : "off") << std::endl
-            << "utilization rate: " << lsm_util << std::endl;
+            << "utilization rate: " << lsm_util << std::endl
+            << "start counting hits at t = " << hit_start_time << std::endl;
 
   // proc file line by line
   std::ifstream t_stream(trace);
@@ -183,6 +199,8 @@ int main(int argc, char *argv[]) {
   }
   auto stop = hrc::now();
 
+
+
   // POST PROCESSING
   uint64_t sum_hits = 0;
   for (auto h : global_hits)
@@ -203,8 +221,23 @@ int main(int argc, char *argv[]) {
             << "total execution time: " << seconds << std::endl;
 }
 
+
+
 // MAIN SIMULATION ALGORITHM 
 int proc_request(const request *r) {
+
+
+  // dump the contents of the lru queue sequentially 
+  // for the first 100 requests
+  if(debug) {
+    if(req_count++ == 100) {
+      int pos = 0;
+      for (req_pair &a : global_lru) {
+        std::cout << "pos: " << pos++ << " id: " << a.id << " size: " << a.size << std::endl;
+      }
+    }
+  }
+
   // dump_request(r);
   uint64_t kv_size      = r->key_sz + r->val_sz;
   uint64_t request_size = roundup ? get_slab_class(kv_size) : kv_size;
@@ -237,7 +270,7 @@ int proc_request(const request *r) {
 
 
   // after 24 hours has passed, start counting hits/misses
-  if(r->time > 0) {
+  if(r->time > hit_start_time) {
     if (global_pos != -1) 
       global_hits.push_back(global_queue_size <= global_mem);
     else
@@ -301,6 +334,8 @@ void dump_request(const request *r) {
             << "kid: "            << r->kid     << std::endl
             << "hit:" << (r->hit == 1 ? "yes" : "no") << std::endl;
 }
+
+
 
 // breaks a CSV string into a vector of tokens
 int csv_tokenize(const std::string &s, string_vec *tokens) {
