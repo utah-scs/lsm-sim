@@ -1,11 +1,18 @@
+CXX := g++-5
+CXXFLAGS := -std=c++11 -Wall -g -O2
 
-CXXFLAGS := -std=c++11 -Wall -g -O2 -L/usr/local/Cellar/boost/1.59.0/lib
-CC = g++-5
-TARGET = compute.cpp
+LDFLAGS := -L/usr/local/Cellar/boost/1.59.0/lib -lboost_system
+
+SRCS := $(wildcard *.cpp)
+OBJS := $(patsubst %.cpp, %.o, $(SRCS))
+
 all: compute
 
-compute: compute.cpp
-	$(CC) $(CXXFLAGS) -I /usr/local/include -lboost_system $(TARGET) -o compute
+%.o : %.cpp
+	$(CXX) $(CXXFLAGS) -c $<
+
+compute: $(OBJS)
+	$(CXX) -lboost_system $< -o $@
 
 clean:
-	rm compute
+	-rm compute *.o
