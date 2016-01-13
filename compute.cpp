@@ -3,13 +3,13 @@
 #include <fstream>
 #include <vector>
 #include <set>
-#include <stdint.h>
+#include <cstdint>
 #include <GetOpt.h>
 #include <sstream>
-#include <math.h>
+#include <cmath>
 #include <boost/version.hpp>
 #include <boost/intrusive/list.hpp>
-#include <stdio.h>
+#include <cstdio>
 #include <iomanip>
 #include <ctime>
 
