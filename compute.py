@@ -65,6 +65,11 @@ with open(input_file, 'rb') as trace:
   for row in tracereader:
     # Only look at GETs
     if (int(row[2]) == 1 and int(row[4]) > 0 and int(row[1]) == application_ID):
+      if (j == 100):
+        pos = 0;
+        for key in global_lru:
+          print pos, key[0], key[1];
+          pos = pos + 1;
       # Check the slab class of the request
       for i in range(0, 15):
         if (int(row[4]) + int(row[3]) <= slab_classes[i]):
