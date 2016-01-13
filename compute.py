@@ -108,5 +108,10 @@ with open(input_file, 'rb') as trace:
         print traceback.format_exc()
         sys.exit()
  
-print 'final global queue size: %d' % global_queue_size
+
+final_global_queue_size = 0
+for _, size in global_lru:
+  final_global_queue_size += size
+
+print 'final global queue size: %d' % final_global_queue_size
 print 'final hit rate: %f' % (float(sum(global_hits)) / float(len(global_hits)))

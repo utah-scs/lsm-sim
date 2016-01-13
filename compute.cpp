@@ -190,12 +190,17 @@ int main(int argc, char *argv[]) {
 
   double hit_rate = float(sum_hits)/global_hits.size();
 
-  auto duration = stop - start;
+  double seconds =
+    ch::duration_cast<ch::milliseconds>(stop - start).count() / 1000.;
 
-  std::cout << "final global queue size: " << global_queue_size << std::endl
+  uint64_t final_global_queue_size = 0;
+  for (const auto& pair : global_lru)
+      final_global_queue_size += pair.size;
+
+  std::cout << "final global queue size: " << final_global_queue_size << std::endl
             << "final hit rate: "
                 << std::setprecision(12) << hit_rate << std::endl 
-            << "total execution time: " << duration.count() << std::endl;
+            << "total execution time: " << seconds << std::endl;
 }
 
 // MAIN SIMULATION ALGORITHM 
