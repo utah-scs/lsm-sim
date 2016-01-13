@@ -1,3 +1,4 @@
 compute
 *.o
 data
+*.csv

@@ -12,8 +12,6 @@ if len(sys.argv) < 3:
 input_file = sys.argv[1]
 application_ID = int(sys.argv[2])
 
-output_file = 'global_hitrate_app_%d.csv' % application_ID
-
 lsm_utilization = 0.7
 
 # List of hits (1 is a hit, 0 is a miss)
@@ -30,7 +28,7 @@ for i in range(0, 15):
 # allocated each slab class, by looking at the hit rate that each slab class
 # achieved in the trace, and then by seeing how much memory would be required
 # to achieve this hit rate.
-orig_memory_allocation = [ 1664,        #  64 B
+orig_memory_allocation = [ 1664         #  64 B
                          , 2304         # 128 B
                          , 512          # 256 B
                          , 17408
@@ -53,6 +51,12 @@ global_memory = float(sum(orig_memory_allocation)) * lsm_utilization
 orig_queue_size = []
 for i in range(0, len(orig_memory_allocation)):
   orig_queue_size.append(math.ceil(float(orig_memory_allocation[i]) / float((pow(2, i) * 64))))
+
+print "simulator: python"
+print "performing trace analysis on app %d" % application_ID
+print "using trace file: %s" % input_file
+print "rounding: on"
+print "utilization rate: %f" % lsm_utilization
 
 # go through each row of the trace
 with open(input_file, 'rb') as trace:
@@ -88,7 +92,7 @@ with open(input_file, 'rb') as trace:
         if (j % 100 == 0):
           print j, float(row[0])
           sys.stdout.flush()
-        if (float(row[0]) > 86400):
+        if (float(row[0]) > 0):
           if (global_position != -1):
             if (global_queue_size > global_memory):
               global_hits.append(0)
@@ -99,13 +103,10 @@ with open(input_file, 'rb') as trace:
             
         if (j % 1000000 == 0):
           if (len(global_hits) > 0):
-            f = open(output_file, 'w')
-            print >> f, float(sum(global_hits)) / float(len(global_hits))
-            f.close()
+            print 'hit rate: %f' % (float(sum(global_hits)) / float(len(global_hits)))
       except Exception, err:
         print traceback.format_exc()
         sys.exit()
  
-f = open(output_file, 'w')
-print >> f, float(sum(global_hits)) / float(len(global_hits))
-f.close()
+print 'final global queue size: %d' % global_queue_size
+print 'final hit rate: %f' % (float(sum(global_hits)) / float(len(global_hits)))
