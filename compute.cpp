@@ -37,9 +37,9 @@ struct request {
 };
 
 struct req_pair : public bi::slist_base_hook<> {
-  uint16_t id;
-  uint16_t size;
-  req_pair (uint16_t i, uint16_t s) : id (i), size(s) {}
+  uint32_t id;
+  uint32_t size;
+  req_pair (uint16_t i, uint32_t s) : id (i), size(s) {}
 };
 
 bool operator == (const req_pair &lhs, const req_pair &rhs) {
@@ -231,9 +231,10 @@ int proc_request(const request *r) {
   // for the first 100 requests
   if(debug) {
     if(req_count++ == 100) {
+      std::cout << "state of lru queue on 100th request" << std::endl;
       int pos = 0;
       for (req_pair &a : global_lru) {
-        std::cout << "pos: " << pos++ << " id: " << a.id << " size: " << a.size << std::endl;
+        std::cout << pos++ << "\t" << a.id << "\t" << a.size << std::endl;
       }
     }
   }
@@ -271,10 +272,18 @@ int proc_request(const request *r) {
 
   // after 24 hours has passed, start counting hits/misses
   if(r->time > hit_start_time) {
-    if (global_pos != -1) 
+    if (global_pos != -1) { 
       global_hits.push_back(global_queue_size <= global_mem);
-    else
+      
+      if(debug && req_num < 100)
+        std::cout << r->kid << "\t" << request_size << "\t" << " hit" << std::endl;
+    }
+    else {
       global_hits.push_back(false);
+      
+      if(debug && req_num < 100)
+        std::cout << r->kid << "\t" << request_size << "\t" << " miss" << std::endl;
+    }
   }
     
   return 0;
