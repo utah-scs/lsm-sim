@@ -2,3 +2,4 @@ compute
 *.o
 data
 *.csv
+*.xlsx
