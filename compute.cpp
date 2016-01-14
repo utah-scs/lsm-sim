@@ -28,10 +28,10 @@ enum req_typ {
 
 struct request {
   double time;
-  uint32_t key_sz;
-  uint32_t val_sz;
+  int32_t key_sz;
+  int32_t val_sz;
   uint32_t kid;
-  uint16_t appid;
+  uint32_t appid;
   req_typ type;
   uint8_t hit;
 };

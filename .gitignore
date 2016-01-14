@@ -3,3 +3,4 @@ compute
 data
 *.csv
 *.xlsx
+*.DS_Store
