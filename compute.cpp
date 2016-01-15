@@ -15,7 +15,6 @@
 #include <chrono>
 
 
-
 namespace bi = boost::intrusive;
 namespace ch = std::chrono;
 
@@ -27,13 +26,13 @@ enum req_typ {
 };
 
 struct request {
-  double time;
-  int32_t key_sz;
-  int32_t val_sz;
-  uint32_t kid;
-  uint32_t appid;
-  req_typ type;
-  uint8_t hit;
+  double    time;
+  int32_t   key_sz;
+  int32_t   val_sz;
+  uint32_t  kid;
+  uint32_t  appid;
+  req_typ   type;
+  uint8_t   hit;
 };
 
 struct req_pair : public bi::slist_base_hook<> {
@@ -57,7 +56,6 @@ typedef std::vector<std::string> string_vec;
 
 // globals
 std::vector<bool>     global_hits;   // vector of hits/misses (true for hit)
-std::vector<uint32_t> slab_classes;  // I think we can get rid of this.
 std::set<uint16_t>    apps;          // the set of all apps we want to consider
 
 typedef bi::slist<req_pair, bi::constant_time_size<false>> queue;
@@ -82,7 +80,8 @@ uint32_t              req_count = 0;                  // counter for number of r
 const std::string     usage  = "-p    specify path\n"
                                "-a    specify apps to eval\n"
                                "-r    enable rounding\n"
-                               "-u    specify utilization\n";
+                               "-u    specify utilization\n"
+                               "-w    specify warmup period\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -153,14 +152,6 @@ int main(int argc, char *argv[]) {
     global_mem += orig_alloc[i];
   global_mem *= lsm_util;
 
-  // NOTE: this may not actually be necessary if we just
-  // calculate the slab class instead of keeping a list.
-  // populate slab classes vector
-  for (int i = 0; i < 15; i++) {
-    slab_classes.push_back( 64 * pow(2,i) );
-    // std::cout << (64 * pow(2,i) ) << std::endl;
-  }
-
   // List input parameters
   std::cout << "performing trace analysis on app\\s: " << app_str << std::endl
             << "using trace file: " << trace << std::endl
@@ -213,11 +204,11 @@ int main(int argc, char *argv[]) {
 
   uint64_t final_global_queue_size = 0;
   for (const auto& pair : global_lru)
-      final_global_queue_size += pair.size;
+    final_global_queue_size += pair.size;
 
   std::cout << "final global queue size: " << final_global_queue_size << std::endl
             << "final hit rate: "
-                << std::setprecision(12) << hit_rate << std::endl 
+            << std::setprecision(12) << hit_rate << std::endl 
             << "total execution time: " << seconds << std::endl;
 }
 
@@ -226,20 +217,6 @@ int main(int argc, char *argv[]) {
 // MAIN SIMULATION ALGORITHM 
 int proc_request(const request *r) {
 
-
-  // dump the contents of the lru queue sequentially 
-  // for the first 100 requests
-  if(debug) {
-    if(req_count++ == 100) {
-      std::cout << "state of lru queue on 100th request" << std::endl;
-      int pos = 0;
-      for (req_pair &a : global_lru) {
-        std::cout << pos++ << "\t" << a.id << "\t" << a.size << std::endl;
-      }
-    }
-  }
-
-  // dump_request(r);
   uint64_t kv_size      = r->key_sz + r->val_sz;
   uint64_t request_size = roundup ? get_slab_class(kv_size) : kv_size;
   int global_pos = -1;
@@ -269,23 +246,14 @@ int proc_request(const request *r) {
   global_lru.push_front(*req);
   req_num++;
 
-
   // after 24 hours has passed, start counting hits/misses
   if(r->time > hit_start_time) {
-    if (global_pos != -1) { 
+    if (global_pos != -1) 
       global_hits.push_back(global_queue_size <= global_mem);
-      
-      if(debug && req_num < 100)
-        std::cout << r->kid << "\t" << request_size << "\t" << " hit" << std::endl;
-    }
-    else {
+    else 
       global_hits.push_back(false);
-      
-      if(debug && req_num < 100)
-        std::cout << r->kid << "\t" << request_size << "\t" << " miss" << std::endl;
-    }
   }
-    
+  
   return 0;
 }
 
