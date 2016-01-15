@@ -300,6 +300,8 @@ bool valid_id(const request *r) {
 
 // Sean Anderson's nearest power of 2 alg.
 uint32_t get_slab_class(uint32_t size) {
+    if (size < 64)
+      return 64;
   --size;
     size |= size >> 1;
     size |= size >> 2;
