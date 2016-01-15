@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
 
     // only process requests for specified apps, of type GET, 
     // and values of size > 0
-    if (valid_id(&r) && r.type == GET && r.val_sz > 0)
+    if ((r.type == GET) & valid_id(&r) & (r.val_sz > 0))
       proc_request(&r);
 
     ++i;
@@ -253,7 +253,7 @@ int proc_request(const request *r) {
     else 
       global_hits.push_back(false);
   }
-  
+
   return 0;
 }
 
@@ -295,7 +295,7 @@ void proc_line(const std::string &s, request *r) {
     r->key_sz = std::stoi(tokens.at(3), &sz);
     r->val_sz = std::stoi(tokens.at(4), &sz);
     r->kid    = std::stoi(tokens.at(5), &sz);
-    r->hit    = stoi(tokens.at(6), &sz) == 1 ? true : false;
+    // r->hit    = stoi(tokens.at(6), &sz) == 1 ? true : false;
   } catch (const std::out_of_range& e) {
     std::cerr << "Malformed line couldn't be parsed: " << e.what() << std::endl
               << "\t" << s << std::endl;
