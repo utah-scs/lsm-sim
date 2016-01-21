@@ -1,6 +1,7 @@
 compute
 *.o
 data
+results
 *.csv
 *.xlsx
 *.DS_Store./data

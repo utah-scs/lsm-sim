@@ -4,7 +4,7 @@
 #include <vector>
 #include <set>
 #include <cstdint>
-#include <GetOpt.h>
+#include <getopt.h>
 #include <sstream>
 #include <cmath>
 #include <boost/version.hpp>
@@ -13,7 +13,7 @@
 #include <iomanip>
 #include <ctime>
 #include <chrono>
-
+#include "policy.h"
 
 namespace bi = boost::intrusive;
 namespace ch = std::chrono;
