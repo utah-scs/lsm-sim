@@ -1,11 +1,11 @@
 #ifndef POLICY_H
 #define POLICY_H
 
-#include <boost/intrusive/slist.hpp>
+#include <boost/intrusive/list.hpp>
 
 namespace bi = boost::intrusive;
 
-struct req_pair : public bi::slist_base_hook<> {
+struct req_pair : public bi::list_base_hook<> {
   uint32_t id;
   uint32_t size;
   req_pair (uint16_t i, uint32_t s) : id (i), size(s) {} 
@@ -28,7 +28,7 @@ struct request {
   uint8_t   hit;
 };
 
-typedef bi::slist<req_pair, bi::constant_time_size<false>> queue;
+typedef bi::list<req_pair, bi::constant_time_size<false>> queue;
 
 struct delete_disposer {
   void operator()(req_pair *delete_this)

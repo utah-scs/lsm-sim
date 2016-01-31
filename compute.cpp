@@ -12,7 +12,7 @@
 #include <iomanip>
 #include <ctime>
 #include <chrono>
-//#include "policy.h"
+#include "fifo.h"
 #include "cliff.h"
 
 
@@ -126,17 +126,14 @@ int main(int argc, char *argv[]) {
 
 
   // instantiate a policy
-  pol = new Cliff(global_mem);
-
   switch(p_type) {
 
     case CLIFF :
       { pol = new Cliff(global_mem);
         break; }
     case FIFO : 
-      { std::cout << "TODO : FIFO  not yet enabled" << std::endl;
-        exit(0);
-        break; }
+      { pol = new Fifo(global_mem); 
+        break; }  
     case LRU : 
       { std::cout << "TODO : LRU not yet enabled" << std::endl;
         exit(0);
@@ -147,6 +144,7 @@ int main(int argc, char *argv[]) {
 
   // List input parameters
   std::cout << "performing trace analysis on app\\s: " << app_str << std::endl
+            << "policy: " << p_type << std::endl
             << "using trace file: " << trace << std::endl
             << "rounding: " << (roundup ? "on" : "off") << std::endl
             << "utilization rate: " << lsm_util << std::endl
