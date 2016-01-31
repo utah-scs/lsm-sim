@@ -1,6 +1,11 @@
 //#include "policy.h"
 #include "cliff.h"
 
+Cliff::Cliff(uint64_t size) : Policy(size) {
+
+}
+
+
 Cliff::~Cliff() {
 
   std::cout << "DESTROY CLIFF" << std::endl;
@@ -18,7 +23,7 @@ bool Cliff::proc(const request *r) {
   global_queue_size = 0;
 
   //iterate over keys in the lru queue
-  for (req_pair &a : global_lru) {
+  for (req_pair &a : eviction_queue) {
     
     k++;
     global_queue_size += a.size;
@@ -30,14 +35,14 @@ bool Cliff::proc(const request *r) {
       global_queue_size -= a.size;
             
       // remove the request from its current position in the queue
-      global_lru.remove_and_dispose(a, delete_disposer());
+      eviction_queue.remove_and_dispose(a, delete_disposer());
       break;
     }
   }
 
   // append the request to the back of the LRU queue
   req_pair *req = new req_pair(r->kid, request_size);
-  global_lru.push_front(*req);
+  eviction_queue.push_front(*req);
 
   if(global_pos != -1)
     return global_queue_size <= global_mem;
@@ -49,7 +54,7 @@ bool Cliff::proc(const request *r) {
 uint32_t Cliff::get_size() {
 
   uint64_t size = 0;
-  for(const auto& pair : global_lru)
+  for(const auto& pair : eviction_queue)
     size += pair.size;
 
   return size;

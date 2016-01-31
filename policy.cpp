@@ -7,12 +7,6 @@ Policy::Policy (const uint64_t gbl_mem) {
 
 }
 
-//Policy::~Policy() {
-
-//  std::cout << "DESTROY POLICY" << std::endl;
-
-//}
-
 
 
 
