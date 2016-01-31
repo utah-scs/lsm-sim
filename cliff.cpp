@@ -1,0 +1,64 @@
+//#include "policy.h"
+#include "cliff.h"
+
+
+bool Cliff::proc(const request *r) {
+  
+  uint64_t kv_size      = r->key_sz + r->val_sz;
+  uint64_t request_size = get_slab_class(kv_size);
+  int global_pos = -1;
+  uint64_t k = 0;
+  global_queue_size = 0;
+
+  //iterate over keys in the lru queue
+  for (req_pair &a : global_lru) {
+    
+    k++;
+    global_queue_size += a.size;
+            
+    if (a.id == r->kid) {
+            
+      global_pos = k;
+      global_queue_size += request_size;
+      global_queue_size -= a.size;
+            
+      // remove the request from its current position in the queue
+      global_lru.remove_and_dispose(a, delete_disposer());
+      break;
+    }
+  }
+
+  // append the request to the back of the LRU queue
+  req_pair *req = new req_pair(r->kid, request_size);
+  global_lru.push_front(*req);
+
+  if(global_pos != -1)
+    return global_queue_size <= global_mem;
+  else
+    return false;
+}
+
+
+uint32_t Cliff::get_size() {
+
+  uint64_t size = 0;
+  for(const auto& pair : global_lru)
+    size += pair.size;
+
+  return size;
+}
+
+
+
+uint32_t Cliff::get_slab_class(uint32_t size) {
+  if (size < 64)
+    return 64;
+  --size;
+    size |= size >> 1;
+    size |= size >> 2;
+    size |= size >> 4;
+    size |= size >> 8;
+    size |= size >> 16;
+    return size + 1;
+}
+

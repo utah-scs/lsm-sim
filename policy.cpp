@@ -1,10 +1,22 @@
 #include "policy.h"
+#include <iostream>
 
+Policy::Policy (const uint64_t gbl_mem) {
 
-Policy::Policy () {
+  this->global_mem = gbl_mem;
+
+  std::cout << "policy constructed" << std:: endl;
 
 }
 
 Policy::~Policy() {
 
 }
+
+
+
+
+
+
+
+
