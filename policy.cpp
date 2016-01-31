@@ -4,3 +4,7 @@
 Policy::Policy () {
 
 }
+
+Policy::~Policy() {
+
+}

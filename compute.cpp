@@ -25,6 +25,10 @@ enum req_typ {
   GET = 1, SET = 2, DEL = 3, ADD = 4, INC = 5, STAT = 6, OTHR = 7
 };
 
+enum pol_typ {
+  FIFO = 1, LRU = 2 
+};
+
 struct request {
   double    time;
   int32_t   key_sz;
@@ -77,7 +81,7 @@ uint32_t              req_count = 0;                  // counter for number of r
   bool debug = false;
 #endif
 
-const std::string     usage  = "-p    specify path\n"
+const std::string     usage  = "-f    specify file path\n"
                                "-a    specify apps to eval\n"
                                "-r    enable rounding\n"
                                "-u    specify utilization\n"
@@ -92,6 +96,8 @@ const int orig_alloc[15] = {
 double global_mem = 0;
 uint64_t global_queue_size = 0;
 int req_num = 0;
+Policy *pol;
+
 
 // prototypes
 int csv_tokenize(const std::string &s, string_vec *tokens);
@@ -100,6 +106,19 @@ void dump_request(const request *r);
 int proc_request(const request *r);
 bool valid_id(const request *r);
 uint32_t get_slab_class(uint32_t size);
+//int set_policy(const std::string &p);
+
+
+int set_policy(Policy *p, pol_typ t) {
+
+  if(t == FIFO)
+    printf("FIFO\n");
+  else if(t == LRU)
+    printf("LRU\n");
+  return 0;
+}
+ 
+
 
 int main(int argc, char *argv[]) {
 
@@ -113,11 +132,11 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::string sets;
-  while ((c = getopt(argc, argv, "p:a:ru:w:h")) != -1) {
+  while ((c = getopt(argc, argv, "p:f:a:ru:w:h")) != -1) {
     switch (c)
     {
       case 'p':
-        trace = optarg;
+        set_policy(pol, pol_typ(atoi(optarg)));  
         break;
       case 'a':
         {
@@ -135,7 +154,7 @@ int main(int argc, char *argv[]) {
         break;
       case 'u':
         lsm_util = atof(optarg);
-        break;
+        break;   
       case 'w':
         hit_start_time = atof(optarg);
         break;
