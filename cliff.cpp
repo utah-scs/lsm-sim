@@ -1,6 +1,13 @@
 //#include "policy.h"
 #include "cliff.h"
 
+Cliff::~Cliff() {
+
+  std::cout << "DESTROY CLIFF" << std::endl;
+
+} 
+
+
 
 bool Cliff::proc(const request *r) {
   

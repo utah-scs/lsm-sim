@@ -21,8 +21,7 @@ inline bool operator == (const req_pair &lhs, const req_pair &rhs) {
 
 
 enum req_typ {
-  GET = 1, SET = 2, DEL = 3, ADD = 4, INC = 5, STAT = 6, OTHR = 7
-};
+  GET = 1, SET = 2, DEL = 3, ADD = 4, INC = 5, STAT = 6, OTHR = 7 };
 
 
 struct request {
@@ -58,7 +57,7 @@ class Policy {
 
   public:
     Policy (const uint64_t gbl_mem);
-   ~Policy ();
+    virtual ~Policy () { std::cout << "DESTROY POLICY" << std::endl; }
 
     virtual bool proc (const request *r) = 0;
     virtual uint32_t get_size() = 0;

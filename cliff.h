@@ -12,6 +12,7 @@ class Cliff : public Policy {
 
   public:
     Cliff(uint64_t size) : Policy(size) {}
+    ~Cliff();
     bool proc (const request *r);
     uint32_t get_size();
 

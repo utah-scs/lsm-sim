@@ -19,7 +19,7 @@
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 typedef std::vector<std::string> string_vec;
-enum pol_typ { FIFO = 1, LRU = 2 };
+enum pol_typ { CLIFF = 1, FIFO = 2, LRU = 3 };
 
 
 // globals
@@ -77,6 +77,13 @@ int main(int argc, char *argv[]) {
             << BOOST_VERSION % 100                // patch level
             << std::endl;
 
+
+    // calculate global memory
+  for (int i = 0; i < 15; i++)
+    global_mem += orig_alloc[i];
+  global_mem *= lsm_util;
+
+
   // parse cmd args
   int c;
   std::string sets;
@@ -116,13 +123,27 @@ int main(int argc, char *argv[]) {
   }
 
   // PRE PROCESSING
-  // calculate global memory
-  for (int i = 0; i < 15; i++)
-    global_mem += orig_alloc[i];
-  global_mem *= lsm_util;
+
 
   // instantiate a policy
   pol = new Cliff(global_mem);
+
+  switch(p_type) {
+
+    case CLIFF :
+      { pol = new Cliff(global_mem);
+        break; }
+    case FIFO : 
+      { std::cout << "TODO : FIFO  not yet enabled" << std::endl;
+        exit(0);
+        break; }
+    case LRU : 
+      { std::cout << "TODO : LRU not yet enabled" << std::endl;
+        exit(0);
+        break;
+      }
+  }
+
 
   // List input parameters
   std::cout << "performing trace analysis on app\\s: " << app_str << std::endl
@@ -182,6 +203,13 @@ int main(int argc, char *argv[]) {
              << "final hit rate: "
              << std::setprecision(12) << hit_rate << std::endl 
              << "total execution time: " << seconds << std::endl;
+
+
+  // CLEANUP
+  
+  delete pol;
+
+
 }
 
 
