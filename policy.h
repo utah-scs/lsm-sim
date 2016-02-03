@@ -40,6 +40,7 @@ struct delete_disposer {
 // abstract base class for plug-and-play policies
 class Policy {
 
+
   typedef struct dump {
   
     // let k = size of key in bytes
@@ -61,11 +62,7 @@ class Policy {
     queue eviction_queue; 
 
   public:
-    Policy (const uint64_t gbl_mem) {
-    
-      this->global_mem = gbl_mem;
-
-    }
+    Policy (const uint64_t g) : global_mem(g) {};
     virtual ~Policy () { std::cout << "DESTROY POLICY" << std::endl; }
     virtual bool proc (const request *r) = 0;
     virtual uint32_t get_size() = 0; 
