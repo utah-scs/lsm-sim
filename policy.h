@@ -37,7 +37,6 @@ struct delete_disposer {
 
 
 
-
 // abstract base class for plug-and-play policies
 class Policy {
 
@@ -46,11 +45,12 @@ class Policy {
     // let k = size of key in bytes
     // let v = size of value in bytes
     // let m = size of metadata in bytes
+    // let g = global (total) memory
 
-    double util;
-    double ov_head;
-    double hit_rate;
-
+    double util_oh;     // k+v / g
+    double util;        // k+v+m / g
+    double ov_head;     // m / g
+    double hit_rate;    // sum of hits in hits vect over size of hits vector
 
   } dump;
 
@@ -61,12 +61,17 @@ class Policy {
     queue eviction_queue; 
 
   public:
-    Policy (const uint64_t gbl_mem);
+    Policy (const uint64_t gbl_mem) {
+    
+      this->global_mem = gbl_mem;
+
+    }
     virtual ~Policy () { std::cout << "DESTROY POLICY" << std::endl; }
     virtual bool proc (const request *r) = 0;
-    virtual uint32_t get_size() = 0;
-    void log ();
+    virtual uint32_t get_size() = 0; 
 
+    void log ();
+    // virtual get_dump () 
 };
 
 
