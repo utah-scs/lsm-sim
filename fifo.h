@@ -7,7 +7,7 @@
 class Fifo : public Policy {
 
   typedef std::unordered_map<uint32_t, req_pair*> hash_map;
-  typedef hash_map::const_iterator hitr;
+  typedef hash_map::const_iterator map_it;
   typedef std::pair<uint32_t, req_pair*> hash_pair;
 
   public:

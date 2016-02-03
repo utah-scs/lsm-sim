@@ -3,37 +3,44 @@
 
 typedef std::pair<uint32_t, req_pair*> hash_pair;
 
-Fifo::Fifo(uint64_t size) : Policy(size) {
 
+Fifo::Fifo(uint64_t size) : Policy(size) { 
+
+  this->current_size = 0;
 }
 
 Fifo::~Fifo () {
 
+  // for (req_pair &a : eviction_queue)
+  //  eviction_queue.remove_and_dispose(a, delete_disposer());
+  
   std::cout << "DESTROY FIFO" << std::endl;
-    
 }
 
+
+// checks the hashmap for membership, if the key is found
+// returns a hit, otherwise the key is added to the hash
+// and to the FIFO queue and returns a miss.
 bool Fifo::proc(const request *r) {
 
- // std::cout << "using FIFO" << std::endl;
-
-  // check hash for key, if not found this will
-  // be a get/put situation
-  hitr i = hash.find(r->kid);
+  map_it i = hash.find(r->kid);
+  
   if(i == hash.end() ) {
-    insert_pair(r);
-  //  std::cout << "miss" << std::endl;
+    insert_pair(r); 
     return false;
   }
- // std::cout << "hit" << std::endl;
+ 
   return true;
 }
 
-
+// inserts a request into the hashmap and the FIFO queue
+// if adding the kv pair size requires eviction, pull items
+// from back of queue until there is room, then place the
+// item there.
 uint32_t Fifo::insert_pair(const request *r) {
 
   uint64_t request_size = r->key_sz + r->val_sz;
-  req_pair *req = new req_pair(r->kid, request_size);
+  req_pair *req         = new req_pair(r->kid, request_size);
 
   // add to hashmap
   hash_pair p (r->kid, req);
