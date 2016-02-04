@@ -28,9 +28,9 @@ bool fifo::proc(const request *r) {
   // Throw out enough junk to make room for new record.
   while (global_mem - current_size < uint32_t(r->size())) {
       request* victim = &queue.back();
-      queue.pop_back();
       current_size -= victim->size();
       hash.erase(victim->kid);
+      queue.pop_back();
   }
 
   // Add the new request.
