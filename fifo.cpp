@@ -6,6 +6,7 @@ fifo::fifo(uint64_t size)
   , hits{}
   , current_size{}
   , hash{}
+  , queue{}
 {
 }
 

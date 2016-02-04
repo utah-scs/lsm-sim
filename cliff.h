@@ -5,10 +5,6 @@
 
 // policy derived from Cliffhanger paper
 class cliff : public policy {
-
-  private:
-    uint32_t get_slab_class(uint32_t size);
-
   public:
     cliff(uint64_t size);
     ~cliff();
@@ -17,6 +13,11 @@ class cliff : public policy {
 
     void log_header();
     void log();
+
+  private:
+    uint32_t get_slab_class(uint32_t size);
+
+    queue eviction_queue;
 };
 
 

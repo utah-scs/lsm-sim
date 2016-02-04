@@ -195,6 +195,7 @@ int main(int argc, char *argv[]) {
       std::cerr << "Progress: " << r.time << " "
                 << "Rate: " << bytes / (1 << 20) / seconds << " MB/s"
                 << std::endl;
+      bytes = 0;
       last_progress = now;
       policy->log();
     }

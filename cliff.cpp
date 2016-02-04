@@ -1,17 +1,15 @@
 #include "cliff.h"
 
-cliff::cliff(uint64_t size) : policy(size) {
+cliff::cliff(uint64_t size)
+  : policy(size)
+  , eviction_queue{}
+{
 
 }
 
 
 cliff::~cliff() {
-
-  std::cout << "DESTROY CLIFF" << std::endl;
-
 } 
-
-
 
 bool cliff::proc(const request *r) {
   

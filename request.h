@@ -25,7 +25,15 @@ struct request {
   void parse(const std::string& s);
   int32_t size() const { return key_sz + val_sz; }
 
-  request(const std::string& s) { parse(s); }
+  request(const std::string& s)
+    : time{}
+    , key_sz{}
+    , val_sz{}
+    , kid{}
+    , appid{}
+    , type{}
+    , hit{}
+  { parse(s); }
 };
 
 
