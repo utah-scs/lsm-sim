@@ -73,3 +73,10 @@ uint32_t cliff::get_slab_class(uint32_t size) {
     return size + 1;
 }
 
+void cliff::log_header() {
+  std::cout << "util util_oh cachesize hitrate" << std::endl;
+}
+
+void cliff::log() {
+  std::cout << "ENOIMPL" << std::endl;
+}

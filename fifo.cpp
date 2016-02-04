@@ -1,85 +1,60 @@
 #include "fifo.h"
 
-
-typedef std::pair<uint32_t, req_pair*> hash_pair;
-
-
-fifo::fifo(uint64_t size) : policy(size) { 
-
-  this->current_size = 0;
+fifo::fifo(uint64_t size)
+  : policy(size)
+  , accesses{}
+  , hits{}
+  , current_size{}
+  , hash{}
+{
 }
 
 fifo::~fifo () {
-
-  // for (req_pair &a : eviction_queue)
-  //  eviction_queue.remove_and_dispose(a, delete_disposer());
-  
-  std::cout << "DESTROY FIFO" << std::endl;
 }
-
 
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash
 // and to the FIFO queue and returns a miss.
 bool fifo::proc(const request *r) {
+  ++accesses;
 
-  map_it i = hash.find(r->kid);
-  
-  if(i == hash.end() ) {
-    insert_pair(r); 
-    return false;
+  auto it = hash.find(r->kid);
+  if (it != hash.end()) {
+    ++hits;
+    return true;
   }
+
+  // Throw out enough junk to make room for new record.
+  while (global_mem - current_size < uint32_t(r->size())) {
+      request* victim = &queue.back();
+      queue.pop_back();
+      current_size -= victim->size();
+      hash.erase(victim->kid);
+  }
+
+  // Add the new request.
+  queue.emplace_front(*r);
+  hash[r->kid] = &queue.front();
+  current_size += r->size();
  
-  return true;
+  return false;
 }
-
-// inserts a request into the hashmap and the FIFO queue
-// if adding the kv pair size requires eviction, pull items
-// from back of queue until there is room, then place the
-// item there.
-uint32_t fifo::insert_pair(const request *r) {
-
-  uint64_t request_size = r->key_sz + r->val_sz;
-  req_pair *req         = new req_pair(r->kid, request_size);
-
-  // add to hashmap
-  hash_pair p (r->kid, req);
-  hash.insert (p);
-
-  // if room exists in eviction queue, just add
-  if (current_size + request_size <= global_mem)
-    eviction_queue.push_front(*req);
-
-  else {
-  
-    uint32_t freed = 0;
-
-    // remove items from back of queue until enough room
-    while(freed < request_size) {
-  
-     req_pair p = eviction_queue.back();
-     freed += p.size;
-     hash.erase(p.id);
-    }
-
-    // adjust current size offset by removals/addition
-    current_size -= freed;
-    current_size += request_size;
-    
-    // finally, place the item 
-    eviction_queue.push_front(*req);
-  }
-
-  return 0;
-}
-
-
 
 uint32_t fifo::get_size() {
-
   uint32_t size = 0;
-  for (const auto& pair : eviction_queue)
-    size += pair.size;
+  for (const auto& r: queue)
+    size += r.size();
 
   return size;
+}
+
+void fifo::log_header() {
+  std::cout << "util util_oh cachesize hitrate" << std::endl;
+}
+
+void fifo::log() {
+  std::cout << double(current_size) / global_mem << " "
+            << double(current_size) / global_mem << " "
+            << global_mem << " "
+            << double(hits) / accesses << std::endl;
 }

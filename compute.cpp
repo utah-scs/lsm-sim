@@ -19,6 +19,11 @@
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
+
+const char* policy_names[3] = { "cliff"
+                              , "fifo"
+                              , "lru"
+                              };
 enum pol_typ { CLIFF = 0, FIFO = 1, LRU = 2 };
 
 // globals
@@ -70,7 +75,7 @@ bool valid_id(const request *r) {
 int main(int argc, char *argv[]) {
 
   // just checking boost
-  std::cout << "Using Boost "     
+  std::cerr << "Using Boost "     
             << BOOST_VERSION / 100000     << "."  // major version
             << BOOST_VERSION / 100 % 1000 << "."  // minor version
             << BOOST_VERSION % 100                // patch level
@@ -118,7 +123,7 @@ int main(int argc, char *argv[]) {
         hit_start_time = atof(optarg);
         break;
       case 'h': 
-        std::cout << usage << std::endl;
+        std::cerr << usage << std::endl;
         break;
     }
   }
@@ -137,7 +142,7 @@ int main(int argc, char *argv[]) {
       { policy.reset(new fifo(global_mem));
         break; }  
     case LRU : 
-      { std::cout << "TODO : LRU not yet enabled" << std::endl;
+      { std::cerr << "TODO : LRU not yet enabled" << std::endl;
         exit(0);
         break;
       }
@@ -149,12 +154,13 @@ int main(int argc, char *argv[]) {
   }
 
   // List input parameters
-  std::cout << "performing trace analysis on app\\s: " << app_str << std::endl
-            << "policy: " << p_type << std::endl
+  std::cerr << "performing trace analysis on app\\s: " << app_str << std::endl
+            << "policy: " << policy_names[p_type] << std::endl
             << "using trace file: " << trace << std::endl
             << "rounding: " << (roundup ? "on" : "off") << std::endl
             << "utilization rate: " << lsm_util << std::endl
-            << "start counting hits at t = " << hit_start_time << std::endl;
+            << "start counting hits at t = " << hit_start_time << std::endl
+            << "request limit: " << request_limit << std::endl;
 
 
   // proc file line by line
@@ -165,8 +171,12 @@ int main(int argc, char *argv[]) {
   auto start = hrc::now();
   auto last_progress = start;
   size_t bytes = 0;
+
+  policy->log_header();
  
-  while (std::getline(t_stream, line) && (i == 0 || i < request_limit)) {
+  while (std::getline(t_stream, line) &&
+         (request_limit == 0 || i < request_limit))
+  {
     request r{line};
     bytes += line.size();
 
@@ -182,13 +192,16 @@ int main(int argc, char *argv[]) {
       auto now  = hrc::now();
       double seconds =
         ch::duration_cast<ch::nanoseconds>(now - last_progress).count() / 1e9;
-      std::cout << "Progress: " << r.time << " "
+      std::cerr << "Progress: " << r.time << " "
                 << "Rate: " << bytes / (1 << 20) / seconds << " MB/s"
                 << std::endl;
       last_progress = now;
+      policy->log();
     }
   }
   auto stop = hrc::now();
+
+  policy->log();
 
   // POST PROCESSING
   uint64_t sum_hits = 0;
@@ -198,7 +211,7 @@ int main(int argc, char *argv[]) {
   double hit_rate = float(sum_hits)/global_hits.size();
   double seconds =
     ch::duration_cast<ch::milliseconds>(stop - start).count() / 1000.;
-    std::cout << "final global queue size: " << policy->get_size() << std::endl
+    std::cerr << "final global queue size: " << policy->get_size() << std::endl
              << "final hit rate: "
              << std::setprecision(12) << hit_rate << std::endl 
              << "total execution time: " << seconds << std::endl;

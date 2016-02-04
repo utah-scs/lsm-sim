@@ -15,6 +15,8 @@ class cliff : public policy {
     bool proc (const request *r);
     uint32_t get_size();
 
+    void log_header();
+    void log();
 };
 
 

@@ -41,15 +41,15 @@ class policy {
   protected: 
     uint64_t global_queue_size;
     uint64_t global_mem;
-    queue eviction_queue; 
 
   public:
-    policy (const uint64_t g) : global_mem(g) {};
-    virtual ~policy () { std::cout << "DESTROY POLICY" << std::endl; }
+    policy (const uint64_t g) : global_queue_size{}, global_mem(g) {};
+    virtual ~policy() {};
     virtual bool proc (const request *r) = 0;
     virtual uint32_t get_size() = 0; 
 
-    void log ();
+    virtual void log_header() = 0;
+    virtual void log() = 0;
     // virtual get_dump () 
 };
 
