@@ -27,10 +27,17 @@ bool fifo::proc(const request *r) {
 
   // Throw out enough junk to make room for new record.
   while (global_mem - current_size < uint32_t(r->size())) {
-      request* victim = &queue.back();
-      current_size -= victim->size();
-      hash.erase(victim->kid);
-      queue.pop_back();
+    // If the queue is already empty, then we are in trouble. The cache
+    // just isn't big enough to hold this object under any circumstances.
+    // Though, you probably shouldn't be setting the cache size smaller
+    // than the max memcache object size.
+    if (queue.empty())
+      return false;
+
+    request* victim = &queue.back();
+    current_size -= victim->size();
+    hash.erase(victim->kid);
+    queue.pop_back();
   }
 
   // Add the new request.

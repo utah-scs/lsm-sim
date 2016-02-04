@@ -54,7 +54,9 @@ const std::string     usage  = "-f    specify file path\n"
                                "-a    specify apps to eval\n"
                                "-r    enable rounding\n"
                                "-u    specify utilization\n"
-                               "-w    specify warmup period\n";
+                               "-w    specify warmup period\n"
+                               "-l    number of requests after warmup\n"
+                               "-s    simulated cache size in bytes\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -91,7 +93,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::string sets;
-  while ((c = getopt(argc, argv, "p:l:f:a:ru:w:h")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:h")) != -1) {
     switch (c)
     {
       case 'f':
@@ -99,6 +101,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'p':
         p_type = pol_typ(atoi(optarg)); 
+        break;
+      case 's':
+        global_mem = atoi(optarg);
         break;
       case 'l':
         request_limit = atoi(optarg); 
@@ -160,7 +165,8 @@ int main(int argc, char *argv[]) {
             << "rounding: " << (roundup ? "on" : "off") << std::endl
             << "utilization rate: " << lsm_util << std::endl
             << "start counting hits at t = " << hit_start_time << std::endl
-            << "request limit: " << request_limit << std::endl;
+            << "request limit: " << request_limit << std::endl
+            << "global mem: " << global_mem << std::endl;
 
 
   // proc file line by line
