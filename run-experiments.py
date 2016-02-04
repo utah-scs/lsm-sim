@@ -20,6 +20,6 @@ def compute(size=None, apps=[], warmup=None, policy=FIFO, infile=None):
     os.system(cmd)
 
 def main():
-    compute(size=1000, apps=[20], warmup=0)
+    compute(apps=[20])
 
 if __name__ == '__main__': main()

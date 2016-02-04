@@ -27,7 +27,6 @@ const char* policy_names[3] = { "cliff"
 enum pol_typ { CLIFF = 0, FIFO = 1, LRU = 2 };
 
 // globals
-std::vector<bool>     global_hits{};                    // hits/misses (true for hit)
 std::set<uint16_t>    apps{};                           // apps to consider
 bool                  all_apps = true;                  // run all by default 
 bool                  roundup  = false;                 // no rounding default
@@ -186,12 +185,16 @@ int main(int argc, char *argv[]) {
     request r{line};
     bytes += line.size();
 
-    // MAIN SIMULATION ALGORITHM
-    // only process requests for specified apps, of type GET, 
-    // and values of size > 0, after time 'hit_start_time'
-    if ((r.type == request::GET) & valid_id(&r) & (r.val_sz > 0))
-      if(r.time >= hit_start_time)
-        global_hits.push_back(policy->proc(&r));
+    // If in warmup, throw away the request.
+    if (r.time < hit_start_time)
+      continue;
+
+    // Only process requests for specified apps, of type GET, 
+    // and values of size > 0, after time 'hit_start_time'.
+    if ((r.type == request::GET) && valid_id(&r) && (r.val_sz > 0))
+      continue;
+
+    policy->proc(&r);
     
     ++i;
     if ((i & ((1 << 18) - 1)) == 0) {
@@ -210,17 +213,9 @@ int main(int argc, char *argv[]) {
 
   policy->log();
 
-  // POST PROCESSING
-  uint64_t sum_hits = 0;
-  for (auto h : global_hits)
-    sum_hits += h;
-
-  double hit_rate = float(sum_hits)/global_hits.size();
   double seconds =
     ch::duration_cast<ch::milliseconds>(stop - start).count() / 1000.;
-    std::cerr << "final global queue size: " << policy->get_size() << std::endl
-             << "final hit rate: "
-             << std::setprecision(12) << hit_rate << std::endl 
-             << "total execution time: " << seconds << std::endl;
+  std::cerr << "final global queue size: " << policy->get_size() << std::endl
+           << "total execution time: " << seconds << std::endl;
 }
 

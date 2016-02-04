@@ -8,7 +8,7 @@ class cliff : public policy {
   public:
     cliff(uint64_t size);
     ~cliff();
-    bool proc (const request *r);
+    void proc(const request *r);
     uint32_t get_size();
 
     void log_header();
@@ -16,6 +16,12 @@ class cliff : public policy {
 
   private:
     uint32_t get_slab_class(uint32_t size);
+
+    // Number of access requests fed to the cache.
+    size_t accesses;
+
+    // Subset of accesses which hit in the simulated cache.
+    size_t hits;
 
     queue eviction_queue;
 };

@@ -2,6 +2,8 @@
 
 cliff::cliff(uint64_t size)
   : policy(size)
+  , accesses{}
+  , hits{}
   , eviction_queue{}
 {
 
@@ -11,7 +13,8 @@ cliff::cliff(uint64_t size)
 cliff::~cliff() {
 } 
 
-bool cliff::proc(const request *r) {
+void cliff::proc(const request *r) {
+  ++accesses;
   
   uint64_t kv_size      = r->key_sz + r->val_sz;
   uint64_t request_size = get_slab_class(kv_size);
@@ -41,15 +44,11 @@ bool cliff::proc(const request *r) {
   req_pair *req = new req_pair(r->kid, request_size);
   eviction_queue.push_front(*req);
 
-  if(global_pos != -1)
-    return global_queue_size <= global_mem;
-  else
-    return false;
+  if (global_pos != -1 && global_queue_size <= global_mem)
+    ++hits;
 }
 
-
 uint32_t cliff::get_size() {
-
   uint64_t size = 0;
   for(const auto& pair : eviction_queue)
     size += pair.size;
@@ -57,18 +56,16 @@ uint32_t cliff::get_size() {
   return size;
 }
 
-
-
 uint32_t cliff::get_slab_class(uint32_t size) {
   if (size < 64)
     return 64;
   --size;
-    size |= size >> 1;
-    size |= size >> 2;
-    size |= size >> 4;
-    size |= size >> 8;
-    size |= size >> 16;
-    return size + 1;
+  size |= size >> 1;
+  size |= size >> 2;
+  size |= size >> 4;
+  size |= size >> 8;
+  size |= size >> 16;
+  return size + 1;
 }
 
 void cliff::log_header() {
@@ -76,5 +73,8 @@ void cliff::log_header() {
 }
 
 void cliff::log() {
-  std::cout << "ENOIMPL" << std::endl;
+  std::cout << double(global_queue_size) / global_mem << " "
+            << double(global_queue_size) / global_mem << " "
+            << global_mem << " "
+            << double(hits) / accesses << std::endl;
 }

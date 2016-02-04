@@ -45,7 +45,7 @@ class policy {
   public:
     policy (const uint64_t g) : global_queue_size{}, global_mem(g) {};
     virtual ~policy() {};
-    virtual bool proc (const request *r) = 0;
+    virtual void proc(const request *r) = 0;
     virtual uint32_t get_size() = 0; 
 
     virtual void log_header() = 0;
