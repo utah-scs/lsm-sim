@@ -5,38 +5,37 @@
 #include <set>
 #include <cstdint>
 #include <getopt.h>
-#include <sstream>
 #include <cmath>
 #include <boost/version.hpp>
 #include <cstdio>
 #include <iomanip>
 #include <ctime>
 #include <chrono>
+
+#include "common.h"
+#include "request.h"
 #include "fifo.h"
 #include "cliff.h"
 
-
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
-typedef std::vector<std::string> string_vec;
-enum pol_typ { CLIFF = 1, FIFO = 2, LRU = 3 };
-
+enum pol_typ { CLIFF = 0, FIFO = 1, LRU = 2 };
 
 // globals
-std::vector<bool>     global_hits;                      // hits/misses (true for hit)
-std::set<uint16_t>    apps;                             // apps to consider
+std::vector<bool>     global_hits{};                    // hits/misses (true for hit)
+std::set<uint16_t>    apps{};                           // apps to consider
 bool                  all_apps = true;                  // run all by default 
 bool                  roundup  = false;                 // no rounding default
 float                 lsm_util = 1.0;                   // default utilization factor
-std::string           trace    = "data/m.cap.out.head"; // default filepath
-float                 run_time = 0.0;                   // execution time
+std::string           trace    = "data/m.cap.out"; // default filepath
 std::string           app_str;                          // for logging apps
 double                hit_start_time = 86400;           // default time 
-uint32_t              req_count = 0;                    // num of reqs proc'd 
 double                global_mem = 0;
-int                   req_num = 0;
-Policy                *pol;                             // policy to use
 pol_typ               p_type;                           // policy type
+
+// Only parse this many requests from the CSV file before breaking.
+// Helpful for limiting runtime when playing around.
+int request_limit = 0;
 
 
   
@@ -59,14 +58,14 @@ const int orig_alloc[15] = {
 };
 
 
-// prototypes
-int csv_tokenize(const std::string &s, string_vec *tokens);
-void proc_line(const std::string &s, request *r);
-void dump_request(const request *r);
-int proc_request(const request *r);
-bool valid_id(const request *r);
-uint32_t get_slab_class(uint32_t size);
-
+// returns true if an ID is in the spec'd set
+// returns true if set is empty
+bool valid_id(const request *r) {
+  if (all_apps)
+    return true;
+  else
+    return apps.count(r->appid);
+}
 
 int main(int argc, char *argv[]) {
 
@@ -87,7 +86,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::string sets;
-  while ((c = getopt(argc, argv, "p:f:a:ru:w:h")) != -1) {
+  while ((c = getopt(argc, argv, "p:l:f:a:ru:w:h")) != -1) {
     switch (c)
     {
       case 'f':
@@ -96,9 +95,11 @@ int main(int argc, char *argv[]) {
       case 'p':
         p_type = pol_typ(atoi(optarg)); 
         break;
+      case 'l':
+        request_limit = atoi(optarg); 
+        break;
       case 'a':
         {
-          apps = std::set<uint16_t>();
           string_vec v;
           app_str = optarg;
           csv_tokenize(std::string(optarg), &v);
@@ -126,13 +127,14 @@ int main(int argc, char *argv[]) {
 
 
   // instantiate a policy
+  std::unique_ptr<policy> policy{};
   switch(p_type) {
 
     case CLIFF :
-      { pol = new Cliff(global_mem);
+      { policy.reset(new cliff(global_mem));
         break; }
     case FIFO : 
-      { pol = new Fifo(global_mem); 
+      { policy.reset(new fifo(global_mem));
         break; }  
     case LRU : 
       { std::cout << "TODO : LRU not yet enabled" << std::endl;
@@ -141,6 +143,10 @@ int main(int argc, char *argv[]) {
       }
   }
 
+  if (!policy) {
+    std::cerr << "No valid policy selected!" << std::endl;
+    exit(-1);
+  }
 
   // List input parameters
   std::cout << "performing trace analysis on app\\s: " << app_str << std::endl
@@ -160,19 +166,16 @@ int main(int argc, char *argv[]) {
   auto last_progress = start;
   size_t bytes = 0;
  
-  while (std::getline(t_stream, line)) {
-
-    request r;
-    proc_line (line, &r);
+  while (std::getline(t_stream, line) && (i == 0 || i < request_limit)) {
+    request r{line};
     bytes += line.size();
-
 
     // MAIN SIMULATION ALGORITHM
     // only process requests for specified apps, of type GET, 
     // and values of size > 0, after time 'hit_start_time'
-    if ((r.type == GET) & valid_id(&r) & (r.val_sz > 0))
+    if ((r.type == request::GET) & valid_id(&r) & (r.val_sz > 0))
       if(r.time >= hit_start_time)
-        global_hits.push_back(pol->proc(&r));
+        global_hits.push_back(policy->proc(&r));
     
     ++i;
     if ((i & ((1 << 18) - 1)) == 0) {
@@ -187,8 +190,6 @@ int main(int argc, char *argv[]) {
   }
   auto stop = hrc::now();
 
-
-
   // POST PROCESSING
   uint64_t sum_hits = 0;
   for (auto h : global_hits)
@@ -197,87 +198,9 @@ int main(int argc, char *argv[]) {
   double hit_rate = float(sum_hits)/global_hits.size();
   double seconds =
     ch::duration_cast<ch::milliseconds>(stop - start).count() / 1000.;
-    std::cout << "final global queue size: " << pol->get_size() << std::endl
+    std::cout << "final global queue size: " << policy->get_size() << std::endl
              << "final hit rate: "
              << std::setprecision(12) << hit_rate << std::endl 
              << "total execution time: " << seconds << std::endl;
-
-
-  // CLEANUP
-  
-  delete pol;
-
-
 }
-
-
-
-
-
-
-
-
-// returns true if an ID is in the spec'd set
-// returns true if set is empty
-bool valid_id(const request *r) {
-  if (all_apps)
-    return true;
-  else
-    return apps.count(r->appid);
-}
-
-
-
-/**
- * Populate a request \a r from a single CSV string \a s.
- * Logs errors on lines that cannot be parsed.
- */
-void proc_line(const std::string &s, request *r) {
-  std::string::size_type sz;
-  string_vec tokens;
-  csv_tokenize(s, &tokens);
-
-  try {
-    r->time   = std::stod (tokens.at(0), &sz);
-    r->appid  = std::stoi (tokens.at(1), &sz);
-    r->type   = req_typ(std::stoi(tokens.at(2), &sz));
-    r->key_sz = std::stoi(tokens.at(3), &sz);
-    r->val_sz = std::stoi(tokens.at(4), &sz);
-    r->kid    = std::stoi(tokens.at(5), &sz);
-    // r->hit    = stoi(tokens.at(6), &sz) == 1 ? true : false;
-  } catch (const std::out_of_range& e) {
-    std::cerr << "Malformed line couldn't be parsed: " << e.what() << std::endl
-              << "\t" << s << std::endl;
-  }
-}
-
-
-
-// debug/check
-void dump_request(const request *r) {
-  std::cout << "*** request ***"  << std::endl
-            << "time: "           << r->time    << std::endl
-            << "app id: "         << r->appid   << std::endl
-            << "req type: "       << r->type    << std::endl
-            << "key size: "       << r->key_sz  << std::endl
-            << "val size: "       << r->val_sz  << std::endl
-            << "kid: "            << r->kid     << std::endl
-            << "hit:" << (r->hit == 1 ? "yes" : "no") << std::endl;
-}
-
-
-// breaks a CSV string into a vector of tokens
-int csv_tokenize(const std::string &s, string_vec *tokens) {
-  std::istringstream ss(s);
-  std::string token;
-  while (std::getline(ss, token, ',')) {
-    tokens->push_back(token);
-  }
-  return 0;
-}
-
-
-
-
-
 

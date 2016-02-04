@@ -1,12 +1,11 @@
-//#include "policy.h"
 #include "cliff.h"
 
-Cliff::Cliff(uint64_t size) : Policy(size) {
+cliff::cliff(uint64_t size) : policy(size) {
 
 }
 
 
-Cliff::~Cliff() {
+cliff::~cliff() {
 
   std::cout << "DESTROY CLIFF" << std::endl;
 
@@ -14,7 +13,7 @@ Cliff::~Cliff() {
 
 
 
-bool Cliff::proc(const request *r) {
+bool cliff::proc(const request *r) {
   
   uint64_t kv_size      = r->key_sz + r->val_sz;
   uint64_t request_size = get_slab_class(kv_size);
@@ -51,7 +50,7 @@ bool Cliff::proc(const request *r) {
 }
 
 
-uint32_t Cliff::get_size() {
+uint32_t cliff::get_size() {
 
   uint64_t size = 0;
   for(const auto& pair : eviction_queue)
@@ -62,7 +61,7 @@ uint32_t Cliff::get_size() {
 
 
 
-uint32_t Cliff::get_slab_class(uint32_t size) {
+uint32_t cliff::get_slab_class(uint32_t size) {
   if (size < 64)
     return 64;
   --size;

@@ -4,14 +4,14 @@
 #include "policy.h"
 
 // policy derived from Cliffhanger paper
-class Cliff : public Policy {
+class cliff : public policy {
 
   private:
     uint32_t get_slab_class(uint32_t size);
 
   public:
-    Cliff(uint64_t size);
-    ~Cliff();
+    cliff(uint64_t size);
+    ~cliff();
     bool proc (const request *r);
     uint32_t get_size();
 

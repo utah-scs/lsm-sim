@@ -4,12 +4,12 @@
 typedef std::pair<uint32_t, req_pair*> hash_pair;
 
 
-Fifo::Fifo(uint64_t size) : Policy(size) { 
+fifo::fifo(uint64_t size) : policy(size) { 
 
   this->current_size = 0;
 }
 
-Fifo::~Fifo () {
+fifo::~fifo () {
 
   // for (req_pair &a : eviction_queue)
   //  eviction_queue.remove_and_dispose(a, delete_disposer());
@@ -21,7 +21,7 @@ Fifo::~Fifo () {
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash
 // and to the FIFO queue and returns a miss.
-bool Fifo::proc(const request *r) {
+bool fifo::proc(const request *r) {
 
   map_it i = hash.find(r->kid);
   
@@ -37,7 +37,7 @@ bool Fifo::proc(const request *r) {
 // if adding the kv pair size requires eviction, pull items
 // from back of queue until there is room, then place the
 // item there.
-uint32_t Fifo::insert_pair(const request *r) {
+uint32_t fifo::insert_pair(const request *r) {
 
   uint64_t request_size = r->key_sz + r->val_sz;
   req_pair *req         = new req_pair(r->kid, request_size);
@@ -75,7 +75,7 @@ uint32_t Fifo::insert_pair(const request *r) {
 
 
 
-uint32_t Fifo::get_size() {
+uint32_t fifo::get_size() {
 
   uint32_t size = 0;
   for (const auto& pair : eviction_queue)
