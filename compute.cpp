@@ -16,6 +16,7 @@
 #include "request.h"
 #include "fifo.h"
 #include "cliff.h"
+#include "lru.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
@@ -138,18 +139,15 @@ int main(int argc, char *argv[]) {
   // instantiate a policy
   std::unique_ptr<policy> policy{};
   switch(p_type) {
-
     case CLIFF :
-      { policy.reset(new cliff(global_mem));
-        break; }
+      policy.reset(new cliff(global_mem));
+      break;
     case FIFO : 
-      { policy.reset(new fifo(global_mem));
-        break; }  
+      policy.reset(new fifo(global_mem));
+      break;
     case LRU : 
-      { std::cerr << "TODO : LRU not yet enabled" << std::endl;
-        exit(0);
-        break;
-      }
+      policy.reset(new lru(global_mem));
+      break;
   }
 
   if (!policy) {

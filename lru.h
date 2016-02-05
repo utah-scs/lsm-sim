@@ -1,15 +1,17 @@
-#ifndef FIFO_H
-#define FIFO_H
+#ifndef LRU_H
+#define LRU_H
 
 #include "policy.h"
 #include <unordered_map>
 
-class fifo : public policy {
-  typedef std::unordered_map<uint32_t, request*> hash_map;
+class lru : public policy {
+  typedef std::list<request> lru_queue; 
+
+  typedef std::unordered_map<uint32_t, lru_queue::iterator> hash_map;
 
   public:
-    fifo(uint64_t size);
-   ~fifo();
+    lru(uint64_t size);
+   ~lru();
     void proc(const request *r);
     uint32_t get_size(); 
 
@@ -26,12 +28,7 @@ class fifo : public policy {
     uint32_t current_size;  // the current number of bytes in eviction queue
 
     hash_map hash; 
-    std::list<request> queue; 
+    lru_queue queue; 
 };
-
-
-
-
-
 
 #endif
