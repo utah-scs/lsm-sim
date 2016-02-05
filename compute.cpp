@@ -37,6 +37,7 @@ std::string           app_str;                          // for logging apps
 double                hit_start_time = 86400;           // default time 
 double                global_mem = 0;
 pol_typ               p_type;                           // policy type
+bool                  verbose = false;
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -56,7 +57,9 @@ const std::string     usage  = "-f    specify file path\n"
                                "-u    specify utilization\n"
                                "-w    specify warmup period\n"
                                "-l    number of requests after warmup\n"
-                               "-s    simulated cache size in bytes\n";
+                               "-s    simulated cache size in bytes\n"
+                               "-p    policy 0, 1, 2; cliff, fifo, lru\n"
+                               "-v    incremental output\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -93,7 +96,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::string sets;
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:h")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vh")) != -1) {
     switch (c)
     {
       case 'f':
@@ -126,6 +129,9 @@ int main(int argc, char *argv[]) {
         break;   
       case 'w':
         hit_start_time = atof(optarg);
+        break;
+      case 'v':
+        verbose = true;
         break;
       case 'h': 
         std::cerr << usage << std::endl;
@@ -195,7 +201,7 @@ int main(int argc, char *argv[]) {
     policy->proc(&r);
     
     ++i;
-    if ((i & ((1 << 18) - 1)) == 0) {
+    if (verbose && ((i & ((1 << 18) - 1)) == 0)) {
       auto now  = hrc::now();
       double seconds =
         ch::duration_cast<ch::nanoseconds>(now - last_progress).count() / 1e9;
@@ -214,6 +220,6 @@ int main(int argc, char *argv[]) {
   double seconds =
     ch::duration_cast<ch::milliseconds>(stop - start).count() / 1000.;
   std::cerr << "final global queue size: " << policy->get_size() << std::endl
-           << "total execution time: " << seconds << std::endl;
+            << "total execution time: " << seconds << std::endl;
 }
 
