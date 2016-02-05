@@ -5,9 +5,12 @@
 #include <unordered_map>
 
 class slab : public policy {
-  
+	typedef std::list<request> lru_queue;
+	
+	typedef std::unordered_map<uint32_t, lru_queue::iterator> hash_map;
+ 
   public:
-    slab(uint64_t size);
+    slab(uint64_t size, double growth);
    ~slab();
     void proc(const request *r);
     uint32_t get_size(); 
@@ -22,12 +25,18 @@ class slab : public policy {
     // Subset of accesses which hit in the simulated cache.
     size_t hits;
 
-    // The number of slab classes.
-    size_t slabs;
+		// Chunk size growth factor.
+		double growth;
 			
-		// the current number of bytes in eviction queue
+		// The current number of bytes in eviction queue.
     uint32_t current_size; 
-     
+
+		// Represents a LRU eviction queue for a slab class.
+		class slru;
+
+		// Container for all slab class eviction queues, indexed
+		// by class size. 
+		std::unordered_map<uint32_t, slru*> slabs; 
 };
 
 #endif
