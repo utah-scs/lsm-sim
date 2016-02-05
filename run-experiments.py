@@ -10,6 +10,7 @@ FIFO = 1
 LRU = 2
 
 def compute(outfile,
+            errfile,
             policy=FIFO,
             size=None,
             apps=[],
@@ -25,8 +26,9 @@ def compute(outfile,
             ('', '-f %s' % infile)[infile != None]
            )
           )
-    print(cmd, 'into file', outfile)
-    subprocess.call(cmd, shell=True, stdout=outfile)
+    print(cmd)
+    p = subprocess.Popen(cmd, shell=True, stdout=outfile, stderr=errfile)
+    return p
 
 def main():
     try:
@@ -40,19 +42,29 @@ def main():
     os.symlink(ts, os.path.join('logs', 'latest'))
 
     app = 20
-    request_limit = 1000000
+    request_limit = 10000000
     warmup = 0
 
     cache_size = 2**20
+    procs = []
+    max_procs = 8
     for policy in range(0, 3):
-        while cache_size < 64 * 2**20:
-            out_filename = 'output-policy%d-app%d-size%08d.log' % (policy,
-                                                                   app,
-                                                                   cache_size)
-            out_path = os.path.join(log_dir, out_filename)
-            with file(out_path, 'w') as f:
-                compute(f, size=cache_size, apps=[app],
-                        warmup=warmup, request_limit=request_limit)
+        while cache_size < 128 * 2**20:
+            prefix = 'output-policy%d-app%d-size%08d' % (policy,
+                                                         app,
+                                                         cache_size)
+            out_path = os.path.join(log_dir, prefix + '.out')
+            err_path = os.path.join(log_dir, prefix + '.err')
+            with file(out_path, 'w') as outfile:
+                with file(err_path, 'w') as errfile:
+                    procs.append(
+                        compute(outfile, errfile, size=cache_size, apps=[app],
+                            warmup=warmup, request_limit=request_limit))
             cache_size *=2
+            if len(procs) == max_procs:
+                proc = procs.pop(0)
+                proc.wait()
+    for proc in procs:
+        proc.wait()
 
 if __name__ == '__main__': main()
