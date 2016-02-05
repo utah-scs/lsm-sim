@@ -4,6 +4,7 @@ import sys
 import os
 import subprocess
 import datetime
+import argparse
 
 CLIFF = 0
 FIFO = 1
@@ -31,6 +32,13 @@ def compute(outfile,
     return p
 
 def main():
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--limit', dest='request_limit',
+                         default=None,
+                         help='Simulate only this many requests after warmup.')
+    args = parser.parse_args()
+
+    # Setup output dirs.
     try:
         os.mkdir('logs')
     except:
@@ -41,8 +49,8 @@ def main():
     os.unlink(os.path.join('logs', 'latest'))
     os.symlink(ts, os.path.join('logs', 'latest'))
 
+    # Set parameters and launch parallel processes.
     app = 20
-    request_limit = 10000000
     warmup = 0
 
     cache_size = 2**20
@@ -59,7 +67,7 @@ def main():
                 with file(err_path, 'w') as errfile:
                     procs.append(
                         compute(outfile, errfile, size=cache_size, apps=[app],
-                            warmup=warmup, request_limit=request_limit))
+                            warmup=warmup, request_limit=args.request_limit))
             cache_size *=2
             if len(procs) == max_procs:
                 proc = procs.pop(0)
