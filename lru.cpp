@@ -17,14 +17,14 @@ lru::~lru () {
 // returns a hit, otherwise the key is added to the hash
 // and to the LRU queue and returns a miss.
 void lru::proc(const request *r) {
-  ++accesses;
+  inc_acss();
 
   auto it = hash.find(r->kid);
   if (it != hash.end()) {
     auto& list_it = it->second;
     request& prior_request = *list_it;
     if (prior_request.size() == r->size()) {
-      ++hits;
+      inc_hits();
 
       // Promote this item to the front.
       queue.emplace_front(prior_request);
@@ -41,7 +41,7 @@ void lru::proc(const request *r) {
       // it gets overwritten below anyway when r gets put in the cache.
 
       // Count the get miss that came between r and prior_request.
-      ++accesses;
+      inc_acss();
       // Finally, we need to really put the correct sized value somewhere
       // in the LRU queue. So fall through to the evict+insert clauses.
     }
@@ -68,7 +68,7 @@ void lru::proc(const request *r) {
   current_size += r->size();
  
   // Count this request as a hit.
-  ++hits;
+  inc_hits();
 
   return;
 }

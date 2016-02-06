@@ -25,6 +25,11 @@ class lru : public policy {
     // Subset of accesses which hit in the simulated cache.
     size_t hits;
 
+		// Accessors allowing derived classes to override
+		// how hits/misses are recorded, possibly to a owner class.
+		virtual void inc_hits(void)	{ ++hits; }
+		virtual void inc_acss(void) { ++accesses; }
+		
     uint32_t current_size;  // the current number of bytes in eviction queue
 
     hash_map hash; 
