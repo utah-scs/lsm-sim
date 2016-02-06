@@ -4,6 +4,11 @@
 #include "policy.h"
 #include <unordered_map>
 
+#define MIN_CHUNK 48
+#define DEF_GFACT 1.25
+#define PAGE_SIZE 1024
+
+
 class slab : public policy {
 	typedef std::list<request> lru_queue;
 	
@@ -20,7 +25,7 @@ class slab : public policy {
 
   private:
     // Number of access requests fed to the cache.
-    size_t accesses;
+   	size_t accesses;
 
     // Subset of accesses which hit in the simulated cache.
     size_t hits;
@@ -32,11 +37,11 @@ class slab : public policy {
     uint32_t current_size; 
 
 		// Represents a LRU eviction queue for a slab class.
-		class slru;
+		class sclru;
 
 		// Container for all slab class eviction queues, indexed
 		// by class size. 
-		std::unordered_map<uint32_t, slru*> slabs; 
+		std::unordered_map<uint32_t, sclru*> slabs; 
 };
 
 #endif
