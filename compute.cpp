@@ -17,15 +17,17 @@
 #include "fifo.h"
 #include "cliff.h"
 #include "lru.h"
+#include "slab.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[3] = { "cliff"
+const char* policy_names[4] = { "cliff"
                               , "fifo"
                               , "lru"
+															, "slab"
                               };
-enum pol_typ { CLIFF = 0, FIFO = 1, LRU = 2 };
+enum pol_typ { CLIFF = 0, FIFO = 1, LRU = 2, SLAB = 3 };
 
 // globals
 std::set<uint16_t>    apps{};                           // apps to consider
@@ -154,6 +156,9 @@ int main(int argc, char *argv[]) {
     case LRU : 
       policy.reset(new lru(global_mem));
       break;
+		case SLAB :
+			policy.reset(new slab(global_mem));
+			break;
   }
 
   if (!policy) {
@@ -182,7 +187,7 @@ int main(int argc, char *argv[]) {
   size_t bytes = 0;
 
   policy->log_header();
- 
+
   while (std::getline(t_stream, line) &&
          (request_limit == 0 || i < request_limit))
   {
@@ -201,8 +206,8 @@ int main(int argc, char *argv[]) {
     policy->proc(&r);
     
     ++i;
-    if (verbose && ((i & ((1 << 18) - 1)) == 0)) {
-      auto now  = hrc::now();
+		if (verbose && ((i & ((1 << 18) - 1)) == 0)) { 		
+			auto now  = hrc::now();
       double seconds =
         ch::duration_cast<ch::nanoseconds>(now - last_progress).count() / 1e9;
       std::cerr << "Progress: " << r.time << " "

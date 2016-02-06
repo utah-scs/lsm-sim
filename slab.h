@@ -4,9 +4,9 @@
 #include "policy.h"
 #include <unordered_map>
 
-#define MIN_CHUNK 48
-#define DEF_GFACT 1.25
-#define PAGE_SIZE 1024
+#define MIN_CHUNK 48			// Default memcached minimum chunk size
+#define DEF_GFACT 1.25 		// Default memcached growth factor
+#define PAGE_SIZE 1024		// Deafult memcached page allocation size
 
 
 class slab : public policy {
@@ -15,7 +15,7 @@ class slab : public policy {
 	typedef std::unordered_map<uint32_t, lru_queue::iterator> hash_map;
  
   public:
-    slab(uint64_t size, double growth);
+    slab(uint64_t size);
    ~slab();
     void proc(const request *r);
     uint32_t get_size(); 

@@ -18,7 +18,7 @@ class lru : public policy {
     void log_header();
     void log();
 
-  private:
+  protected:
     // Number of access requests fed to the cache.
     size_t accesses;
 
