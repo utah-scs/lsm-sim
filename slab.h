@@ -5,9 +5,9 @@
 #include <vector>
 #include <unordered_map>
 
-#define MIN_CHUNK 48    // Default memcached minimum chunk size
-#define DEF_GFACT 1.25  // Default memcached growth factor
-#define PAGE_SIZE 1024  // Deafult memcached page allocation size
+#define MIN_CHUNK 48    		// Default Memcached minimum chunk size in bytes
+#define DEF_GFACT 1.25  		// Default Memcached growth factor
+#define PAGE_SIZE 1000000  	// Default Memcached page allocation size in bytes
 
 class slab : public policy {
   typedef std::list<request> lru_queue;
