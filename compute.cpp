@@ -88,12 +88,10 @@ int main(int argc, char *argv[]) {
             << BOOST_VERSION % 100                // patch level
             << std::endl;
 
-
-    // calculate global memory
+  // calculate global memory
   for (int i = 0; i < 15; i++)
     global_mem += orig_alloc[i];
   global_mem *= lsm_util;
-
 
   // parse cmd args
   int c;
@@ -143,7 +141,6 @@ int main(int argc, char *argv[]) {
 
   // PRE PROCESSING
 
-
   // instantiate a policy
   std::unique_ptr<policy> policy{};
   switch(p_type) {
@@ -156,9 +153,9 @@ int main(int argc, char *argv[]) {
     case LRU : 
       policy.reset(new lru(global_mem));
       break;
-		case SLAB :
-			policy.reset(new slab(global_mem));
-			break;
+    case SLAB :
+      policy.reset(new slab(global_mem));
+      break;
   }
 
   if (!policy) {
@@ -176,7 +173,6 @@ int main(int argc, char *argv[]) {
             << "request limit: " << request_limit << std::endl
             << "global mem: " << global_mem << std::endl;
 
-
   // proc file line by line
   std::ifstream t_stream(trace);
   std::string line;
@@ -185,9 +181,9 @@ int main(int argc, char *argv[]) {
   auto start = hrc::now();
   auto last_progress = start;
   size_t bytes = 0;
-
+  
   policy->log_header();
-
+  
   while (std::getline(t_stream, line) &&
          (request_limit == 0 || i < request_limit))
   {
@@ -201,13 +197,13 @@ int main(int argc, char *argv[]) {
     // Only process requests for specified apps, of type GET, 
     // and values of size > 0, after time 'hit_start_time'.
     if ((r.type == request::GET) && valid_id(&r) && (r.val_sz > 0))
-      continue;
+    continue;
 
     policy->proc(&r);
     
     ++i;
-		if (verbose && ((i & ((1 << 18) - 1)) == 0)) { 		
-			auto now  = hrc::now();
+    if (verbose && ((i & ((1 << 18) - 1)) == 0)) {
+      auto now  = hrc::now();
       double seconds =
         ch::duration_cast<ch::nanoseconds>(now - last_progress).count() / 1e9;
       std::cerr << "Progress: " << r.time << " "
