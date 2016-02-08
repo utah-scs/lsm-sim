@@ -9,6 +9,7 @@ slab::slab(uint64_t size)
   , current_size{}
 	, slabs{}
 {
+  init_slabs();
 }
 
 slab::~slab () {
@@ -16,10 +17,10 @@ slab::~slab () {
 
 class slab::sclru : public lru {
   public:
-    sclru(size_t size, slab &owner, size_t chunk_sz)
-    : lru(size)
-    , owner(owner)
+    sclru(slab &owner, size_t chunk_sz)
+    : lru(PAGE_SIZE) 
     ,	chunk_sz{chunk_sz}
+    , owner(owner)
     {}
    ~sclru() {}
 
@@ -28,49 +29,38 @@ class slab::sclru : public lru {
     void alloc(size_t size) { this->global_mem += size; }
 
   private:
-    // Report hits to the owner class instead of locally.
+    // Report hits/accesses to the owner class instead of locally.
     void inc_hits(void) override { ++(owner.hits); }
     void inc_acss(void) override { ++(owner.accesses); }
-
-    slab &owner; 
-
+ 
     // Chunk size for this slab class.
     size_t chunk_sz;	
+
+    slab &owner; 
 };
 
+
+
+
 void slab::proc(const request *r) {
+
+  // TODO : FIX SO THIS ROUNDS PROPERLY
 
   // Determine slab class LRU chain for request. 
   size_t size = r->size() > 0 ? r->size() : 0;
   uint32_t chunk = MIN_CHUNK;
   while(size > chunk) 
     chunk *= DEF_GFACT;
-
-  // If the LRU chain exists just perform the request query. 	
-  // If slab class does not exist, create the slab and and 
-  // add to slab container. Creation of new slab class is ignored
-  // if there is not enough free global memory to slice off a 1MB page. 
-  auto it = slabs.find(chunk);
   
+  auto it = slabs.find(chunk);
   if(it == slabs.end()) {
-    if((global_mem - current_size) < PAGE_SIZE) {	
-      // mimic memcached behavior (say no to new slab classes when full)
-      std::cerr << "Not enough memory left to alloc a new slab class" << std::endl;
-      return;
-    }
-    // This should not fail, but just in case log it and still
-    // count it as an access.
-    auto s = slabs.emplace(chunk, new sclru(PAGE_SIZE, *this, chunk));
-    if(!s.second) {
-    std::cerr << "Failed to allocate new SCLRU << " << std::endl;
-      ++accesses;
-      return;
-		}
-    it = s.first;
-	}
-
-  sclru *s = it->second;
-
+    std::cerr << "Object size too large for slab config" << std::endl;
+    std::cerr << "obj: " << size << std::endl;
+    return;
+  }
+  
+  const auto &s = it->second;
+    
   // Check current capacity of slab class, if there is not enough room
   // we need to allocate a new page. (increase the size of slab) and then
   // process the request normally. If, however, we are out of global mem
@@ -80,10 +70,31 @@ void slab::proc(const request *r) {
     if(global_mem - current_size >= PAGE_SIZE)
     s->alloc(PAGE_SIZE);
   }
+
   // If we reach this point it's safe to process the request.
-  it->second->proc(r);
+  s->proc(r);
   return;
 }
+
+
+// TODO: FIX SO THIS ROUNDS PROPERLY
+
+uint16_t slab::init_slabs (void) {
+  int i = 0;  
+  size_t size = MIN_CHUNK;   
+ 
+  std::cout << "Creating slab classes" << std::endl;  
+  while(i < MAX_CLASSES && size <= MAX_SIZE / DEF_GFACT) {
+    std::cout << i << " " << size << std::endl;    
+    sc_ptr sc(new sclru(*this, size));   
+    slabs.insert(std::make_pair(size, std::move(sc)));
+    size *= DEF_GFACT;
+    i++; 
+  }  
+  return i - 1; 
+}
+
+
 
 // Returns the overall memory allocated across all slabs.
 uint32_t slab::get_size() {
