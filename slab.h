@@ -34,7 +34,7 @@ class slab : public policy {
     double growth;
 	
     // The current number of bytes in eviction queue.
-    uint32_t current_size; 
+    size_t current_size; 
 
     // Represents a LRU eviction queue for a slab class.
     class sclru;

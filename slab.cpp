@@ -66,12 +66,17 @@ void slab::proc(const request *r) {
   // process the request normally. If, however, we are out of global mem
   // we cannot expand the slab, so just process the request and let LRU 
   // take care of the eviction/put process.
-  if(s->get_free() < (size_t)r->size()) {
-    if(global_mem - current_size >= PAGE_SIZE)
-    s->alloc(PAGE_SIZE);
+  if(s->get_free() < size) {
+    
+    if(global_mem - current_size >= PAGE_SIZE && current_size <= global_mem) {
+      s->alloc(PAGE_SIZE);
+     //  std::cout << "new page " << s->get_free() << std::endl;
+     //  std::cout << current_size << std::endl;
+    }
   }
 
   // If we reach this point it's safe to process the request.
+  current_size += (size_t)r->size();
   s->proc(r);
   return;
 }
@@ -111,8 +116,8 @@ void slab::log() {
 
   std::cout << "print progress" << std::endl;
   
-  std::cout << double(get_size()) / global_mem << " "
-            << double(get_size()) / global_mem << " "
+  std::cout << double(current_size) / global_mem << " "
+            << double(current_size) / global_mem << " "
             << global_mem << " "
             << double(hits) / accesses << std::endl;
 }
