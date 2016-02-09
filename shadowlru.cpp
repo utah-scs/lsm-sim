@@ -23,8 +23,8 @@ void shadowlru::proc(const request *r, bool warmup) {
   for (auto it = queue.begin(); it != queue.end(); ++it) {
     request& item = *it;
     k++;
+    size_distance += item.size();
     if (item.kid == r->kid) {
-      size_distance += item.size();
       position = k;
       queue.erase(it);
       break;

@@ -37,15 +37,14 @@ class hit_rate_curve {
       return;
 
     uint64_t total = std::accumulate(distances.begin(), distances.end(), 0);
-    const uint64_t limit = 1000000;
 
     uint64_t accum = 0;
     for (size_t i = 0; i < distances.size(); ++i) {
-      accum += distances[i];
-      if (i >= limit)
-        break;
-      std::cout << prefix << " " <<
-        i << " " << float(accum) / total << std::endl;
+      uint64_t delta = distances[i];
+      accum += delta;
+      if (delta)
+        std::cout << prefix << " " <<
+          i << " " << float(accum) / total << std::endl;
     }
   }
 
