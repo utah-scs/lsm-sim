@@ -2,7 +2,7 @@ CXX := g++-4.9
 CXXFLAGS := -std=c++11 -Wall -g -pedantic-errors -Werror -O2
 CXXFLAGS += -Wno-unused-parameter -Wextra -Weffc++
 
-LDFLAGS := -L/usr/local/Cellar/boost/1.59.0/lib -lboost_system
+LDFLAGS :=
 
 SRCS := $(wildcard *.cpp)
 OBJS := $(patsubst %.cpp, %.o, $(SRCS))
@@ -13,7 +13,7 @@ all: compute
 	$(CXX) $(CXXFLAGS) -c $<
 
 compute: $(OBJS)
-	$(CXX) -lboost_system -o $@ $^ 
+	$(CXX) -o $@ $^
 
 clean:
 	-rm compute *.o

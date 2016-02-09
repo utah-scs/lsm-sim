@@ -51,12 +51,12 @@ def main():
 
     # Set parameters and launch parallel processes.
     app = 20
-    warmup = 0
+    warmup = 86400
 
     cache_size = 2**20
     procs = []
-    max_procs = 8
-    for policy in range(0, 3):
+    max_procs = 4
+    for policy in range(1, 3):
         while cache_size < 128 * 2**20:
             prefix = 'output-policy%d-app%d-size%08d' % (policy,
                                                          app,
@@ -66,7 +66,9 @@ def main():
             with file(out_path, 'w') as outfile:
                 with file(err_path, 'w') as errfile:
                     procs.append(
-                        compute(outfile, errfile, size=cache_size, apps=[app],
+                        compute(outfile, errfile,
+                            policy=policy,
+                            size=cache_size, apps=[app],
                             warmup=warmup, request_limit=args.request_limit))
             cache_size *=2
             if len(procs) == max_procs:
