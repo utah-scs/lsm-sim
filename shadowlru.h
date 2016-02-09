@@ -1,5 +1,5 @@
-#ifndef CLIFF_H
-#define CLIFF_H
+#ifndef SHADOWLRU_H
+#define SHADOWLRU_H
 
 #include <list>
 
@@ -7,10 +7,10 @@
 #include "policy.h"
 
 // policy derived from Cliffhanger paper
-class cliff : public policy {
+class shadowlru : public policy {
   public:
-    cliff(uint64_t size);
-    ~cliff();
+    shadowlru(uint64_t size);
+    ~shadowlru();
     void proc(const request *r, bool warmup);
 
     void log_header();
@@ -23,8 +23,5 @@ class cliff : public policy {
     hit_rate_curve size_curve;
     std::list<request> queue;
 };
-
-
-
 
 #endif

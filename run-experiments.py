@@ -6,7 +6,7 @@ import subprocess
 import datetime
 import argparse
 
-CLIFF = 0
+SHADOWLRU = 0
 FIFO = 1
 LRU = 2
 

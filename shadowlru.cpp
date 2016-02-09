@@ -1,8 +1,8 @@
 #include <cassert>
 
-#include "cliff.h"
+#include "shadowlru.h"
 
-cliff::cliff(uint64_t size)
+shadowlru::shadowlru(uint64_t size)
   : policy{size}
   , position_curve{}
   , size_curve{}
@@ -11,10 +11,10 @@ cliff::cliff(uint64_t size)
 
 }
 
-cliff::~cliff() {
+shadowlru::~shadowlru() {
 } 
 
-void cliff::proc(const request *r, bool warmup) {
+void shadowlru::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
   size_t position = ~0lu;
@@ -39,7 +39,7 @@ void cliff::proc(const request *r, bool warmup) {
   }
 }
 
-uint32_t cliff::get_slab_class(uint32_t size) {
+uint32_t shadowlru::get_slab_class(uint32_t size) {
   if (size < 64)
     return 64;
   --size;
@@ -51,10 +51,10 @@ uint32_t cliff::get_slab_class(uint32_t size) {
   return size + 1;
 }
 
-void cliff::log_header() {
+void shadowlru::log_header() {
 }
 
-void cliff::log() {
+void shadowlru::log() {
   std::cout << "dist_is_size distance cumfrac" << std::endl;
   position_curve.dump_cdf(0);
   size_curve.dump_cdf(1);

@@ -16,19 +16,19 @@
 #include "common.h"
 #include "request.h"
 #include "fifo.h"
-#include "cliff.h"
+#include "shadowlru.h"
 #include "lru.h"
 #include "slab.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[4] = { "cliff"
+const char* policy_names[4] = { "shadowlru"
                               , "fifo"
                               , "lru"
 															, "slab"
                               };
-enum pol_typ { CLIFF = 0, FIFO = 1, LRU = 2, SLAB = 3 };
+enum pol_typ { SHADOWLRU = 0, FIFO = 1, LRU = 2, SLAB = 3 };
 
 // globals
 std::set<uint16_t>    apps{};                           // apps to consider
@@ -61,7 +61,7 @@ const std::string     usage  = "-f    specify file path\n"
                                "-w    specify warmup period\n"
                                "-l    number of requests after warmup\n"
                                "-s    simulated cache size in bytes\n"
-                               "-p    policy 0, 1, 2; cliff, fifo, lru\n"
+                               "-p    policy 0, 1, 2; shadowlru, fifo, lru\n"
                                "-v    incremental output\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
@@ -145,8 +145,8 @@ int main(int argc, char *argv[]) {
   // instantiate a policy
   std::unique_ptr<policy> policy{};
   switch(p_type) {
-    case CLIFF :
-      policy.reset(new cliff(global_mem));
+    case SHADOWLRU:
+      policy.reset(new shadowlru(global_mem));
       break;
     case FIFO : 
       policy.reset(new fifo(global_mem));
