@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "slab.h"
 #include "lru.h"
 
@@ -42,7 +44,7 @@ class slab::sclru : public lru {
 
 
 
-void slab::proc(const request *r) {
+void slab::proc(const request *r, bool warmup) {
 
   // TODO : FIX SO THIS ROUNDS PROPERLY
 
@@ -77,7 +79,7 @@ void slab::proc(const request *r) {
 
   // If we reach this point it's safe to process the request.
   current_size += (size_t)r->size();
-  s->proc(r);
+  s->proc(r, warmup);
   return;
 }
 

@@ -1,8 +1,9 @@
 #ifndef LRU_H
 #define LRU_H
 
-#include "policy.h"
 #include <unordered_map>
+#include <list>
+#include "policy.h"
 
 class lru : public policy {
   typedef std::list<request> lru_queue; 
@@ -12,7 +13,7 @@ class lru : public policy {
   public:
     lru(uint64_t size);
    ~lru();
-    void proc(const request *r);
+    void proc(const request *r, bool warmup);
     uint32_t get_size(); 
 
     void log_header();

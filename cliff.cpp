@@ -1,59 +1,42 @@
+#include <cassert>
+
 #include "cliff.h"
 
 cliff::cliff(uint64_t size)
-  : policy(size)
-  , accesses{}
-  , hits{}
-  , eviction_queue{}
+  : policy{size}
+  , position_curve{}
+  , size_curve{}
+  , queue{}
 {
 
 }
 
-
 cliff::~cliff() {
 } 
 
-void cliff::proc(const request *r) {
-  ++accesses;
-  
-  uint64_t kv_size      = r->key_sz + r->val_sz;
-  uint64_t request_size = get_slab_class(kv_size);
-  int global_pos = -1;
-  uint64_t k = 0;
-  global_queue_size = 0;
+void cliff::proc(const request *r, bool warmup) {
+  assert(r->size() > 0);
 
-  //iterate over keys in the lru queue
-  for (req_pair &a : eviction_queue) {
-    
+  size_t position = ~0lu;
+  size_t k = 0;
+  uint64_t size_distance = 0;
+  for (auto it = queue.begin(); it != queue.end(); ++it) {
+    request& item = *it;
     k++;
-    global_queue_size += a.size;
-            
-    if (a.id == r->kid) {
-            
-      global_pos = k;
-      global_queue_size += request_size;
-      global_queue_size -= a.size;
-            
-      // remove the request from its current position in the queue
-      eviction_queue.remove_and_dispose(a, delete_disposer());
+    if (item.kid == r->kid) {
+      size_distance += item.size();
+      position = k;
+      queue.erase(it);
       break;
     }
   }
 
-  // append the request to the back of the LRU queue
-  req_pair *req = new req_pair(r->kid, request_size);
-  eviction_queue.push_front(*req);
+  queue.emplace_front(*r);
 
-  if (global_pos != -1 && global_queue_size <= global_mem)
-    ++hits;
-}
-
-uint32_t cliff::get_size() {
-  uint64_t size = 0;
-  for(const auto& pair : eviction_queue)
-    size += pair.size;
-
-  return size;
+  if (!warmup && position != ~0lu) {
+    position_curve.hit(position);
+    size_curve.hit(size_distance);
+  }
 }
 
 uint32_t cliff::get_slab_class(uint32_t size) {
@@ -69,12 +52,10 @@ uint32_t cliff::get_slab_class(uint32_t size) {
 }
 
 void cliff::log_header() {
-  std::cout << "util util_oh cachesize hitrate" << std::endl;
 }
 
 void cliff::log() {
-  std::cout << double(global_queue_size) / global_mem << " "
-            << double(global_queue_size) / global_mem << " "
-            << global_mem << " "
-            << double(hits) / accesses << std::endl;
+  std::cout << "dist_is_size distance cumfrac" << std::endl;
+  position_curve.dump_cdf(0);
+  size_curve.dump_cdf(1);
 }

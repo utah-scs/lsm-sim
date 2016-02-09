@@ -3,6 +3,7 @@
 
 #include "policy.h"
 #include <unordered_map>
+#include <list>
 
 // Implements a circular log such that the current position is always resting on
 // the LRU item. Each put or update overwites whatever item is at this position
@@ -18,7 +19,7 @@ class bad_idea : public policy {
   public:
     bad_idea(uint64_t size);
    ~bad_idea();
-    void proc(const request *r);
+    void proc(const request *r, bool warmup);
     uint32_t get_size(); 
 
     void log_header();

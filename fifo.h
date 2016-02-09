@@ -3,6 +3,7 @@
 
 #include "policy.h"
 #include <unordered_map>
+#include <list>
 
 class fifo : public policy {
   typedef std::unordered_map<uint32_t, request*> hash_map;
@@ -10,7 +11,7 @@ class fifo : public policy {
   public:
     fifo(uint64_t size);
    ~fifo();
-    void proc(const request *r);
+    void proc(const request *r, bool warmup);
     uint32_t get_size(); 
 
     void log_header();

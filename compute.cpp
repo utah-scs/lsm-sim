@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <ctime>
 #include <chrono>
+#include <memory>
 
 #include "common.h"
 #include "request.h"
@@ -190,16 +191,12 @@ int main(int argc, char *argv[]) {
     request r{line};
     bytes += line.size();
 
-    // If in warmup, throw away the request.
-    if (r.time < hit_start_time)
-      continue;
-
     // Only process requests for specified apps, of type GET, 
     // and values of size > 0, after time 'hit_start_time'.
-    if ((r.type == request::GET) && valid_id(&r) && (r.val_sz > 0))
-    continue;
+    if ((r.type != request::GET) || !valid_id(&r) || (r.val_sz <= 0))
+      continue;
 
-    policy->proc(&r);
+    policy->proc(&r, r.time < hit_start_time);
     
     ++i;
     if (verbose && ((i & ((1 << 18) - 1)) == 0)) {
@@ -211,7 +208,7 @@ int main(int argc, char *argv[]) {
                 << std::endl;
       bytes = 0;
       last_progress = now;
-      policy->log();
+      //policy->log();
     }
   }
   auto stop = hrc::now();
@@ -220,7 +217,8 @@ int main(int argc, char *argv[]) {
 
   double seconds =
     ch::duration_cast<ch::milliseconds>(stop - start).count() / 1000.;
-  std::cerr << "final global queue size: " << policy->get_size() << std::endl
-            << "total execution time: " << seconds << std::endl;
+  std::cerr << "total execution time: " << seconds << std::endl;
+
+  return 0;
 }
 

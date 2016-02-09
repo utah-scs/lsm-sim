@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "bad_idea.h"
 
 bad_idea::bad_idea(uint64_t size)
@@ -17,8 +19,9 @@ bad_idea::~bad_idea () {
 // checks the hashmap for membership, if the key is found the item is promoted
 // to the current insertion point replacing whatever was already there. If the
 // key is not found, the item is added at the insertion point.
-void bad_idea::proc(const request *r) {
-  ++accesses;
+void bad_idea::proc(const request *r, bool warmup) {
+  if (!warmup)
+    ++accesses;
 
   auto it = hash.find(r->kid);
   

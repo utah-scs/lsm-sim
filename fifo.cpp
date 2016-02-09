@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "fifo.h"
 
 fifo::fifo(uint64_t size)
@@ -16,14 +18,16 @@ fifo::~fifo () {
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash
 // and to the FIFO queue and returns a miss.
-void fifo::proc(const request *r) {
-  ++accesses;
+void fifo::proc(const request *r, bool warmup) {
+  if (!warmup)
+    ++accesses;
 
   auto it = hash.find(r->kid);
   if (it != hash.end()) {
     request* prior_request = it->second;
     if (prior_request->size() == r->size()) {
-      ++hits;
+      if (!warmup)
+        ++hits;
       return;
     } else {
       // Size has changed. Even though it is in cache it must have already been
@@ -34,7 +38,8 @@ void fifo::proc(const request *r) {
       // it gets overwritten below anyway when r gets put in the cache.
 
       // Count the get miss that came between r and prior_request.
-      ++accesses;
+      if (!warmup)
+        ++accesses;
       // Finally, we need to really put the correct sized value somewhere
       // in the FIFO queue. So fall through to the evict+insert clauses.
     }
@@ -61,7 +66,8 @@ void fifo::proc(const request *r) {
   current_size += r->size();
  
   // Count this request as a hit.
-  ++hits;
+  if (!warmup)
+    ++hits;
 
   return;
 }

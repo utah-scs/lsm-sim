@@ -31,7 +31,7 @@ void request::parse(const std::string &s) {
 
 // debug/check
 void request::dump() const {
-  std::cout << "*** request ***"  << std::endl
+  std::cerr << "*** request ***"  << std::endl
             << "time: "           << time    << std::endl
             << "app id: "         << appid   << std::endl
             << "req type: "       << type    << std::endl

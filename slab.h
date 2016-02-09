@@ -17,7 +17,7 @@ class slab : public policy {
   public:
     slab(uint64_t size);
    ~slab();
-    void proc(const request *r);
+    void proc(const request *r, bool warmup);
     uint32_t get_size(); 
     void log_header();
     void log();

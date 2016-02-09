@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "lru.h"
 
 lru::lru(uint64_t size)
@@ -16,15 +18,17 @@ lru::~lru () {
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash
 // and to the LRU queue and returns a miss.
-void lru::proc(const request *r) {
-  inc_acss();
+void lru::proc(const request *r, bool warmup) {
+  if (!warmup)
+    inc_acss();
 
   auto it = hash.find(r->kid);
   if (it != hash.end()) {
     auto& list_it = it->second;
     request& prior_request = *list_it;
     if (prior_request.size() == r->size()) {
-      inc_hits();
+      if (!warmup)
+        inc_hits();
 
       // Promote this item to the front.
       queue.emplace_front(prior_request);
@@ -68,7 +72,8 @@ void lru::proc(const request *r) {
   current_size += r->size();
  
   // Count this request as a hit.
-  inc_hits();
+  if (!warmup)
+    inc_hits();
 
   return;
 }
