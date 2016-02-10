@@ -1,4 +1,5 @@
 #include <cassert>
+#include <tuple>
 
 #include "shadowslab.h"
 
@@ -14,17 +15,24 @@ shadowslab::~shadowslab() {
 int64_t shadowslab::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
-  uint32_t klass = get_slab_class(r->size());
-  slabs.at(klass).proc(r, warmup);
+  uint32_t class_size = 0;
+  uint32_t klass = 0;
+  std::tie(class_size, klass) = get_slab_class(r->size());
+
+  request copy{*r};
+  copy.key_sz = 0;
+  copy.val_sz = class_size;
+
+  slabs.at(klass).proc(&copy, warmup);
   return 0;
 }
 
-uint32_t shadowslab::get_slab_class(uint32_t size) {
+std::pair<uint32_t, uint32_t> shadowslab::get_slab_class(uint32_t size) {
   uint32_t class_size = 64;
   uint32_t klass = 0;
   while (true) {
     if (size < class_size)
-      return klass;
+      return {class_size, klass};
     class_size <<= 1;
     ++klass;
   }

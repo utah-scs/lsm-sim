@@ -8,7 +8,6 @@ shadowlru::shadowlru()
   , size_curve{}
   , queue{}
 {
-
 }
 
 shadowlru::~shadowlru() {
