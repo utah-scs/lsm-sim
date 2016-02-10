@@ -18,7 +18,7 @@ fifo::~fifo () {
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash
 // and to the FIFO queue and returns a miss.
-int64_t fifo::proc(const request *r, bool warmup) {
+size_t fifo::proc(const request *r, bool warmup) {
   if (!warmup)
     ++accesses;
 

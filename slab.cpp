@@ -40,7 +40,7 @@ class slab::sclru : public lru {
 
 
 
-int64_t slab::proc(const request *r, bool warmup) {
+size_t slab::proc(const request *r, bool warmup) {
 
   // TODO : FIX SO THIS ROUNDS PROPERLY
 

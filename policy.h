@@ -23,7 +23,8 @@ class policy {
   public:
     policy (const uint64_t g) : global_mem(g) {};
     virtual ~policy() {};
-    virtual int64_t proc(const request *r, bool warmup) = 0;
+    enum { PROC_MISS = ~0lu };
+    virtual size_t proc(const request *r, bool warmup) = 0;
   
     virtual void log() = 0;
     // virtual get_dump () 
