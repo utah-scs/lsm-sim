@@ -17,18 +17,20 @@
 #include "request.h"
 #include "fifo.h"
 #include "shadowlru.h"
+#include "shadowslab.h"
 #include "lru.h"
 #include "slab.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[4] = { "shadowlru"
+const char* policy_names[5] = { "shadowlru"
                               , "fifo"
                               , "lru"
 															, "slab"
+                              , "shadowslab"
                               };
-enum pol_typ { SHADOWLRU = 0, FIFO = 1, LRU = 2, SLAB = 3 };
+enum pol_typ { SHADOWLRU = 0, FIFO, LRU, SLAB, SHADOWSLAB };
 
 // globals
 std::set<uint16_t>    apps{};                           // apps to consider
@@ -146,7 +148,7 @@ int main(int argc, char *argv[]) {
   std::unique_ptr<policy> policy{};
   switch(p_type) {
     case SHADOWLRU:
-      policy.reset(new shadowlru(global_mem));
+      policy.reset(new shadowlru());
       break;
     case FIFO : 
       policy.reset(new fifo(global_mem));
@@ -156,6 +158,9 @@ int main(int argc, char *argv[]) {
       break;
     case SLAB :
       policy.reset(new slab(global_mem));
+      break;
+    case SHADOWSLAB:
+      policy.reset(new shadowslab{});
       break;
   }
 

@@ -2,8 +2,8 @@
 
 #include "shadowlru.h"
 
-shadowlru::shadowlru(uint64_t size)
-  : policy{size}
+shadowlru::shadowlru()
+  : policy{0}
   , position_curve{}
   , size_curve{}
   , queue{}
@@ -39,18 +39,6 @@ int64_t shadowlru::proc(const request *r, bool warmup) {
   }
 
   return 0;
-}
-
-uint32_t shadowlru::get_slab_class(uint32_t size) {
-  if (size < 64)
-    return 64;
-  --size;
-  size |= size >> 1;
-  size |= size >> 2;
-  size |= size >> 4;
-  size |= size >> 8;
-  size |= size >> 16;
-  return size + 1;
 }
 
 void shadowlru::log_header() {

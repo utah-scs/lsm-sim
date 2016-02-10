@@ -9,16 +9,22 @@
 // policy derived from Cliffhanger paper
 class shadowlru : public policy {
   public:
-    shadowlru(uint64_t size);
+    shadowlru();
     ~shadowlru();
     int64_t proc(const request *r, bool warmup);
 
     void log_header();
     void log();
 
-  private:
-    uint32_t get_slab_class(uint32_t size);
+    const hit_rate_curve* get_position_curve() const {
+      return &position_curve;
+    }
 
+    const hit_rate_curve* get_size_curve() const {
+      return &size_curve;
+    }
+
+  private:
     hit_rate_curve position_curve;
     hit_rate_curve size_curve;
     std::list<request> queue;

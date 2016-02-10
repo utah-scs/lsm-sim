@@ -48,6 +48,14 @@ class hit_rate_curve {
     }
   }
 
+  void merge(const hit_rate_curve& other) {
+    if (distances.size() < other.distances.size())
+      distances.resize(other.distances.size());
+
+    for (size_t i = 0; i < other.distances.size(); ++i)
+      distances[i] += other.distances[i];
+  }
+
   std::vector<uint64_t> distances;
 };
 
