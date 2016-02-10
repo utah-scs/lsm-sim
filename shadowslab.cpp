@@ -29,18 +29,21 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   copy.val_sz = class_size;
 
   size_t size_distance = slab_class.proc(&copy, warmup);
+  if (size_distance == PROC_MISS)
+    return PROC_MISS;
 
   // Determine if we need to 'grow' the slab class by giving it more slabs.
   size_t max_slabid_index = slab_class.get_bytes_cached() / slab_size;
   std::vector<size_t>& class_ids = slabids.at(klass);
-  while (class_ids.size() < max_slabid_index)
+  while (class_ids.size() < max_slabid_index + 1)
     class_ids.emplace_back(next_slabid++);
 
   // Figure out where in the space of slabids this access hit.
   size_t slabid_index = size_distance / slab_size;
   size_t slabid = class_ids.at(slabid_index);
 
-  size_t approx_global_size_distance = slabid * slab_size;
+  size_t approx_global_size_distance =
+    (slabid * slab_size) + (size_distance % slab_size);
   size_curve.hit(approx_global_size_distance);
 
   return 0;
