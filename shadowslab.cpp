@@ -11,11 +11,12 @@ shadowslab::shadowslab()
 shadowslab::~shadowslab() {
 } 
 
-void shadowslab::proc(const request *r, bool warmup) {
+int64_t shadowslab::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
   uint32_t klass = get_slab_class(r->size());
   slabs.at(klass).proc(r, warmup);
+  return 0;
 }
 
 uint32_t shadowslab::get_slab_class(uint32_t size) {

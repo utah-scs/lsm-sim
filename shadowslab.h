@@ -14,7 +14,7 @@ class shadowslab : public policy {
 
     shadowslab();
     ~shadowslab();
-    void proc(const request *r, bool warmup);
+    int64_t proc(const request *r, bool warmup);
 
     void log_header();
     void log();
