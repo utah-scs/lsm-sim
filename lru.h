@@ -13,7 +13,7 @@ class lru : public policy {
   public:
     lru(uint64_t size);
    ~lru();
-    void proc(const request *r, bool warmup);
+    int64_t proc(const request *r, bool warmup);
     uint32_t get_size(); 
 
     void log_header();

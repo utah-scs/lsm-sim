@@ -19,7 +19,7 @@ bad_idea::~bad_idea () {
 // checks the hashmap for membership, if the key is found the item is promoted
 // to the current insertion point replacing whatever was already there. If the
 // key is not found, the item is added at the insertion point.
-void bad_idea::proc(const request *r, bool warmup) {
+int64_t bad_idea::proc(const request *r, bool warmup) {
   if (!warmup)
     ++accesses;
 
@@ -29,7 +29,7 @@ void bad_idea::proc(const request *r, bool warmup) {
       
   }
 
-  return;
+  return 0;
 }
 
 uint32_t bad_idea::get_size() {

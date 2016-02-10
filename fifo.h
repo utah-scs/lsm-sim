@@ -11,7 +11,7 @@ class fifo : public policy {
   public:
     fifo(uint64_t size);
    ~fifo();
-    void proc(const request *r, bool warmup);
+    int64_t proc(const request *r, bool warmup);
     uint32_t get_size(); 
 
     void log_header();

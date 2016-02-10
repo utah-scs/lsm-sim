@@ -17,11 +17,15 @@ lru::~lru () {
 
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash
-// and to the LRU queue and returns a miss.
-void lru::proc(const request *r, bool warmup) {
+// and to the LRU queue and returns a miss. Returns absolute
+// number of bytes added to the cache.
+int64_t lru::proc(const request *r, bool warmup) {
   if (!warmup)
     inc_acss();
 
+  // Keep track of initial condition of cache.
+  int64_t bytes_init = current_size;
+  
   auto it = hash.find(r->kid);
   if (it != hash.end()) {
     auto& list_it = it->second;
@@ -35,7 +39,7 @@ void lru::proc(const request *r, bool warmup) {
       queue.erase(list_it);
       hash[r->kid] = queue.begin();
 
-      return;
+      return 0;
     } else {
       // Size has changed. Even though it is in cache it must have already been
       // evicted or shotdown. Since then it must have already been replaced as
@@ -58,7 +62,7 @@ void lru::proc(const request *r, bool warmup) {
     // Though, you probably shouldn't be setting the cache size smaller
     // than the max memcache object size.
     if (queue.empty())
-      return;
+      return 0;
 
     request* victim = &queue.back();
     current_size -= victim->size();
@@ -75,15 +79,13 @@ void lru::proc(const request *r, bool warmup) {
   if (!warmup)
     inc_hits();
 
-  return;
+  // Cache size has changed, return the difference.
+  return current_size - bytes_init;
 }
 
+// Simply returns the current number of bytes cached.
 uint32_t lru::get_size() {
-  uint32_t size = 0;
-  for (const auto& r: queue)
-    size += r.size();
-
-  return size;
+  return current_size;
 }
 
 void lru::log_header() {

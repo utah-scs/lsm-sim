@@ -14,7 +14,7 @@ shadowlru::shadowlru(uint64_t size)
 shadowlru::~shadowlru() {
 } 
 
-void shadowlru::proc(const request *r, bool warmup) {
+int64_t shadowlru::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
   size_t position = ~0lu;
@@ -37,6 +37,8 @@ void shadowlru::proc(const request *r, bool warmup) {
     position_curve.hit(position);
     size_curve.hit(size_distance);
   }
+
+  return 0;
 }
 
 uint32_t shadowlru::get_slab_class(uint32_t size) {

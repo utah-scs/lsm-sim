@@ -44,7 +44,7 @@ class slab::sclru : public lru {
 
 
 
-void slab::proc(const request *r, bool warmup) {
+int64_t slab::proc(const request *r, bool warmup) {
 
   // TODO : FIX SO THIS ROUNDS PROPERLY
 
@@ -57,8 +57,8 @@ void slab::proc(const request *r, bool warmup) {
   auto it = slabs.find(chunk);
   if(it == slabs.end()) {
     std::cerr << "Object size too large for slab config" << std::endl;
-    std::cerr << "obj: " << size << std::endl;
-    return;
+    std::cerr << "obj_size: " << size << std::endl;
+    return 0;
   }
   
   const auto &s = it->second;
@@ -71,16 +71,14 @@ void slab::proc(const request *r, bool warmup) {
   if(s->get_free() < size) {
     
     if(global_mem - current_size >= PAGE_SIZE && current_size <= global_mem) {
-      s->alloc(PAGE_SIZE);
-     //  std::cout << "new page " << s->get_free() << std::endl;
-     //  std::cout << current_size << std::endl;
+      s->alloc(PAGE_SIZE); 
     }
   }
 
   // If we reach this point it's safe to process the request.
   current_size += (size_t)r->size();
   s->proc(r, warmup);
-  return;
+  return 0;
 }
 
 
@@ -107,7 +105,7 @@ uint16_t slab::init_slabs (void) {
 uint32_t slab::get_size() {
   uint32_t size = 0;
   for (const auto& s: slabs)
-    size += s.second->get_current_size();
+    size += s.second->get_size();
   return size;
 }
 void slab::log_header() {
@@ -116,8 +114,6 @@ void slab::log_header() {
 
 void slab::log() {
 
-  std::cout << "print progress" << std::endl;
-  
   std::cout << double(current_size) / global_mem << " "
             << double(current_size) / global_mem << " "
             << global_mem << " "

@@ -18,9 +18,12 @@ fifo::~fifo () {
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash
 // and to the FIFO queue and returns a miss.
-void fifo::proc(const request *r, bool warmup) {
+int64_t fifo::proc(const request *r, bool warmup) {
   if (!warmup)
     ++accesses;
+
+  // Keep track of initial condition of cache.
+  int64_t init_bytes = current_size;
 
   auto it = hash.find(r->kid);
   if (it != hash.end()) {
@@ -28,7 +31,7 @@ void fifo::proc(const request *r, bool warmup) {
     if (prior_request->size() == r->size()) {
       if (!warmup)
         ++hits;
-      return;
+      return 0;
     } else {
       // Size has changed. Even though it is in cache it must have already been
       // evicted or shotdown. Since then it must have already been replaced as
@@ -52,7 +55,7 @@ void fifo::proc(const request *r, bool warmup) {
     // Though, you probably shouldn't be setting the cache size smaller
     // than the max memcache object size.
     if (queue.empty())
-      return;
+      return 0;
 
     request* victim = &queue.back();
     current_size -= victim->size();
@@ -69,7 +72,8 @@ void fifo::proc(const request *r, bool warmup) {
   if (!warmup)
     ++hits;
 
-  return;
+  // Cache has been modified, return the difference.
+  return current_size - init_bytes;
 }
 
 uint32_t fifo::get_size() {

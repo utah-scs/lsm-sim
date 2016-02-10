@@ -11,7 +11,7 @@ class shadowlru : public policy {
   public:
     shadowlru(uint64_t size);
     ~shadowlru();
-    void proc(const request *r, bool warmup);
+    int64_t proc(const request *r, bool warmup);
 
     void log_header();
     void log();
