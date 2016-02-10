@@ -20,7 +20,7 @@ class shadowslab : public policy {
     void log();
 
   private:
-    uint32_t get_slab_class(uint32_t size);
+    std::pair<uint32_t, uint32_t> get_slab_class(uint32_t size);
 
     std::vector<shadowlru> slabs;
 };
