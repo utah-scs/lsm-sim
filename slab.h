@@ -17,8 +17,7 @@ class slab : public policy {
   public:
     slab(uint64_t size);
    ~slab();
-    int64_t proc(const request *r, bool warmup);
-    uint32_t get_size(); 
+    int64_t proc(const request *r, bool warmup); 
     void log_header();
     void log();
 
@@ -28,7 +27,7 @@ class slab : public policy {
     size_t accesses;
 
     // Subset of accesses which hit in the simulated cache.
-    size_t hits;
+    size_t hits; 
 
     // Chunk size growth factor.
     double growth;

@@ -96,15 +96,6 @@ uint16_t slab::init_slabs (void) {
   return i - 1; 
 }
 
-
-
-// Returns the overall memory allocated across all slabs.
-uint32_t slab::get_size() {
-  uint32_t size = 0;
-  for (const auto& s: slabs)
-    size += s.second->get_size();
-  return size;
-}
 void slab::log_header() {
   std::cout << "util util_oh cachesize hitrate" << std::endl;
 }
