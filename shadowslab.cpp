@@ -34,19 +34,17 @@ void shadowslab::log_header() {
 }
 
 void shadowslab::log() {
-  std::cout << "dist_is_size distance cumfrac" << std::endl;
   {
     hit_rate_curve position_curve{};
     for (const shadowlru& slab : slabs)
       position_curve.merge(*slab.get_position_curve());
-    position_curve.dump_cdf(0);
+    position_curve.dump_cdf("shadowslab-position-curve.data");
   }
 
   {
     hit_rate_curve size_curve{};
     for (const shadowlru& slab : slabs)
       size_curve.merge(*slab.get_size_curve());
-    size_curve.dump_cdf(1);
+    size_curve.dump_cdf("shadowslab-size-curve.data");
   }
-
 }

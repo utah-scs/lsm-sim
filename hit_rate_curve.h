@@ -4,6 +4,7 @@
 #include <cinttypes>
 #include <iostream>
 #include <exception>
+#include <fstream>
 
 #ifndef HIT_RATE_CURVE_H
 #define HIT_RATE_CURVE_H
@@ -32,7 +33,10 @@ class hit_rate_curve {
       std::cout << "Distance " << i << " Count " << distances[i] << std::endl;
   }
 
-  void dump_cdf(uint64_t prefix) const {
+  void dump_cdf(const std::string& filename) const {
+    std::ofstream out{filename};
+
+    out << "distance cumfrac" << std::endl;
     if (distances.size() == 0)
       return;
 
@@ -43,8 +47,7 @@ class hit_rate_curve {
       uint64_t delta = distances[i];
       accum += delta;
       if (delta)
-        std::cout << prefix << " " <<
-          i << " " << float(accum) / total << std::endl;
+        out << i << " " << float(accum) / total << std::endl;
     }
   }
 

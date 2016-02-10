@@ -45,7 +45,6 @@ void shadowlru::log_header() {
 }
 
 void shadowlru::log() {
-  std::cout << "dist_is_size distance cumfrac" << std::endl;
-  position_curve.dump_cdf(0);
-  size_curve.dump_cdf(1);
+  position_curve.dump_cdf("shadowlru-position-curve.data");
+  size_curve.dump_cdf("shadowlru-size-curve.data");
 }
