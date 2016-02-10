@@ -29,12 +29,10 @@ class slab::sclru : public lru {
     uint32_t get_current_size(void) { return current_size; }	
     uint32_t get_free(void) { return this->global_mem - current_size; }
     void alloc(size_t size) { this->global_mem += size; }
+    size_t get_hits() { return hits; }
+    size_t get_accs() { return accesses; }
 
-  private:
-    // Report hits/accesses to the owner class instead of locally.
-    void inc_hits(void) override { ++(owner.hits); }
-    void inc_acss(void) override { ++(owner.accesses); }
- 
+  private: 
     // Chunk size for this slab class.
     size_t chunk_sz;	
 
@@ -75,9 +73,8 @@ int64_t slab::proc(const request *r, bool warmup) {
     }
   }
 
-  // If we reach this point it's safe to process the request.
-  current_size += (size_t)r->size();
-  s->proc(r, warmup);
+  // If we reach this point it's safe to process the request. 
+  current_size += s->proc(r, warmup);
   return 0;
 }
 

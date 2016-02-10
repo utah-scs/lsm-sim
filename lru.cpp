@@ -15,13 +15,22 @@ lru::lru(uint64_t size)
 lru::~lru () {
 }
 
+// Simply returns the current number of bytes cached.
+uint32_t lru::get_size() { return current_size; }
+
+
+// Public accessors for hits and accesses.
+size_t lru::get_hits() { return hits; }
+size_t lru::get_accs() { return accesses; }
+
+
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash
 // and to the LRU queue and returns a miss. Returns absolute
 // number of bytes added to the cache.
 int64_t lru::proc(const request *r, bool warmup) {
   if (!warmup)
-    inc_acss();
+    ++accesses;
 
   // Keep track of initial condition of cache.
   int64_t bytes_init = current_size;
@@ -32,7 +41,7 @@ int64_t lru::proc(const request *r, bool warmup) {
     request& prior_request = *list_it;
     if (prior_request.size() == r->size()) {
       if (!warmup)
-        inc_hits();
+        ++hits;
 
       // Promote this item to the front.
       queue.emplace_front(prior_request);
@@ -49,7 +58,7 @@ int64_t lru::proc(const request *r, bool warmup) {
       // it gets overwritten below anyway when r gets put in the cache.
 
       // Count the get miss that came between r and prior_request.
-      inc_acss();
+      ++accesses;      
       // Finally, we need to really put the correct sized value somewhere
       // in the LRU queue. So fall through to the evict+insert clauses.
     }
@@ -77,16 +86,13 @@ int64_t lru::proc(const request *r, bool warmup) {
  
   // Count this request as a hit.
   if (!warmup)
-    inc_hits();
+    ++hits;
 
   // Cache size has changed, return the difference.
   return current_size - bytes_init;
 }
 
-// Simply returns the current number of bytes cached.
-uint32_t lru::get_size() {
-  return current_size;
-}
+
 
 void lru::log_header() {
   std::cout << "util util_oh cachesize hitrate" << std::endl;
