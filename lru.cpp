@@ -27,7 +27,7 @@ size_t lru::get_accs() { return accesses; }
 // returns a hit, otherwise the key is added to the hash
 // and to the LRU queue and returns a miss. Returns absolute
 // number of bytes added to the cache.
-int64_t lru::proc(const request *r, bool warmup) {
+size_t lru::proc(const request *r, bool warmup) {
   if (!warmup)
     ++accesses;
 

@@ -19,7 +19,7 @@ class bad_idea : public policy {
   public:
     bad_idea(uint64_t size);
    ~bad_idea();
-    int64_t proc(const request *r, bool warmup);
+    size_t proc(const request *r, bool warmup);
     uint32_t get_size(); 
     void log();
 

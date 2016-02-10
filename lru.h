@@ -13,9 +13,9 @@ class lru : public policy {
   public:
     lru(uint64_t size);
    ~lru();
-    int64_t proc(const request *r, bool warmup);
-    size_t get_bytes_cached();
 
+    size_t proc(const request *r, bool warmup);
+    size_t get_bytes_cached();
     size_t get_hits(); 
     size_t get_accs();
 
