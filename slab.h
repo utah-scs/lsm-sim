@@ -29,6 +29,8 @@ class slab : public policy {
     // Subset of accesses which hit in the simulated cache.
     size_t hits(); 
 
+    size_t global_cache_size();
+
     // Chunk size growth factor.
     double growth;
 	

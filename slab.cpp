@@ -25,11 +25,11 @@ class slab::sclru : public lru {
    ~sclru() {}
 
     uint32_t get_current_size(void) { return current_size; }	
-    uint32_t get_free(void) { return this->global_mem - current_size; }
-    void alloc(size_t size) { this->global_mem += size; }
+    uint32_t get_free(void) { return global_mem - current_size; }
+    void alloc(size_t size) { global_mem += size; }
     size_t get_hits() { return hits; }
     size_t get_accs() { return accesses; }
-
+    size_t get_global_mem() { return global_mem; }
   private: 
     // Chunk size for this slab class.
     size_t chunk_sz;	
@@ -73,6 +73,7 @@ int64_t slab::proc(const request *r, bool warmup) {
 
   // If we reach this point it's safe to process the request. 
   current_size += s->proc(r, warmup);
+
   return 0;
 }
 
@@ -110,14 +111,25 @@ size_t a = 0;
   return a;
 }
 
+size_t slab::global_cache_size() {
+size_t c = 0;
+  for (const auto &p : slabs)
+    c += p.second->get_global_mem();
+  return c;
+}
+
+
+
 void slab::log_header() {
   std::cout << "util util_oh cachesize hitrate" << std::endl;
 }
 
 void slab::log() {
 
-  std::cout << double(current_size) / global_mem << " "
-            << double(current_size) / global_mem << " "
-            << global_mem << " "
+  size_t gbl = global_cache_size();
+
+  std::cout << double(current_size) / gbl << " "
+            << double(current_size) / gbl << " "
+            << gbl << " "
             << double(hits()) / accesses() << std::endl;
 }
