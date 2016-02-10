@@ -22,6 +22,35 @@ size_t lru::get_bytes_cached() { return bytes_cached; }
 size_t lru::get_hits() { return hits; }
 size_t lru::get_accs() { return accesses; }
 
+// Removes a request with matching key from the chain and
+// updates bytes_cached accordingly.
+// Returns the 'stack distance' which is calc's by summing
+// the bytes for all requests in the chain until 'r' is reached.
+int64_t lru::remove (const request *r) {
+
+  // If r is not in the hash something weird has happened.
+  auto it = hash.find(r->kid); 
+  if(it == hash.end())
+    return -1; 
+
+  // Sum the sizes of all requests up until we reach 'r'.
+  size_t stack_dist  = 0;
+  for ( const auto &i : queue ) {
+    if (i.kid != r->kid)
+      break;
+    stack_dist += i.size();
+  }
+
+  // Adjust the local bytes_cached value, remove 'r'
+  // from the hash table, and from the LRU chain.
+  auto& list_it = it->second;
+  bytes_cached -= list_it->size();
+  queue.erase(list_it);
+  hash.erase(it);
+
+  return stack_dist;
+}
+
 
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash

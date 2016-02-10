@@ -14,11 +14,14 @@ class lru : public policy {
     lru(uint64_t size);
    ~lru();
 
-    size_t proc(const request *r, bool warmup);
+    // Modifiers.
+    size_t proc (const request *r, bool warmup);
+    int64_t remove (const request *r);
+  
+    // Accessors.
     size_t get_bytes_cached();
     size_t get_hits(); 
     size_t get_accs();
-
     void log();
 
   protected:
