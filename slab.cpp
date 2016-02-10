@@ -4,9 +4,7 @@
 #include "lru.h"
 
 slab::slab(uint64_t size)
-  : policy(size)
-  , accesses{}
-  , hits{}	
+  : policy(size) 
 	, growth{DEF_GFACT}
   , current_size{}
 	, slabs{}
@@ -96,6 +94,22 @@ uint16_t slab::init_slabs (void) {
   return i - 1; 
 }
 
+// Iterate over the slab classes and sum hits.
+size_t slab::hits() {
+size_t h = 0;
+  for (const auto &p : slabs) 
+    h += p.second->get_hits();
+  return h; 
+}
+
+// Iterate over the slab classes and sum accesses.
+size_t slab::accesses() {
+size_t a = 0;
+  for (const auto &p : slabs)
+    a += p.second->get_accs();
+  return a;
+}
+
 void slab::log_header() {
   std::cout << "util util_oh cachesize hitrate" << std::endl;
 }
@@ -105,5 +119,5 @@ void slab::log() {
   std::cout << double(current_size) / global_mem << " "
             << double(current_size) / global_mem << " "
             << global_mem << " "
-            << double(hits) / accesses << std::endl;
+            << double(hits()) / accesses() << std::endl;
 }

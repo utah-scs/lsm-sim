@@ -24,10 +24,10 @@ class slab : public policy {
   private:
 
     // Number of access requests fed to the cache.
-    size_t accesses;
+    size_t accesses();
 
     // Subset of accesses which hit in the simulated cache.
-    size_t hits; 
+    size_t hits(); 
 
     // Chunk size growth factor.
     double growth;
