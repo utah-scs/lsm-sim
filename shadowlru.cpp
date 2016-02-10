@@ -17,9 +17,9 @@ shadowlru::~shadowlru() {
 size_t shadowlru::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
-  size_t position = ~0lu;
+  size_t position = PROC_MISS;
   size_t k = 0;
-  size_t size_distance = ~0lu;
+  size_t size_distance = PROC_MISS;
   for (auto it = queue.begin(); it != queue.end(); ++it) {
     request& item = *it;
     k++;
@@ -35,7 +35,7 @@ size_t shadowlru::proc(const request *r, bool warmup) {
   bytes_cached += r->size();
   queue.emplace_front(*r);
 
-  if (!warmup && position != ~0lu) {
+  if (!warmup && position != PROC_MISS) {
     position_curve.hit(position);
     size_curve.hit(size_distance);
   }
