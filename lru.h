@@ -19,7 +19,6 @@ class lru : public policy {
     size_t get_hits(); 
     size_t get_accs();
 
-    void log_header();
     void log();
 
   protected:

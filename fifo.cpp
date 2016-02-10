@@ -84,10 +84,6 @@ uint32_t fifo::get_size() {
   return size;
 }
 
-void fifo::log_header() {
-  std::cout << "util util_oh cachesize hitrate" << std::endl;
-}
-
 void fifo::log() {
   std::cout << double(current_size) / global_mem << " "
             << double(current_size) / global_mem << " "

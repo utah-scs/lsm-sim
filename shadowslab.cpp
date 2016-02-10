@@ -38,9 +38,6 @@ std::pair<uint32_t, uint32_t> shadowslab::get_slab_class(uint32_t size) {
   }
 }
 
-void shadowslab::log_header() {
-}
-
 void shadowslab::log() {
   {
     hit_rate_curve position_curve{};

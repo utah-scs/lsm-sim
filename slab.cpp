@@ -118,12 +118,6 @@ size_t c = 0;
   return c;
 }
 
-
-
-void slab::log_header() {
-  std::cout << "util util_oh cachesize hitrate" << std::endl;
-}
-
 void slab::log() {
 
   size_t gbl = global_cache_size();

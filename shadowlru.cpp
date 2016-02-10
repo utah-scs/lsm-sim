@@ -40,9 +40,6 @@ int64_t shadowlru::proc(const request *r, bool warmup) {
   return 0;
 }
 
-void shadowlru::log_header() {
-}
-
 void shadowlru::log() {
   position_curve.dump_cdf("shadowlru-position-curve.data");
   size_curve.dump_cdf("shadowlru-size-curve.data");

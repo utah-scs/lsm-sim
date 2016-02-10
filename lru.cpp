@@ -92,12 +92,6 @@ int64_t lru::proc(const request *r, bool warmup) {
   return current_size - bytes_init;
 }
 
-
-
-void lru::log_header() {
-  std::cout << "util util_oh cachesize hitrate" << std::endl;
-}
-
 void lru::log() {
   std::cout << double(current_size) / global_mem << " "
             << double(current_size) / global_mem << " "

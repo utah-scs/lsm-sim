@@ -40,10 +40,6 @@ uint32_t bad_idea::get_size() {
   return size;
 }
 
-void bad_idea::log_header() {
-  std::cout << "util util_oh cachesize hitrate" << std::endl;
-}
-
 void bad_idea::log() {
   std::cout << double(current_size) / global_mem << " "
             << double(current_size) / global_mem << " "

@@ -188,8 +188,7 @@ int main(int argc, char *argv[]) {
   auto last_progress = start;
   size_t bytes = 0;
   
-  policy->log_header();
-  
+ 
   while (std::getline(t_stream, line) &&
          (request_limit == 0 || i < request_limit))
   {

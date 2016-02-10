@@ -21,8 +21,6 @@ class bad_idea : public policy {
    ~bad_idea();
     int64_t proc(const request *r, bool warmup);
     uint32_t get_size(); 
-
-    void log_header();
     void log();
 
   private:

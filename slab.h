@@ -18,7 +18,6 @@ class slab : public policy {
     slab(uint64_t size);
    ~slab();
     int64_t proc(const request *r, bool warmup); 
-    void log_header();
     void log();
 
   private:
