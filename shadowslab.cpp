@@ -27,6 +27,10 @@ int64_t shadowslab::proc(const request *r, bool warmup) {
   return 0;
 }
 
+size_t shadowslab::get_bytes_cached() {
+  return 0;
+}
+
 std::pair<uint32_t, uint32_t> shadowslab::get_slab_class(uint32_t size) {
   uint32_t class_size = 64;
   uint32_t klass = 0;

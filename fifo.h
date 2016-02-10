@@ -12,7 +12,8 @@ class fifo : public policy {
     fifo(uint64_t size);
    ~fifo();
     int64_t proc(const request *r, bool warmup);
-    uint32_t get_size(); 
+    uint32_t get_size();
+    size_t get_bytes_cached();
     void log();
 
   private:

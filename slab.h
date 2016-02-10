@@ -19,6 +19,7 @@ class slab : public policy {
    ~slab();
     int64_t proc(const request *r, bool warmup); 
     void log();
+    size_t get_bytes_cached();
 
   private:
 
@@ -28,6 +29,7 @@ class slab : public policy {
     // Subset of accesses which hit in the simulated cache.
     size_t hits(); 
 
+    // Size in bytes of the entire allocated cache.
     size_t global_cache_size();
 
     // Chunk size growth factor.

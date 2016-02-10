@@ -15,7 +15,7 @@ class shadowslab : public policy {
     shadowslab();
     ~shadowslab();
     int64_t proc(const request *r, bool warmup);
-
+    size_t get_bytes_cached();
     void log();
 
   private:

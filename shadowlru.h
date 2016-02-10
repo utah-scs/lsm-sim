@@ -12,7 +12,7 @@ class shadowlru : public policy {
     shadowlru();
     ~shadowlru();
     int64_t proc(const request *r, bool warmup);
-
+    size_t get_bytes_cached();
     void log();
 
     const hit_rate_curve* get_position_curve() const {

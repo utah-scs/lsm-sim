@@ -14,7 +14,7 @@ class lru : public policy {
     lru(uint64_t size);
    ~lru();
     int64_t proc(const request *r, bool warmup);
-    uint32_t get_size();
+    size_t get_bytes_cached();
 
     size_t get_hits(); 
     size_t get_accs();
@@ -28,8 +28,8 @@ class lru : public policy {
     // Subset of accesses which hit in the simulated cache.
     size_t hits;
 
-		// the current number of bytes in eviction queue
-    uint32_t current_size;  
+		// The number of bytes currently cached.
+    size_t bytes_cached; 
 
     hash_map hash; 
     lru_queue queue; 

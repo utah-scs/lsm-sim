@@ -24,12 +24,12 @@ class slab::sclru : public lru {
     {}
    ~sclru() {}
 
-    uint32_t get_current_size(void) { return current_size; }	
-    uint32_t get_free(void) { return global_mem - current_size; }
+    uint32_t get_free(void) { return global_mem - bytes_cached; }
     void alloc(size_t size) { global_mem += size; }
     size_t get_hits() { return hits; }
     size_t get_accs() { return accesses; }
     size_t get_global_mem() { return global_mem; }
+    size_t get_bytes_cached() { return bytes_cached; }
   private: 
     // Chunk size for this slab class.
     size_t chunk_sz;	
@@ -94,6 +94,14 @@ uint16_t slab::init_slabs (void) {
   }  
   return i - 1; 
 }
+size_t slab::get_bytes_cached() {
+size_t b = 0;  
+  for (const auto &p : slabs)
+    b += p.second->get_bytes_cached(); 
+  return b; 
+}
+
+
 
 // Iterate over the slab classes and sum hits.
 size_t slab::hits() {

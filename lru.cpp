@@ -6,7 +6,7 @@ lru::lru(uint64_t size)
   : policy(size)
   , accesses{}
   , hits{}
-  , current_size{}
+  , bytes_cached{}
   , hash{}
   , queue{}
 {
@@ -16,8 +16,7 @@ lru::~lru () {
 }
 
 // Simply returns the current number of bytes cached.
-uint32_t lru::get_size() { return current_size; }
-
+size_t lru::get_bytes_cached() { return bytes_cached; }
 
 // Public accessors for hits and accesses.
 size_t lru::get_hits() { return hits; }
@@ -33,7 +32,7 @@ int64_t lru::proc(const request *r, bool warmup) {
     ++accesses;
 
   // Keep track of initial condition of cache.
-  int64_t bytes_init = current_size;
+  int64_t bytes_init = bytes_cached;
   
   auto it = hash.find(r->kid);
   if (it != hash.end()) {
@@ -65,7 +64,7 @@ int64_t lru::proc(const request *r, bool warmup) {
   }
 
   // Throw out enough junk to make room for new record.
-  while (global_mem - current_size < uint32_t(r->size())) {
+  while (global_mem - bytes_cached < uint32_t(r->size())) {
     // If the queue is already empty, then we are in trouble. The cache
     // just isn't big enough to hold this object under any circumstances.
     // Though, you probably shouldn't be setting the cache size smaller
@@ -74,7 +73,7 @@ int64_t lru::proc(const request *r, bool warmup) {
       return 0;
 
     request* victim = &queue.back();
-    current_size -= victim->size();
+    bytes_cached -= victim->size();
     hash.erase(victim->kid);
     queue.pop_back();
   }
@@ -82,19 +81,19 @@ int64_t lru::proc(const request *r, bool warmup) {
   // Add the new request.
   queue.emplace_front(*r);
   hash[r->kid] = queue.begin();
-  current_size += r->size();
+  bytes_cached += r->size();
  
   // Count this request as a hit.
   if (!warmup)
     ++hits;
 
   // Cache size has changed, return the difference.
-  return current_size - bytes_init;
+  return bytes_cached - bytes_init;
 }
 
 void lru::log() {
-  std::cout << double(current_size) / global_mem << " "
-            << double(current_size) / global_mem << " "
+  std::cout << double(bytes_cached) / global_mem << " "
+            << double(bytes_cached) / global_mem << " "
             << global_mem << " "
             << double(hits) / accesses << std::endl;
 }

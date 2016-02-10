@@ -76,12 +76,11 @@ int64_t fifo::proc(const request *r, bool warmup) {
   return current_size - init_bytes;
 }
 
-uint32_t fifo::get_size() {
-  uint32_t size = 0;
+size_t fifo::get_bytes_cached() {
+size_t cached = 0;
   for (const auto& r: queue)
-    size += r.size();
-
-  return size;
+    cached += r.size();
+  return cached;
 }
 
 void fifo::log() {
