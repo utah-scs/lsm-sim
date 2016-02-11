@@ -12,7 +12,28 @@ shadowlru::shadowlru()
 }
 
 shadowlru::~shadowlru() {
-} 
+}
+
+// Removes an item from the chain and returns its
+// distance in the chain (bytes).
+int64_t shadowlru::remove (const request *r) {
+
+  // Sum the sizes of all requests up until we reach 'r'.
+  size_t stack_dist = 0;
+
+  auto it = queue.begin();
+  while (it  != queue.end()) {
+    if( it->kid == r->kid) {
+      bytes_cached -= it->size();
+      queue.erase(it);
+      break;
+    } 
+    stack_dist += it->size();
+  }
+  return stack_dist;
+}
+
+ 
 
 size_t shadowlru::proc(const request *r, bool warmup) {
   assert(r->size() > 0);

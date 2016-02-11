@@ -7,6 +7,7 @@ shadowslab::shadowslab()
   : policy{0}
   , slabs{slab_count}
   , slabids{slab_count}
+  , slab_for_key{}
   , next_slabid{0}
   , size_curve{}
 {
@@ -22,6 +23,15 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   uint32_t klass = 0;
   std::tie(class_size, klass) = get_slab_class(r->size());
 
+  // See if slab assignment already exists for this key.
+  // Check if change in size (if any) requires reclassification
+  // to a different slab. If so, remove from current slab.
+  auto csit = slab_for_key.find(r->kid);
+  if(csit != slab_for_key.end() && csit->second != klass) {
+    shadowlru& slab_class = slabs.at(klass);
+    slab_class.remove(r); 
+  }
+
   shadowlru& slab_class = slabs.at(klass);
 
   request copy{*r};
@@ -32,8 +42,9 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   if (size_distance == PROC_MISS)
     return PROC_MISS;
 
+  
   // Determine if we need to 'grow' the slab class by giving it more slabs.
-  size_t max_slabid_index = slab_class.get_bytes_cached() / slab_size;
+  size_t max_slabid_index = size_distance / slab_size;
   std::vector<size_t>& class_ids = slabids.at(klass);
   while (class_ids.size() < max_slabid_index + 1)
     class_ids.emplace_back(next_slabid++);
@@ -43,7 +54,7 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   size_t slabid = class_ids.at(slabid_index);
 
   size_t approx_global_size_distance =
-    (slabid * slab_size) + (size_distance % slab_size);
+     (slabid * slab_size) + (size_distance % slab_size);
   size_curve.hit(approx_global_size_distance);
 
   return 0;

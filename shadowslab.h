@@ -2,7 +2,7 @@
 #define SHADOWSLAB_H
 
 #include <list>
-
+#include <unordered_map>
 #include "hit_rate_curve.h"
 #include "policy.h"
 #include "shadowlru.h"
@@ -30,6 +30,9 @@ class shadowslab : public policy {
     // A vector of vectors of slabids. One vector for each slab with 0
     // or more slabids associated with that slab.
     std::vector<std::vector<uint64_t>> slabids;
+
+    // Simple mapping of existing keys to their respective slab.
+    std::unordered_map<uint32_t, uint32_t> slab_for_key;
 
     size_t next_slabid;
 
