@@ -7,6 +7,7 @@ slab::slab(uint64_t size)
   : policy(size) 
 	, growth{DEF_GFACT}
   , current_size{}
+  , slab_for_key{}
 	, slabs{}
 {
   init_slabs();
@@ -64,15 +65,32 @@ size_t slab::proc(const request *r, bool warmup) {
   // process the request normally. If, however, we are out of global mem
   // we cannot expand the slab, so just process the request and let LRU 
   // take care of the eviction/put process.
-  if(s->get_free() < size) {
-    
+  if(s->get_free() < size) { 
     if(global_mem - current_size >= PAGE_SIZE && current_size <= global_mem) {
       s->alloc(PAGE_SIZE); 
     }
   }
 
+  // See if a slab assignment already exists for this key. If so compare the
+  // size of the slab where the key is currently with the chunk size for the
+  // request. If processing would result in reclassification, remove the 
+  // current association and add the new one.
+  auto csit = slab_for_key.find(r->kid);
+  if(csit != slab_for_key.end()) {
+    if(csit->second != chunk) {
+      auto nsit = slabs.find(csit->second);
+      if(nsit != slabs.end()) {
+        nsit->second->remove(r);
+        slab_for_key.insert(ks_pr(r->kid, chunk));
+      }
+      else
+        std::cerr << "Expected slab class for corresponding key" << std::endl; 
+    }
+  }
+
   // If we reach this point it's safe to process the request. 
   current_size += s->proc(r, warmup);
+  
 
   return 0;
 }

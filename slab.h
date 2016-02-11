@@ -41,7 +41,11 @@ class slab : public policy {
     // Represents a LRU eviction queue for a slab class.
     class sclru;
 
+    typedef std::pair<uint32_t, uint32_t> ks_pr;
     typedef std::unique_ptr<sclru> sc_ptr;
+
+    // Simple mapping of existing keys to their respective slab.
+    std::unordered_map<uint32_t, uint32_t> slab_for_key;
  
     // Container for all slab class eviction queues.
     std::unordered_map<uint32_t, sc_ptr> slabs;
