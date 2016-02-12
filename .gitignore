@@ -6,3 +6,4 @@ results
 *.xlsx
 *.DS_Store./data
 *.data
+/trace_script/output
