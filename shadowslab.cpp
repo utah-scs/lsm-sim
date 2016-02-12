@@ -27,9 +27,11 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   // Check if change in size (if any) requires reclassification
   // to a different slab. If so, remove from current slab.
   auto csit = slab_for_key.find(r->kid);
-  if(csit != slab_for_key.end() && csit->second != klass) {
-    shadowlru& slab_class = slabs.at(klass);
-    slab_class.remove(r); 
+
+  if(csit != slab_for_key.end() && csit->second != klass) { 
+    shadowlru& sclass = slabs.at(csit->second);
+    sclass.remove(r);
+    slab_for_key.erase(r->kid);
   }
 
   shadowlru& slab_class = slabs.at(klass);
@@ -42,6 +44,9 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   if (size_distance == PROC_MISS)
     return PROC_MISS;
 
+  // Proc didn't miss, re-validate key/slab pair.
+  slab_for_key.insert(std::pair<uint32_t,uint32_t>(r->kid, klass));
+ 
   
   // Determine if we need to 'grow' the slab class by giving it more slabs.
   size_t max_slabid_index = slab_class.get_bytes_cached() / slab_size; 
