@@ -42,8 +42,8 @@ run_slab () {
 # For all input traces
 echo "date/time(start)  app ID  policy"
 echo "---------------------------------"
-#TRACES=/mnt/data/projects/lsm-traces/*;
-TRACES=~/test_traces/*;
+TRACES=/mnt/data/projects/lsm-traces/*;
+#TRACES=~/test_traces/*;
 for f in $TRACES
 do
   if [[ "${f/app}" != "$f" ]];
