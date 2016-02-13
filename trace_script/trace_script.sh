@@ -29,7 +29,7 @@ run_glru () {
   ../compute -p $SHADOWLRU -a $APP -f $INPUT
   mv shadowlru-size-curve.data $OUTPUT$FILENAME."size-curve.data"
   mv shadowlru-position-curve.data $OUTPUT$FILENAME."position-curve.data"
-
+  echo
 }
 
 # Runs simulation for shadowslab for each growth factor.
@@ -44,19 +44,19 @@ run_slab () {
   
   # Run with default 1.25 growth factor. 
   FACTOR=1.25 
-  FILENAME=$TIME.$APPID.$POLICY.$FACTOR"size-curve.data"
+  FILENAME=$TIME.$APPID.$POLICY.$FACTOR".size-curve.data"
   printf "%s   %s   %s   %s\n" $TIME $APPID $POLICY $FACTOR
   ../compute -p $SHADOWSLAB -a $APP -f $INPUT -g $FACTOR
   mv shadowslab-size-curve.data $OUTPUT$FILENAME
-
+  echo
 
   # Run with default 1.07 growth factor (Facebook paper). 
-  FACTOR=1.07
-  FILENAME=$TIME.$APPID.$POLICY.$FACTOR"size-curve.data"
-  printf "%s   %s   %s   %s\n" $TIME $APPID $POLICY $FACTOR
-  ../compute -p $SHADOWSLAB -a $APP -f $INPUT -g $FACTOR
-  mv shadowslab-size-curve.data $OUTPUT$FILENAME
-  
+  # FACTOR=1.07
+  # FILENAME=$TIME.$APPID.$POLICY.$FACTOR"size-curve.data"
+  # printf "%s   %s   %s   %s\n" $TIME $APPID $POLICY $FACTOR
+  # ../compute -p $SHADOWSLAB -a $APP -f $INPUT -g $FACTOR
+  # mv shadowslab-size-curve.data $OUTPUT$FILENAME
+  # echo
 }
 
 
