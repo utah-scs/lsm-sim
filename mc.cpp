@@ -1,5 +1,8 @@
 #include <cinttypes>
 #include <cstring>
+#include <utility>
+#include <stdio.h>
+#include "mc.h"
 
 static const int MAX_NUMBER_OF_SLAB_CLASSES = 64;
 static const size_t POWER_SMALLEST = 1;
@@ -7,6 +10,7 @@ static const size_t POWER_LARGEST = 256;
 static const size_t CHUNK_ALIGN_BYTES = 8;
 static const size_t chunk_size = 48;
 static const size_t item_size_max = 1024 * 1024;
+
 
 typedef uint32_t rel_time_t;
 
@@ -43,7 +47,7 @@ typedef struct {
     unsigned int size;      /* sizes of items */
     unsigned int perslab;   /* how many items per slab */
 
-    void *slots;           /* list of item ptrs */
+    void *slots;            /* list of item ptrs */
     unsigned int sl_curr;   /* total free items in list */
 
     unsigned int slabs;     /* how many slabs were allocated for this class */
@@ -60,8 +64,12 @@ static int power_largest;
 /**
  * Determines the chunk sizes and initializes the slab class descriptors
  * accordingly.
+ *
+ * 
+ * NOTE: Modified to return the max number of slabs 
+ *       (for sizing arrays elsewhere). 
  */
-void slabs_init(const double factor) {
+uint16_t slabs_init(const double factor) {
     int i = POWER_SMALLEST - 1;
     unsigned int size = sizeof(item) + chunk_size;
 
@@ -81,6 +89,8 @@ void slabs_init(const double factor) {
     power_largest = i;
     slabclass[power_largest].size = item_size_max;
     slabclass[power_largest].perslab = 1;
+  
+    return power_largest;
 }
 
 /*
@@ -89,15 +99,17 @@ void slabs_init(const double factor) {
  *
  * Given object size, return id to use when allocating/freeing memory for object
  * 0 means error: can't store such a large object
+ *
+ * NOTE: modified to return class id and class_size.
  */
-
-unsigned int slabs_clsid(const size_t size) {
+std::pair<uint32_t, uint32_t> slabs_clsid(const size_t size) {
     int res = POWER_SMALLEST;
-
     if (size == 0)
-        return 0;
+        return {0,0};
     while (size > slabclass[res].size)
         if (res++ == power_largest)     /* won't fit in the biggest slab */
-            return 0;
-    return res;
+            return {0,0};
+    return {slabclass[res].size, res};
 }
+
+

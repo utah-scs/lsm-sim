@@ -6,14 +6,15 @@
 #include "hit_rate_curve.h"
 #include "policy.h"
 #include "shadowlru.h"
+#include "mc.h"
 
 // policy derived from Cliffhanger paper
 class shadowslab : public policy {
   public:
-    static constexpr size_t slab_count = 15;
+ 
     static constexpr size_t slab_size = 1024 * 1024;
 
-    shadowslab();
+    shadowslab(double factor);
     ~shadowslab();
 
     size_t proc(const request *r, bool warmup);

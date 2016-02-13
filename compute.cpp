@@ -20,6 +20,7 @@
 #include "shadowslab.h"
 #include "lru.h"
 #include "slab.h"
+#include "mc.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
@@ -36,13 +37,14 @@ enum pol_typ { SHADOWLRU = 0, FIFO, LRU, SLAB, SHADOWSLAB };
 std::set<uint16_t>    apps{};                           // apps to consider
 bool                  all_apps = true;                  // run all by default 
 bool                  roundup  = false;                 // no rounding default
-float                 lsm_util = 1.0;                   // default utilization factor
-std::string           trace    = "data/m.cap.out"; // default filepath
+float                 lsm_util = 1.0;                   // default util factor
+std::string           trace    = "data/m.cap.out";      // default filepath
 std::string           app_str;                          // for logging apps
 double                hit_start_time = 86400;           // default time 
 double                global_mem = 0;
 pol_typ               p_type;                           // policy type
 bool                  verbose = false;
+double                gfactor = 1.25;                   // def slab growth fact
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -64,7 +66,8 @@ const std::string     usage  = "-f    specify file path\n"
                                "-l    number of requests after warmup\n"
                                "-s    simulated cache size in bytes\n"
                                "-p    policy 0, 1, 2; shadowlru, fifo, lru\n"
-                               "-v    incremental output\n";
+                               "-v    incremental output\n"
+                               "-g    specify slab growth factor\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -99,7 +102,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::string sets;
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vh")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -139,6 +142,9 @@ int main(int argc, char *argv[]) {
       case 'h': 
         std::cerr << usage << std::endl;
         break;
+      case 'g':
+        gfactor = atof(optarg);  
+        break;
     }
   }
 
@@ -160,11 +166,11 @@ int main(int argc, char *argv[]) {
       policy.reset(new slab(global_mem));
       break;
     case SHADOWSLAB:
-      policy.reset(new shadowslab{});
+      policy.reset(new shadowslab(gfactor));
       break;
   }
 
-  if (!policy) {
+   if (!policy) {
     std::cerr << "No valid policy selected!" << std::endl;
     exit(-1);
   }
@@ -178,6 +184,8 @@ int main(int argc, char *argv[]) {
             << "start counting hits at t = " << hit_start_time << std::endl
             << "request limit: " << request_limit << std::endl
             << "global mem: " << global_mem << std::endl;
+  if(p_type == SHADOWSLAB) 
+  std::cerr << "slab growth factor: " << gfactor << std::endl;
 
   // proc file line by line
   std::ifstream t_stream(trace);
