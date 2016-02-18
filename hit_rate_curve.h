@@ -11,12 +11,19 @@
 
 class hit_rate_curve {
  public:
+  static constexpr size_t MAX_DISTANCE = 1lu * 1024 * 1024;
   hit_rate_curve()
     : distances{}
+    , too_big{}
   {
   }
 
   void hit(size_t distance) {
+    if (distance >= MAX_DISTANCE) {
+      ++too_big;
+      return;
+    }
+
     if (distances.size() < distance + 1)
       distances.resize(distance + 1, 0);
 
@@ -40,11 +47,12 @@ class hit_rate_curve {
     if (distances.size() == 0)
       return;
 
-    uint64_t total = std::accumulate(distances.begin(), distances.end(), 0);
+    size_t total =
+      std::accumulate(distances.begin(), distances.end(), 0) + too_big;
 
-    uint64_t accum = 0;
+    size_t accum = 0;
     for (size_t i = 0; i < distances.size(); ++i) {
-      uint64_t delta = distances[i];
+      size_t delta = distances[i];
       accum += delta;
       if (delta)
         out << i << " " << float(accum) / total << std::endl;
@@ -59,7 +67,16 @@ class hit_rate_curve {
       distances[i] += other.distances[i];
   }
 
-  std::vector<uint64_t> distances;
+  // For each distance, a count of the hits at that distance.
+  // Units on distance depends on how the caller interprets it.
+  // For example, some curves may represent hit rank while others
+  // may represent number of bytes into shadow queue of the hit.
+  std::vector<size_t> distances;
+
+  // The distances vector holds a size_t for each distance. If the highest
+  // seen distance is too large, the distances vector can grow to
+  // many gigabytes. too_big tracks hits that with huge distances.
+  size_t too_big;
 };
 
 #endif
