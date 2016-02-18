@@ -1,7 +1,7 @@
 #!/bin/bash
 
 OUTPUT="/home/drushton/projects/lsm-results/"
-TIME=$(date +"%m_%d_%y_%T") 
+TIME=$(date +"%m-%d-%y-%T") 
 LOG=$OUTPUT/$TIME.log
 
 # Policy ids in .compute.cpp
@@ -22,7 +22,7 @@ run_glru () {
   APPID=${INPUT##*/} 
   APP=${APPID/app}
   POLICY="gLRU"
-  TIME=$(date +"%m_%d_%y_%T") 
+  TIME=$(date +"%m-%d-%y-%T") 
   FILENAME=$TIME.$APPID.$POLICY
 
   printf "%s   %s  %s\n" $TIME $APPID $POLICY
@@ -39,7 +39,7 @@ run_slab () {
   APPID=${INPUT##*/}  
   APP=${APPID/app}
   POLICY="sSLB"
-  TIME=$(date +"%m_%d_%y_%T")
+  TIME=$(date +"%m-%d-%y-%T")
   APPEND="size-curve.data"
   
   # Run with default 1.25 growth factor. 
@@ -51,12 +51,12 @@ run_slab () {
   echo
 
   # Run with default 1.07 growth factor (Facebook paper). 
-  # FACTOR=1.07
-  # FILENAME=$TIME.$APPID.$POLICY.$FACTOR"size-curve.data"
-  # printf "%s   %s   %s   %s\n" $TIME $APPID $POLICY $FACTOR
-  # ../compute -p $SHADOWSLAB -a $APP -f $INPUT -g $FACTOR
-  # mv shadowslab-size-curve.data $OUTPUT$FILENAME
-  # echo
+  FACTOR=2.0
+  FILENAME=$TIME.$APPID.$POLICY.$FACTOR"size-curve.data"
+  printf "%s   %s   %s   %s\n" $TIME $APPID $POLICY $FACTOR
+  ../compute -p $SHADOWSLAB -a $APP -f $INPUT -g $FACTOR
+  mv shadowslab-size-curve.data $OUTPUT$FILENAME
+  echo
 }
 
 
@@ -82,6 +82,6 @@ done
 
 
 # Output final time so we know everything finished.
-TIME=$(date +"%m_%d_%T")
+TIME=$(date +"%m-%d-%T")
 echo $TIME "done."
 
