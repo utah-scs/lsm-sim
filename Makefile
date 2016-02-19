@@ -9,7 +9,7 @@ OBJS := $(patsubst %.cpp, %.o, $(SRCS))
 
 all: compute
 
-%.o : %.cpp
+%.o : %.cpp $(wildcard *.h)
 	$(CXX) $(CXXFLAGS) -c $<
 
 compute: $(OBJS)

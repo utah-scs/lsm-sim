@@ -14,7 +14,7 @@ class shadowslab : public policy {
  
     static constexpr size_t slab_size = 1024 * 1024;
 
-    shadowslab(double factor);
+    shadowslab(double factor, bool memcachier_classes);
     ~shadowslab();
 
     size_t proc(const request *r, bool warmup);
@@ -24,7 +24,7 @@ class shadowslab : public policy {
     void log();
 
   private:
-    std::pair<uint32_t, uint32_t> get_slab_class(uint32_t size);
+    std::pair<uint64_t, uint64_t> get_slab_class(uint32_t size);
 
     std::vector<shadowlru> slabs;
 
@@ -38,6 +38,10 @@ class shadowslab : public policy {
     size_t next_slabid;
 
     hit_rate_curve size_curve;
+
+    bool memcachier_classes;
+
+    uint32_t slab_count;
 };
 
 #endif

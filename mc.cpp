@@ -1,3 +1,4 @@
+#include <iostream>
 #include <cinttypes>
 #include <cstring>
 #include <utility>
@@ -71,7 +72,12 @@ static int power_largest;
  */
 uint16_t slabs_init(const double factor) {
     int i = POWER_SMALLEST - 1;
+
+    // stutsman: original memcached code boost class size by
+    // at least sizeof(item) but since our simulator doesn't
+    // account for metadata this probably doesn't make sense?
     unsigned int size = sizeof(item) + chunk_size;
+    //unsigned int size = chunk_size;
 
     memset(slabclass, 0, sizeof(slabclass));
 
@@ -81,6 +87,7 @@ uint16_t slabs_init(const double factor) {
         if (size % CHUNK_ALIGN_BYTES)
             size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
 
+        std::cout << "slab class " << i << " size " << size << std::endl;
         slabclass[i].size = size;
         slabclass[i].perslab = item_size_max / slabclass[i].size;
         size *= factor;
@@ -89,6 +96,8 @@ uint16_t slabs_init(const double factor) {
     power_largest = i;
     slabclass[power_largest].size = item_size_max;
     slabclass[power_largest].perslab = 1;
+
+    std::cout << "slab class " << i << " size " << item_size_max << std::endl;
   
     return power_largest;
 }
@@ -106,9 +115,11 @@ std::pair<uint32_t, uint32_t> slabs_clsid(const size_t size) {
     int res = POWER_SMALLEST;
     if (size == 0)
         return {0,0};
-    while (size > slabclass[res].size)
-        if (res++ == power_largest)     /* won't fit in the biggest slab */
+    while (size > slabclass[res].size) {
+        ++res;
+        if (res == power_largest)     /* won't fit in the biggest slab */
             return {0,0};
+    }
     return {slabclass[res].size, res};
 }
 

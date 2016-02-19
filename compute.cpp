@@ -45,6 +45,7 @@ double                global_mem = 0;
 pol_typ               p_type;                           // policy type
 bool                  verbose = false;
 double                gfactor = 1.25;                   // def slab growth fact
+bool                  memcachier_classes = false;
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -67,7 +68,8 @@ const std::string     usage  = "-f    specify file path\n"
                                "-s    simulated cache size in bytes\n"
                                "-p    policy 0, 1, 2; shadowlru, fifo, lru\n"
                                "-v    incremental output\n"
-                               "-g    specify slab growth factor\n";
+                               "-g    specify slab growth factor\n"
+                               "-M    use memcachier slab classes\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -102,7 +104,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::string sets;
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:M")) != -1) {
     switch (c)
     {
       case 'f':
@@ -145,6 +147,9 @@ int main(int argc, char *argv[]) {
       case 'g':
         gfactor = atof(optarg);  
         break;
+      case 'M':
+        memcachier_classes = true;
+        break;
     }
   }
 
@@ -166,7 +171,7 @@ int main(int argc, char *argv[]) {
       policy.reset(new slab(global_mem));
       break;
     case SHADOWSLAB:
-      policy.reset(new shadowslab(gfactor));
+      policy.reset(new shadowslab(gfactor, memcachier_classes));
       break;
   }
 
@@ -176,7 +181,7 @@ int main(int argc, char *argv[]) {
   }
 
   // List input parameters
-  std::cerr << "performing trace analysis on app\\s: " << app_str << std::endl
+  std::cerr << "performing trace analysis on apps: " << app_str << std::endl
             << "policy: " << policy_names[p_type] << std::endl
             << "using trace file: " << trace << std::endl
             << "rounding: " << (roundup ? "on" : "off") << std::endl
@@ -184,8 +189,12 @@ int main(int argc, char *argv[]) {
             << "start counting hits at t = " << hit_start_time << std::endl
             << "request limit: " << request_limit << std::endl
             << "global mem: " << global_mem << std::endl;
-  if(p_type == SHADOWSLAB) 
-  std::cerr << "slab growth factor: " << gfactor << std::endl;
+  if (p_type == SHADOWSLAB) {
+    if (memcachier_classes)
+      std::cerr << "slab growth factor: memcachier" << std::endl;
+    else
+      std::cerr << "slab growth factor: " << gfactor << std::endl;
+  }
 
   // proc file line by line
   std::ifstream t_stream(trace);

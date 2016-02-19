@@ -13,14 +13,10 @@ class shadowlru : public policy {
     ~shadowlru();
 
     size_t proc(const request *r, bool warmup);
-    int64_t remove (const request *r);
+    int64_t remove(const request *r);
     
     size_t get_bytes_cached();
     void log();
-
-    const hit_rate_curve* get_position_curve() const {
-      return &position_curve;
-    }
 
     const hit_rate_curve* get_size_curve() const {
       return &size_curve;
@@ -28,7 +24,6 @@ class shadowlru : public policy {
 
   private:
     size_t bytes_cached;
-    hit_rate_curve position_curve;
     hit_rate_curve size_curve;
     std::list<request> queue;
 };
