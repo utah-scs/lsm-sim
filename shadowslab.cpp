@@ -42,6 +42,11 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   uint64_t klass = 0;
   std::tie(class_size, klass) = get_slab_class(r->size());
   if (klass == PROC_MISS) {
+    // We need to count these as misses in case different size to class
+    // mappings don't all cover the same range of object sizes. If some
+    // slab class configuration doesn't handle some subset of the acceses
+    // it must penalized. In practice, memcachier and memcached's policies
+    // cover the same range, so this shouldn't get invoked anyway.
     if (!warmup)
       size_curve.miss();
     return PROC_MISS;
@@ -60,6 +65,8 @@ size_t shadowslab::proc(const request *r, bool warmup) {
  
   shadowlru& slab_class = slabs.at(klass);
 
+  // Round up the request size so the per-class LRU holds the right
+  // size.
   request copy{*r};
   copy.key_sz   = 0;
   copy.val_sz   = class_size;
@@ -67,6 +74,7 @@ size_t shadowslab::proc(const request *r, bool warmup) {
 
   size_t size_distance = slab_class.proc(&copy, warmup);
   if (size_distance == PROC_MISS) {
+    // Don't count compulsory misses.
     //if (!warmup)
       //size_curve.miss();
     return PROC_MISS;

@@ -212,14 +212,6 @@ int main(int argc, char *argv[]) {
     request r{line};
     bytes += line.size();
 
-    // Only process requests for specified apps, of type GET, 
-    // and values of size > 0, after time 'hit_start_time'.
-    if ((r.type != request::GET) || !valid_id(&r) || (r.val_sz <= 0))
-      continue;
-
-    policy->proc(&r, r.time < hit_start_time);
-    
-    ++i;
     if (verbose && ((i & ((1 << 18) - 1)) == 0)) {
       auto now  = hrc::now();
       double seconds =
@@ -229,8 +221,16 @@ int main(int argc, char *argv[]) {
                 << std::endl;
       bytes = 0;
       last_progress = now;
-      //policy->log();
     }
+
+    // Only process requests for specified apps, of type GET,
+    // and values of size > 0, after time 'hit_start_time'.
+    if ((r.type != request::GET) || !valid_id(&r) || (r.val_sz <= 0))
+      continue;
+
+    policy->proc(&r, r.time < hit_start_time);
+
+    ++i;
   }
   auto stop = hrc::now();
 
