@@ -66,6 +66,39 @@ size_t shadowlru::get_bytes_cached() {
   return bytes_cached;
 }
 
+// Iterate over requests summing the associated overhead
+// with each request. Upon reaching the end of each 1MB 
+// page, stash the total page overhead into the vector.
+std::vector<size_t> shadowlru::get_class_frags() {
+  
+  const size_t PAGE = 1024 * 1024;
+
+  size_t page_dist = 0, frag_sum = 0;
+
+  std::vector<size_t> frags;
+  for (auto it = queue.begin(); it != queue.end(); ++it) {
+    
+    request& r = *it;
+    
+    // If within the current page just sum.
+    // otherwise record OH for this page and reset sums
+    // to reflect sums at first element of new page.
+    
+    if (page_dist + r.size() <= PAGE) {
+      page_dist += r.size();
+      frag_sum  += r.get_frag();
+    }
+    else {
+      frags.push_back(frag_sum);
+      page_dist = r.size();
+      frag_sum  = r.get_frag();
+    }  
+  }
+
+  return frags; 
+}
+
+
 void shadowlru::log() {
   size_curve.dump_cdf("shadowlru-size-curve.data");
 }

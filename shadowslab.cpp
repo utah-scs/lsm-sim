@@ -59,8 +59,9 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   shadowlru& slab_class = slabs.at(klass);
 
   request copy{*r};
-  copy.key_sz = 0;
-  copy.val_sz = class_size;
+  copy.key_sz   = 0;
+  copy.val_sz   = class_size;
+  copy.frag_sz  = class_size - r->size();
 
   size_t size_distance = slab_class.proc(&copy, warmup);
   if (size_distance == PROC_MISS) {
@@ -73,17 +74,17 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   slab_for_key.insert(std::pair<uint32_t,uint32_t>(r->kid, klass));
   
   // Determine if we need to 'grow' the slab class by giving it more slabs.
-  size_t max_slabid_index = slab_class.get_bytes_cached() / slab_size; 
+  size_t max_slabid_index = slab_class.get_bytes_cached() / SLABSIZE; 
   std::vector<size_t>& class_ids = slabids.at(klass);
   while (class_ids.size() < max_slabid_index + 1)
     class_ids.emplace_back(next_slabid++);
 
   // Figure out where in the space of slabids this access hit.
-  size_t slabid_index = size_distance / slab_size;
+  size_t slabid_index = size_distance / SLABSIZE;
   size_t slabid = class_ids.at(slabid_index);
 
   size_t approx_global_size_distance =
-     (slabid * slab_size) + (size_distance % slab_size);
+     (slabid * SLABSIZE) + (size_distance % SLABSIZE);
   if (!warmup)
     size_curve.hit(approx_global_size_distance);
 
@@ -120,4 +121,12 @@ std::pair<uint64_t, uint64_t> shadowslab::get_slab_class(uint32_t size) {
 
 void shadowslab::log() {
   size_curve.dump_cdf("shadowslab-size-curve.data");
+}
+
+
+void shadowslab::dump_util () {
+
+  
+
+
 }

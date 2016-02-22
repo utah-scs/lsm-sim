@@ -12,7 +12,7 @@
 class shadowslab : public policy {
   public:
  
-    static constexpr size_t slab_size = 1024 * 1024;
+    static constexpr size_t SLABSIZE = 1024 * 1024;
 
     shadowslab(double factor, bool memcachier_classes);
     ~shadowslab();
@@ -22,6 +22,8 @@ class shadowslab : public policy {
     size_t get_bytes_cached();
     
     void log();
+
+    void dump_util();
 
   private:
     std::pair<uint64_t, uint64_t> get_slab_class(uint32_t size);
