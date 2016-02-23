@@ -44,6 +44,9 @@ class shadowslab : public policy {
     bool memcachier_classes;
 
     uint32_t slab_count;
+
+    std::pair<int32_t, int64_t> get_next_slab (uint32_t c);
+
 };
 
 #endif

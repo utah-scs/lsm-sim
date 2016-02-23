@@ -14,7 +14,7 @@ class shadowlru : public policy {
 
     size_t proc(const request *r, bool warmup);
     int64_t remove(const request *r);
-        
+     
     size_t get_bytes_cached();
     std::vector<size_t> get_class_frags();
     void log();
@@ -25,6 +25,7 @@ class shadowlru : public policy {
 
   private:
     size_t bytes_cached;
+    size_t class_size;
     hit_rate_curve size_curve;
     std::list<request> queue;
 };
