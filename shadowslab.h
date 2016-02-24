@@ -18,15 +18,13 @@ class shadowslab : public policy {
     ~shadowslab();
 
     size_t proc(const request *r, bool warmup);
-
     size_t get_bytes_cached();
-    
     void log();
-
-    void dump_util();
+    void dump_util(const std::string& filename);
 
   private:
     std::pair<uint64_t, uint64_t> get_slab_class(uint32_t size);
+    std::pair<int32_t, int64_t> get_next_slab(uint32_t c);
 
     std::vector<shadowlru> slabs;
 
@@ -41,12 +39,10 @@ class shadowslab : public policy {
 
     hit_rate_curve size_curve;
 
+    // If true use memcachier size classes instead of memcacheds.
     bool memcachier_classes;
 
     uint32_t slab_count;
-
-    std::pair<int32_t, int64_t> get_next_slab (uint32_t c);
-
 };
 
 #endif

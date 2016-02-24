@@ -131,22 +131,17 @@ std::pair<uint64_t, uint64_t> shadowslab::get_slab_class(uint32_t size) {
 
 void shadowslab::log() {
   size_curve.dump_cdf("shadowslab-size-curve.data");
-  
-  this->dump_util();
+  dump_util("shadowslab-util.data");
 }
-
 
 // Given a slab id, searches over the slabids vectors and finds the vector
 // position (slru) and the inner vector position (slab distance in lru) for
 // the slab id.
 std::pair<int32_t, int64_t> shadowslab::get_next_slab (uint32_t next) {
-
   // Search for next slab.
   for (auto ito = slabids.begin(); ito != slabids.end(); ++ito) {
-    for(auto iti = ito->begin(); iti != ito->end(); ++iti) {
-  
-      if(*iti == next) {
-
+    for (auto iti = ito->begin(); iti != ito->end(); ++iti) {
+      if (*iti == next) {
         int32_t slab_class         = ito - slabids.begin();
         int64_t slab_dist_in_class = iti - ito->begin();
         return { slab_class, slab_dist_in_class };
@@ -156,40 +151,37 @@ std::pair<int32_t, int64_t> shadowslab::get_next_slab (uint32_t next) {
   return { -1, -1 };
 }
 
-
 // Locates slabs in the order they were allocated and reports the 
 // fragmentation for each slab in that order. Intended to be used to
 // graph utilization as a function of overall cache size.
-void shadowslab::dump_util () {
+void shadowslab::dump_util(const std::string& filename) {
+  std::ofstream out{filename};
 
   // Gather frag vectors for all slab classes.
-  std::vector<std::vector<size_t>> frag_vectors;
-  for (auto sit = slabs.begin(); sit != slabs.end(); ++sit) {
-  
-    std::vector<size_t> f = sit->get_class_frags();
-    frag_vectors.push_back(f); 
-  }
-
-  size_t  num_slabs  = 0,
-          next_slab  = 0;
+  std::vector<std::vector<size_t>> frag_vectors{};
+  for (const auto& slab : slabs)
+    frag_vectors.emplace_back(slab.get_class_frags(SLABSIZE)); 
 
   // Determine total number of slab ids.
-  for (auto it = slabids.begin(); it != slabids.end(); ++it) 
-    num_slabs += it->size();    
+  size_t num_slabs  = 0;
+  for (const auto& class_ids : slabids)
+    num_slabs += class_ids.size();    
 
-  std::cout << "slab id:\t frag: " << std::endl;
-  while (next_slab < num_slabs) {
+  out << "cache_size utilization" << std::endl;
 
+  size_t total_wasted = 0;
+  for (size_t next_slab = 0; next_slab < num_slabs; ++next_slab) {
     // Get next slab class and slab distance.
-    int64_t slab_class = 0,
-            slab_dist  = 0;
+    int64_t slab_class = 0;
+    int64_t slab_dist = 0;
     std::tie(slab_class, slab_dist) = get_next_slab(next_slab);
 
     // Get the frag value for slab. 
-    std::vector<size_t> fs = frag_vectors.at(slab_class);
-    size_t f = fs.at(slab_dist); 
-    double fp = (double)f / (1024*1024);
+    const std::vector<size_t>& fs = frag_vectors.at(slab_class);
+    total_wasted += fs.at(slab_dist); 
+    size_t cache_size = (1 + next_slab) * SLABSIZE;
+    double ratio = 1 - ((double)total_wasted / cache_size);
  
-    std::cout << next_slab++ << "\t\t" << fp << std::endl;
+    out << cache_size << " " << ratio << std::endl;
   }
 }

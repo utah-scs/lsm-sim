@@ -56,7 +56,8 @@ size_t shadowlru::proc(const request *r, bool warmup) {
     if (size_distance != PROC_MISS) {
       size_curve.hit(size_distance);
     } else {
-      size_curve.miss();
+      // Don't count compulsory misses.
+      //size_curve.miss();
     }
   }
 
@@ -70,33 +71,24 @@ size_t shadowlru::get_bytes_cached() {
 // Iterate over requests summing the associated overhead
 // with each request. Upon reaching the end of each 1MB 
 // page, stash the total page overhead into the vector.
-std::vector<size_t> shadowlru::get_class_frags() {
-  
-  const size_t PAGE = 1024 * 1024;
-  size_t page_dist = 0, 
-          frag_sum = 0;
-
-  std::vector<size_t> frags;
-  for (auto it = queue.begin(); it != queue.end(); ++it) {
-    
-    request& r = *it;
-    
+std::vector<size_t> shadowlru::get_class_frags(size_t slab_size) const {
+  size_t page_dist = 0, frag_sum = 0;
+  std::vector<size_t> frags{};
+  for (const request& r : queue) {
     // If within the current page just sum.
     // otherwise record OH for this page and reset sums
     // to reflect sums at first element of new page. 
-    if (page_dist + r.size() <= PAGE) {
-      page_dist += r.size();
-      frag_sum  += r.get_frag();
-    }
-    else { 
+    if (page_dist + r.size() > slab_size) {
       frags.push_back(frag_sum);
-      page_dist = r.size();
-      frag_sum  = 0;
-    }  
+      page_dist = 0;
+      frag_sum = 0;
+    }
+    page_dist += r.size();
+    frag_sum += r.get_frag();
   }
 
   // Make sure to count possible final incomlete page missed above. 
-  if(frag_sum != 0) 
+  if (page_dist != 0) 
     frags.push_back(frag_sum);
 
   return frags; 

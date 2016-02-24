@@ -16,7 +16,7 @@ class shadowlru : public policy {
     int64_t remove(const request *r);
      
     size_t get_bytes_cached();
-    std::vector<size_t> get_class_frags();
+    std::vector<size_t> get_class_frags(size_t slab_size) const;
     void log();
 
     const hit_rate_curve* get_size_curve() const {
