@@ -9,7 +9,7 @@ class fifo : public policy {
   typedef std::unordered_map<uint32_t, request*> hash_map;
 
   public:
-    fifo(uint64_t size);
+    fifo(const std::string& filename_suffix, uint64_t size);
    ~fifo();
 
     size_t proc(const request *r, bool warmup); 

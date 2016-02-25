@@ -3,8 +3,8 @@
 #include "slab.h"
 #include "lru.h"
 
-slab::slab(uint64_t size)
-  : policy(size) 
+slab::slab(const std::string& filename_suffix, uint64_t size)
+  : policy{filename_suffix, size}
 	, growth{DEF_GFACT}
   , current_size{}
   , slab_for_key{}
@@ -18,10 +18,10 @@ slab::~slab () {
 
 class slab::sclru : public lru {
   public:
-    sclru(slab &owner, size_t chunk_sz)
-    : lru(PAGE_SIZE) 
+    sclru(slab* owner, size_t chunk_sz)
+    : lru("", PAGE_SIZE) 
     ,	chunk_sz{chunk_sz}
-    , owner(owner)
+    , owner{owner}
     {}
    ~sclru() {}
 
@@ -35,7 +35,12 @@ class slab::sclru : public lru {
     // Chunk size for this slab class.
     size_t chunk_sz;	
 
-    slab &owner; 
+    slab* owner; 
+
+    sclru(const sclru&) = delete;
+    sclru& operator=(const sclru&) = delete;
+    sclru(const sclru&&) = delete;
+    sclru& operator=(sclru&&) = delete;
 };
 
 
@@ -105,7 +110,7 @@ uint16_t slab::init_slabs (void) {
   std::cout << "Creating slab classes" << std::endl;  
   while(i < MAX_CLASSES && size <= MAX_SIZE / DEF_GFACT) {
     std::cout << i << " " << size << std::endl;    
-    sc_ptr sc(new sclru(*this, size));   
+    sc_ptr sc(new sclru(this, size));   
     slabs.insert(std::make_pair(size, std::move(sc)));
     size *= DEF_GFACT;
     i++; 

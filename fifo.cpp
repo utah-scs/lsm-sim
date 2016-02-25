@@ -2,8 +2,8 @@
 
 #include "fifo.h"
 
-fifo::fifo(uint64_t size)
-  : policy(size)
+fifo::fifo(const std::string& filename_suffix, uint64_t size)
+  : policy{filename_suffix, size}
   , accesses{}
   , hits{}
   , current_size{}

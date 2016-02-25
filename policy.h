@@ -18,11 +18,16 @@ class policy {
   };
 
   protected: 
+    std::string filename_suffix;
     uint64_t global_mem;
 
   public:
-    policy (const uint64_t g) : global_mem(g) {};
-    virtual ~policy() {};
+    policy (const std::string& filename_suffix, const uint64_t global_mem)
+      : filename_suffix{filename_suffix}
+      , global_mem{global_mem}
+    {}
+
+    virtual ~policy() {}
 
     enum { PROC_MISS = ~0lu };
     virtual size_t proc(const request *r, bool warmup) = 0;

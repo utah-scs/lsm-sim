@@ -15,7 +15,7 @@ static const size_t   MAX_SIZE=5000000;   // Largest KV pair allowed
 class slab : public policy {
    
   public:
-    slab(uint64_t size);
+    slab(const std::string& filename_suffix, uint64_t size);
    ~slab();
     size_t proc(const request *r, bool warmup);
     void log();

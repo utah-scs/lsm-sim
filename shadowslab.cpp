@@ -5,8 +5,11 @@
 #include "shadowslab.h"
 #include "mc.h"
 
-shadowslab::shadowslab(double factor, bool memcachier_classes)
-  : policy{0}
+shadowslab::shadowslab(
+    const std::string& filename_suffix,
+    double factor,
+    bool memcachier_classes)
+  : policy{filename_suffix, 0}
   , slabs{}
   , slabids{}
   , slab_for_key{}
@@ -130,8 +133,8 @@ std::pair<uint64_t, uint64_t> shadowslab::get_slab_class(uint32_t size) {
 }
 
 void shadowslab::log() {
-  size_curve.dump_cdf("shadowslab-size-curve.data");
-  dump_util("shadowslab-util.data");
+  size_curve.dump_cdf("shadowslab-size-curve" + filename_suffix + ".data");
+  dump_util("shadowslab-util" + filename_suffix + ".data");
 }
 
 // Given a slab id, searches over the slabids vectors and finds the vector

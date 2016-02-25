@@ -11,7 +11,7 @@ class lru : public policy {
   typedef std::unordered_map<uint32_t, lru_queue::iterator> hash_map;
 
   public:
-    lru(uint64_t size);
+    lru(const std::string& filename_suffix, uint64_t size);
    ~lru();
 
     // Modifiers.

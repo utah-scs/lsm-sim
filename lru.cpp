@@ -2,8 +2,8 @@
 
 #include "lru.h"
 
-lru::lru(uint64_t size)
-  : policy(size)
+lru::lru(const std::string& filename_suffix, uint64_t size)
+  : policy{filename_suffix, size}
   , accesses{}
   , hits{}
   , bytes_cached{}

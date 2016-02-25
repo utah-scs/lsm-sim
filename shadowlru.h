@@ -9,7 +9,7 @@
 // policy derived from Cliffhanger paper
 class shadowlru : public policy {
   public:
-    shadowlru();
+    shadowlru(const std::string& filename_suffix = "");
     ~shadowlru();
 
     size_t proc(const request *r, bool warmup);
@@ -28,6 +28,7 @@ class shadowlru : public policy {
     size_t class_size;
     hit_rate_curve size_curve;
     std::list<request> queue;
+    bool part_of_slab_allocator;
 };
 
 #endif

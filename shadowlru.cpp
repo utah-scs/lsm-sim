@@ -2,12 +2,13 @@
 
 #include "shadowlru.h"
 
-shadowlru::shadowlru()
-  : policy{0}
+shadowlru::shadowlru(const std::string& filename_suffix)
+  : policy{filename_suffix, 0}
   , bytes_cached{}
   , class_size{}
   , size_curve{}
   , queue{}
+  , part_of_slab_allocator{filename_suffix == ""}
 {
 }
 
@@ -54,7 +55,8 @@ size_t shadowlru::proc(const request *r, bool warmup) {
 
   if (!warmup) {
     if (size_distance != PROC_MISS) {
-      size_curve.hit(size_distance);
+      if (!part_of_slab_allocator)
+        size_curve.hit(size_distance);
     } else {
       // Don't count compulsory misses.
       //size_curve.miss();
@@ -96,5 +98,5 @@ std::vector<size_t> shadowlru::get_class_frags(size_t slab_size) const {
 
 
 void shadowlru::log() {
-  size_curve.dump_cdf("shadowlru-size-curve.data");
+  size_curve.dump_cdf("shadowlru-size-curve" + filename_suffix + ".data");
 }

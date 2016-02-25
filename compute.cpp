@@ -12,6 +12,7 @@
 #include <ctime>
 #include <chrono>
 #include <memory>
+#include <cassert>
 
 #include "common.h"
 #include "request.h"
@@ -153,25 +154,32 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // PRE PROCESSING
+  assert(apps.size() == 1);
+
+  std::string filename_suffix = "-app" + std::to_string(*apps.cbegin());
+  if (p_type == SHADOWSLAB)
+    filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";
+
 
   // instantiate a policy
   std::unique_ptr<policy> policy{};
   switch(p_type) {
     case SHADOWLRU:
-      policy.reset(new shadowlru());
+      policy.reset(new shadowlru(filename_suffix));
       break;
     case FIFO : 
-      policy.reset(new fifo(global_mem));
+      policy.reset(new fifo(filename_suffix, global_mem));
       break;
     case LRU : 
-      policy.reset(new lru(global_mem));
+      policy.reset(new lru(filename_suffix, global_mem));
       break;
     case SLAB :
-      policy.reset(new slab(global_mem));
+      policy.reset(new slab(filename_suffix, global_mem));
       break;
     case SHADOWSLAB:
-      policy.reset(new shadowslab(gfactor, memcachier_classes));
+      policy.reset(new shadowslab(filename_suffix,
+                                  gfactor,
+                                  memcachier_classes));
       break;
   }
 
