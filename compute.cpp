@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
   std::unique_ptr<policy> policy{};
   switch(p_type) {
     case SHADOWLRU:
-      policy.reset(new shadowlru(filename_suffix));
+      policy.reset(new shadowlru(filename_suffix, global_mem));
       break;
     case FIFO : 
       policy.reset(new fifo(filename_suffix, global_mem));

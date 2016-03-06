@@ -2,8 +2,8 @@
 
 #include "shadowlru.h"
 
-shadowlru::shadowlru(const std::string& filename_suffix)
-  : policy{filename_suffix, 0}
+shadowlru::shadowlru(const std::string& filename_suffix, uint64_t global_mem)
+  : policy{filename_suffix, global_mem}
   , bytes_cached{}
   , class_size{}
   , size_curve{}
