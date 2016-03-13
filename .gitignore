@@ -1,4 +1,4 @@
-compute
+lsm-sim
 *.o
 data
 results
