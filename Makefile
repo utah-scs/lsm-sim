@@ -4,12 +4,12 @@ CXXFLAGS += -Wno-unused-parameter -Wextra -Weffc++
 
 LDFLAGS :=
 
-SRCS := $(wildcard *.cpp)
-OBJS := $(patsubst %.cpp, %.o, $(SRCS))
+SRCS := $(wildcard src/*.cpp)
+OBJS := $(patsubst src/%.cpp, src/%.o, $(SRCS))
 
 all: compute
 
-%.o : %.cpp $(wildcard *.h)
+%.o : src/%.cpp $(wildcard *.h)
 	$(CXX) $(CXXFLAGS) -c $<
 
 compute: $(OBJS)
