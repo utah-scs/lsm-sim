@@ -2,19 +2,22 @@
 
 import sys
 import csv
-
-
 from collections import deque
 
 
-  
-
-trace_file = sys.argv[1]
-
-
-
+## Globals.
+trace_file  = sys.argv[1]
+appid       = int(sys.argv[2])
+gfactor     = float(sys.argv[3])
 hits = 0
 misses = 0
+appID = 19
+
+print "Simulating memcached on app %d with growth factor %f" %(appid,gfactor) 
+
+
+class RTyp:
+  GET, SET, DEL, ADD, INC, STA, OTH = range(7)
 
 class Request:
   def __init__ (self, time, appid, typ, ksz, vsz, kid, hit):
@@ -29,12 +32,25 @@ class Request:
     print "%f %d %d %d %d %d %d" %(self.time, self.appid, self.typ, self.ksz, 
     self.vsz, self.kid, self.hit) 
 
+def procRequest (req):
+  x = 3
+
+## Initialize data structures.  
+
+
+
+
+
+
+## Parse file and process request.
 with open(trace_file, 'rb') as tf:
   reader = csv.reader(tf, delimiter=',')
   for rw in reader:
     req = Request(float(rw[0]),int(rw[1]),int(rw[2]),int(rw[3]),int(rw[4]),
-    int(rw[5]),int(rw[6]))
-    req.printReq()   
+    int(rw[5]),int(rw[6]))   
+    if req.hit and req.vsz > 0 and req.appid == appID:
+      procRequest(req)
+      
 
 
 class SlabClass:
