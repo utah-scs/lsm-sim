@@ -3,18 +3,18 @@ rm shadow*.data
 rm shadow*.log
 
 
-  ./compute -a 19 \
+  ../lsm-sim -a 19 \
             -p 0 \
             -v \
-            -f data/app19 \
+            -f ../data/app19 \
             -u 0.716276 
   
   mv shadowlru-size-curve-app19.data shadowlru-size-curve-app19-util0.71.data  
 
-  ./compute -a 19 \
+  ../lsm-sim -a 19 \
             -p 0 \
             -v \
-            -f data/app19 \
+            -f ../data/app19 \
             -u 0.898926
   
   mv shadowlru-size-curve-app19.data shadowlru-size-curve-app19-util0.89.data      

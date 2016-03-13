@@ -9,25 +9,25 @@ rm shadow*.log
 
 for app in $apps; do
   echo Running app $app
-  ./compute -a $app \
+  ../lsm-sim -a $app \
             -p 4 \
             -v \
-            -f data/app${app} > shadowslab-app${app}-memcached.log 2>&1 &
+            -f ../data/app${app} > shadowslab-app${app}-memcached.log 2>&1 &
   a=$!
 
-  ./compute -a $app \
+  ../lsm-sim -a $app \
             -p 4 \
             -M \
             -v \
-            -f data/app${app} > shadowslab-app${app}-memcachier.log 2>&1 &
+            -f ../data/app${app} > shadowslab-app${app}-memcachier.log 2>&1 &
   b=$!
   wait $a
   wait $b
 
-  ./compute -a $app \
+  ../lsm-sim -a $app \
             -p 0 \
             -v \
-            -f data/app${app} > shadowlru-app${app}.log 2>&1 &
+            -f ../data/app${app} > shadowlru-app${app}.log 2>&1 &
   c=$!
 
   wait $c

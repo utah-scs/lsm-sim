@@ -3,16 +3,16 @@
 apps="3 19 18 20 6 5 8 59 227 29 10 94 11 23 2 7 53 13 31"
 
 for app in $apps; do
-  ./compute -a $app \
+  ../lsm-sim -a $app \
             -p 0 \
-            -f data/app${app}
+            -f ../data/app${app}
   mv shadowlru-size-curve.data shadowlru-size-curve-app${app}.data
 done
 
 for app in $apps; do
-  ./compute -a $app \
+  ../lsm-sim -a $app \
             -p 4 \
-            -f data/app${app}
+            -f ../data/app${app}
   mv shadowslab-size-curve.data shadowslab-size-curve-app${app}.data
 done
 

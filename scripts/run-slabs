@@ -11,10 +11,10 @@ rm shadow*.log
 
 for factor in $factors; do
   echo Running $factor 
-  ./compute -a 19 \
+  ../lsm-sim -a 19 \
             -p 4 \
             -v \
-            -f data/app19 \
+            -f ../data/app19 \
             -g $factor 
   
   mv shadowslab-size-curve-app19-memcached.data shadowslab-size-curve-${factor}.data

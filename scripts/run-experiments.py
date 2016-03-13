@@ -18,7 +18,7 @@ def compute(outfile,
             warmup=None,
             request_limit=None,
             infile=None):
-    cmd = ('./compute %s %s %s %s %s %s' %
+    cmd = ('../lsm-sim %s %s %s %s %s %s' %
            ('-p %d' % policy,
             ('', '-s %s' % str(size))[size != None],
             ('', '-l %s' % str(request_limit))[request_limit != None],

@@ -7,16 +7,16 @@ LDFLAGS :=
 SRCS := $(wildcard src/*.cpp)
 OBJS := $(patsubst src/%.cpp, src/%.o, $(SRCS))
 
-all: compute
+all: lsm-sim
 
 %.o : src/%.cpp $(wildcard *.h)
 	$(CXX) $(CXXFLAGS) -c $<
 
-compute: $(OBJS)
+lsm-sim: $(OBJS)
 	$(CXX) -o $@ $^
 
 clean:
-	-rm compute *.o
+	-rm lsm-sim src/*.o
 
 debug: CXXFLAGS += -DDEBUG
-debug: compute
+debug: lsm-sim
