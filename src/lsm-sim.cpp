@@ -19,6 +19,7 @@
 #include "fifo.h"
 #include "shadowlru.h"
 #include "shadowslab.h"
+#include "partslab.h"
 #include "lru.h"
 #include "slab.h"
 #include "mc.h"
@@ -26,13 +27,14 @@
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[5] = { "shadowlru"
+const char* policy_names[6] = { "shadowlru"
                               , "fifo"
                               , "lru"
 															, "slab"
                               , "shadowslab"
+                              , "partslab"
                               };
-enum pol_typ { SHADOWLRU = 0, FIFO, LRU, SLAB, SHADOWSLAB };
+enum pol_typ { SHADOWLRU = 0, FIFO, LRU, SLAB, SHADOWSLAB, PARTSLAB };
 
 // globals
 std::set<uint16_t>    apps{};                           // apps to consider
@@ -47,6 +49,7 @@ pol_typ               p_type;                           // policy type
 bool                  verbose = false;
 double                gfactor = 1.25;                   // def slab growth fact
 bool                  memcachier_classes = false;
+size_t                partitions = 2;
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -70,7 +73,8 @@ const std::string     usage  = "-f    specify file path\n"
                                "-p    policy 0, 1, 2; shadowlru, fifo, lru\n"
                                "-v    incremental output\n"
                                "-g    specify slab growth factor\n"
-                               "-M    use memcachier slab classes\n";
+                               "-M    use memcachier slab classes\n"
+                               "-P    number of partitions for partslab\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -105,7 +109,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::string sets;
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:M")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -151,15 +155,15 @@ int main(int argc, char *argv[]) {
       case 'M':
         memcachier_classes = true;
         break;
+      case 'P':
+        partitions = atoi(optarg); 
+        break;
     }
   }
 
   assert(apps.size() == 1);
 
   std::string filename_suffix = "-app" + std::to_string(*apps.cbegin());
-  if (p_type == SHADOWSLAB)
-    filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";
-
 
   // instantiate a policy
   std::unique_ptr<policy> policy{};
@@ -177,9 +181,14 @@ int main(int argc, char *argv[]) {
       policy.reset(new slab(filename_suffix, global_mem));
       break;
     case SHADOWSLAB:
+      filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";
       policy.reset(new shadowslab(filename_suffix,
                                   gfactor,
                                   memcachier_classes));
+    case PARTSLAB:
+      filename_suffix += "-partitions";
+      filename_suffix += std::to_string(partitions);
+      policy.reset(new partslab(filename_suffix, partitions));
       break;
   }
 

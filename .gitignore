@@ -7,3 +7,4 @@ results
 *.DS_Store./data
 *.data
 /trace_script/output
+*.log
