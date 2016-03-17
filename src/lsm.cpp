@@ -19,6 +19,8 @@ lsm::lsm(const std::string& filename_suffix,
   , segments{}
   , free_segments{}
 {
+  srand(0);
+
   if (global_mem % segment_size != 0) {
     std::cerr <<
       "WARNING: global_mem not a multiple of segment_size" << std::endl;
@@ -40,18 +42,19 @@ lsm::~lsm() {}
 
 size_t lsm::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
+
   if (!warmup)
     ++accesses;
 
   auto it = map.find(r->kid);
   if (it != map.end()) {
-    auto& list_it = it->second;
-    segment* old_segment = list_it->seg;
-    request* old_request = &list_it->req;
-    if (old_request->size() == r->size()) {
-      if (!warmup)
-        ++hits;
+    if (!warmup)
+      ++hits;
 
+    auto list_it = it->second;
+    segment* old_segment = list_it->seg;
+    int32_t old_request_size = list_it->req.size();
+    if (old_request_size  == r->size()) {
       // Promote this item to the front.
       old_segment->queue.erase(list_it);
       old_segment->queue.emplace_front(old_segment, *r);
@@ -59,19 +62,16 @@ size_t lsm::proc(const request *r, bool warmup) {
 
       return 0;
     } else {
-      // Size has changed. Even though it is in cache it must have already been
-      // evicted or shotdown. Since then it must have already been replaced as
-      // well. This means that there must have been some intervening get miss
-      // for it. So we need to count an extra access here (but not an extra
-      // hit). We do need to remove old_item from the map table, but
-      // it gets overwritten below anyway when r gets put in the cache.
-
-      // Count the get miss that came between r and old_item.
-      if (!warmup)
-        ++accesses;      
-      // Finally, we need to really put the correct sized value somewhere
-      // in the LRU queue. So fall through to the evict+insert clauses.
+      // If the size changed, then we have to put it in head. Just
+      // falling through to the code below handles that. We still
+      // count this record as a single hit, even though some miss
+      // would have had to have happened to shootdown the old stale
+      // sized value. This is to be fair to other policies like gLRU
+      // that don't detect these size changes.
     }
+  } else {
+    // If miss in hash table, then count a miss. This get will count
+    // as a second access that hits below.
   }
 
   if (head->filled_bytes + r->size() > segment_size)
@@ -83,10 +83,6 @@ size_t lsm::proc(const request *r, bool warmup) {
   map[r->kid] = head->queue.begin();
   head->filled_bytes += r->size();
  
-  // Count this request as a hit.
-  if (!warmup)
-    ++hits;
-
   return 0;
 }
 
@@ -97,12 +93,15 @@ size_t lsm::get_bytes_cached()
 
 void lsm::log() {
   std::ofstream out{"lsm-" + filename_suffix + ".data"};
-  out << "global_mem segment_size cleaning_width hits accesses" << std::endl;
+  out << "global_mem segment_size cleaning_width hits accesses hit_rate"
+      << std::endl;
   out << global_mem << " "
       << segment_size << " "
       << cleaning_width  << " "
       << hits << " "
-      << accesses << std::endl;
+      << accesses << " "
+      << double(hits) / accesses <<
+      std::endl;
 }
 
 void lsm::dump_util(const std::string& filename) {}
@@ -236,7 +235,7 @@ void lsm::clean()
   // selection doesn't choose them as a src.
   std::vector<segment*> dst_segments = choose_cleaning_destinations();
 
-  dump_cleaning_plan(src_segments, dst_segments);
+  //dump_cleaning_plan(src_segments, dst_segments);
 
   // One iterator for each segment to be cleaned. We use these to keep a
   // finger into each queue and merge them into a sorted order in the

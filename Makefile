@@ -9,7 +9,7 @@ OBJS := $(patsubst src/%.cpp, src/%.o, $(SRCS))
 
 all: lsm-sim
 
-%.o : src/%.cpp $(wildcard *.h)
+%.o : src/%.cpp $(wildcard src/*.h)
 	$(CXX) $(CXXFLAGS) -c $<
 
 lsm-sim: $(OBJS)

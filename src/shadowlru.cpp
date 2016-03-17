@@ -58,8 +58,8 @@ size_t shadowlru::proc(const request *r, bool warmup) {
       if (!part_of_slab_allocator)
         size_curve.hit(size_distance);
     } else {
-      // Don't count compulsory misses.
-      //size_curve.miss();
+      // Compulsory miss must have come before this new get hit.
+      size_curve.miss();
     }
   }
 
