@@ -122,7 +122,7 @@ void lsm::rollover()
   }
   assert(rolled);
 
-  if (free_segments < cleaning_width + 2)
+  if (free_segments < cleaning_width)
     clean();
 
 }
@@ -145,7 +145,10 @@ auto lsm::choose_cleaning_sources() -> std::vector<segment*>
   std::vector<segment*> srcs{};
 
   for (size_t i = 0; i < cleaning_width; ++i) {
-    for (auto& segment : segments) {
+    for (size_t j = 0; j < 1000000; ++j) {
+      int r = rand() % segments.size();
+      auto& segment = segments.at(r);
+
       // Don't pick free segments.
       if (!segment)
         continue;
@@ -194,39 +197,19 @@ auto lsm::choose_cleaning_destinations() -> std::vector<segment*> {
   return dsts;
 }
 
-void lsm::clean()
+void lsm::dump_cleaning_plan(std::vector<segment*> srcs,
+                             std::vector<segment*> dsts)
 {
-  /*
-  const char* spinner = "|/-\\";
-  static uint8_t last = 0;
-  std::cerr << spinner[last++ & 0x03] << '\r';
-  */
-
-  std::vector<segment*> src_segments = choose_cleaning_sources();
-  std::vector<segment*> dst_segments = choose_cleaning_destinations();
-
-  // Choose and construct each of the dst_segments. Wait until now so the src
-  // selection doesn't choose them as a src.
-
-  /*
-  // Dump, just to visually verify non-overlapping sets.
-  for (auto& src : src_segments)
-    std::cerr << "src " << src << std::endl;
-  for (auto& dst: dst_segments)
-    std::cerr << "dst " << dst << std::endl;
-  */
-
-  /*
   std::cerr << "Cleaning Plan [";
   for (auto& segment : segments) {
     if (segment) {
-      for (auto& src : src_segments) {
+      for (auto& src : srcs) {
         if (src == &segment.value()) {
           std::cerr << "S";
           goto next;
         }
       }
-      for (auto& dst: dst_segments) {
+      for (auto& dst: dsts) {
         if (dst == &segment.value()) {
           std::cerr << "D";
           goto next;
@@ -238,7 +221,22 @@ next:
     continue;
   }
   std::cerr << "]" << std::endl;
+} 
+
+void lsm::clean()
+{
+  /*
+  const char* spinner = "|/-\\";
+  static uint8_t last = 0;
+  std::cerr << spinner[last++ & 0x03] << '\r';
   */
+
+  std::vector<segment*> src_segments = choose_cleaning_sources();
+  // Choose and construct each of the dst_segments. Wait until now so the src
+  // selection doesn't choose them as a src.
+  std::vector<segment*> dst_segments = choose_cleaning_destinations();
+
+  dump_cleaning_plan(src_segments, dst_segments);
 
   // One iterator for each segment to be cleaned. We use these to keep a
   // finger into each queue and merge them into a sorted order in the
