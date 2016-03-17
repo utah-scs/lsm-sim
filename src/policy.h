@@ -35,7 +35,8 @@ class policy {
     virtual size_t get_bytes_cached() = 0; 
 
     virtual void log() = 0;
-    // virtual get_dump () 
+
+    virtual double get_running_hit_rate() { return 0.; }
 };
 
 

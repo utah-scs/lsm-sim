@@ -39,6 +39,10 @@ struct request {
     , type{}
     , hit{}
   { parse(s); }
+
+  bool operator<(const request& other) {
+    return time < other.time;
+  }
 };
 
 

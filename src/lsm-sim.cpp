@@ -20,6 +20,7 @@
 #include "shadowlru.h"
 #include "shadowslab.h"
 #include "partslab.h"
+#include "lsm.h"
 #include "lru.h"
 #include "slab.h"
 #include "mc.h"
@@ -27,14 +28,21 @@
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[6] = { "shadowlru"
+const char* policy_names[7] = { "shadowlru"
                               , "fifo"
                               , "lru"
 															, "slab"
                               , "shadowslab"
                               , "partslab"
+                              , "lsm"
                               };
-enum pol_typ { SHADOWLRU = 0, FIFO, LRU, SLAB, SHADOWSLAB, PARTSLAB };
+enum pol_typ { SHADOWLRU = 0
+  , FIFO
+  , LRU
+  , SLAB
+  , SHADOWSLAB
+  , PARTSLAB
+  , LSM };
 
 // globals
 std::set<uint16_t>    apps{};                           // apps to consider
@@ -44,12 +52,13 @@ float                 lsm_util = 1.0;                   // default util factor
 std::string           trace    = "data/m.cap.out";      // default filepath
 std::string           app_str;                          // for logging apps
 double                hit_start_time = 86400;           // default time 
-double                global_mem = 0;
+size_t                global_mem = 0;
 pol_typ               p_type;                           // policy type
 bool                  verbose = false;
 double                gfactor = 1.25;                   // def slab growth fact
 bool                  memcachier_classes = false;
 size_t                partitions = 2;
+size_t                segment_size = 8 * 1024 * 1024;
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -74,7 +83,8 @@ const std::string     usage  = "-f    specify file path\n"
                                "-v    incremental output\n"
                                "-g    specify slab growth factor\n"
                                "-M    use memcachier slab classes\n"
-                               "-P    number of partitions for partslab\n";
+                               "-P    number of partitions for partslab\n"
+                               "-s    segment size in bytes for lsm\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -119,7 +129,10 @@ int main(int argc, char *argv[]) {
         p_type = pol_typ(atoi(optarg)); 
         break;
       case 's':
-        global_mem = atoi(optarg);
+        global_mem = atol(optarg);
+        break;
+      case 'S':
+        segment_size = atol(optarg);
         break;
       case 'l':
         request_limit = atoi(optarg); 
@@ -190,6 +203,10 @@ int main(int argc, char *argv[]) {
       filename_suffix += std::to_string(partitions);
       policy.reset(new partslab(filename_suffix, partitions));
       break;
+    case LSM:
+      filename_suffix += "";
+      policy.reset(new lsm(filename_suffix, global_mem, segment_size, 4));
+      break;
   }
 
    if (!policy) {
@@ -234,7 +251,8 @@ int main(int argc, char *argv[]) {
       double seconds =
         ch::duration_cast<ch::nanoseconds>(now - last_progress).count() / 1e9;
       std::cerr << "Progress: " << r.time << " "
-                << "Rate: " << bytes / (1 << 20) / seconds << " MB/s"
+                << "Rate: " << bytes / (1 << 20) / seconds << " MB/s "
+                << "Hit Rate: " << policy->get_running_hit_rate() * 100 << "%"
                 << std::endl;
       bytes = 0;
       last_progress = now;
