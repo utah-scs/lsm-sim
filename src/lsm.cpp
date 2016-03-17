@@ -30,7 +30,7 @@ lsm::lsm(const std::string& filename_suffix,
             << " segment_count " << segments.size() << std::endl;
 
   // Check for enough segments to sustain cleaning width and head segment.
-  assert(segments.size() > cleaning_width + 2);
+  assert(segments.size() > 2 * cleaning_width);
 
   // Sets up head.
   rollover();
@@ -139,15 +139,11 @@ double lsm::get_running_hit_rate() {
   return double(hits) / accesses;
 }
 
-void lsm::clean()
-{
-  /*
-  const char* spinner = "|/-\\";
-  static uint8_t last = 0;
-  std::cerr << spinner[last++ & 0x03] << '\r';
-  */
 
-  std::vector<segment*> src_segments{};
+auto lsm::choose_cleaning_sources() -> std::vector<segment*>
+{
+  std::vector<segment*> srcs{};
+
   for (size_t i = 0; i < cleaning_width; ++i) {
     for (auto& segment : segments) {
       // Don't pick free segments.
@@ -160,21 +156,24 @@ void lsm::clean()
 
       // Don't pick any segment we've already picked!
       bool already_picked = false;
-      for (auto& already_in : src_segments)
+      for (auto& already_in : srcs)
         already_picked |= (already_in == &segment.value());
       if (already_picked)
         continue;
 
-      src_segments.emplace_back(&segment.value());
+      srcs.emplace_back(&segment.value());
       break;
     }
     // Check for enough in use segments during cleaning; if not then a bug!
-    assert(src_segments.size() == i + 1);
+    assert(srcs.size() == i + 1);
   }
 
-  // Choose and construct each of the dst_segments. Wait until now so the src
-  // selection doesn't choose them as a src.
-  std::vector<segment*> dst_segments{};
+  return srcs;
+}
+
+auto lsm::choose_cleaning_destinations() -> std::vector<segment*> {
+  std::vector<segment*> dsts{};
+
   for (size_t i = 0; i < cleaning_width - 1; ++i) {
     for (auto& segment : segments) {
       // Don't pick a used segment. (This also guarantees we don't pick
@@ -185,12 +184,29 @@ void lsm::clean()
       // Construct, clean empty segment here.
       segment.emplace();
       --free_segments;
-      dst_segments.emplace_back(&segment.value());
+      dsts.emplace_back(&segment.value());
       break;
     }
     // Check for enough free segments during cleaning; if not then a bug!
-    assert(dst_segments.size() == i + 1);
+    assert(dsts.size() == i + 1);
   }
+
+  return dsts;
+}
+
+void lsm::clean()
+{
+  /*
+  const char* spinner = "|/-\\";
+  static uint8_t last = 0;
+  std::cerr << spinner[last++ & 0x03] << '\r';
+  */
+
+  std::vector<segment*> src_segments = choose_cleaning_sources();
+  std::vector<segment*> dst_segments = choose_cleaning_destinations();
+
+  // Choose and construct each of the dst_segments. Wait until now so the src
+  // selection doesn't choose them as a src.
 
   /*
   // Dump, just to visually verify non-overlapping sets.
