@@ -173,27 +173,21 @@ auto lsm::choose_cleaning_sources() -> std::vector<segment*>
   return srcs;
 }
 
-auto lsm::choose_cleaning_destinations() -> std::vector<segment*> {
-  std::vector<segment*> dsts{};
+auto lsm::choose_cleaning_destination() -> segment* {
+  for (auto& segment : segments) {
+    // Don't pick a used segment. (This also guarantees we don't pick
+    // the same free segment more than once.)
+    if (segment)
+      continue;
 
-  for (size_t i = 0; i < cleaning_width - 1; ++i) {
-    for (auto& segment : segments) {
-      // Don't pick a used segment. (This also guarantees we don't pick
-      // the same free segment more than once.)
-      if (segment)
-        continue;
+    // Construct, clean empty segment here.
+    segment.emplace();
+    --free_segments;
 
-      // Construct, clean empty segment here.
-      segment.emplace();
-      --free_segments;
-      dsts.emplace_back(&segment.value());
-      break;
-    }
-    // Check for enough free segments during cleaning; if not then a bug!
-    assert(dsts.size() == i + 1);
+    return &segment.value();
   }
 
-  return dsts;
+  assert(false);
 }
 
 void lsm::dump_cleaning_plan(std::vector<segment*> srcs,
@@ -214,6 +208,8 @@ void lsm::dump_cleaning_plan(std::vector<segment*> srcs,
           goto next;
         }
       }
+      std::cerr << "X";
+      goto next;
     }
     std::cerr << "-";
 next:
@@ -231,11 +227,6 @@ void lsm::clean()
   */
 
   std::vector<segment*> src_segments = choose_cleaning_sources();
-  // Choose and construct each of the dst_segments. Wait until now so the src
-  // selection doesn't choose them as a src.
-  std::vector<segment*> dst_segments = choose_cleaning_destinations();
-
-  //dump_cleaning_plan(src_segments, dst_segments);
 
   // One iterator for each segment to be cleaned. We use these to keep a
   // finger into each queue and merge them into a sorted order in the
@@ -245,7 +236,9 @@ void lsm::clean()
     its.emplace_back(segment->queue.begin());
 
   size_t dst_index = 0;
-  segment* dst = dst_segments.at(dst_index);
+  segment* dst = choose_cleaning_destination();
+  std::vector<segment*> dst_segments{};
+  dst_segments.push_back(dst);
 
   while (true) {
     item* item = nullptr;
@@ -284,11 +277,11 @@ void lsm::clean()
     if (dst->filled_bytes + item->req.size() > segment_size) {
       ++dst_index;
       // Break out of relocation if we are out of free space our dst segs.
-      if (dst_index == dst_segments.size()) {
+      if (dst_index == cleaning_width - 1)
         break;
-      }
       // Rollover to new dst.
-      dst = dst_segments.at(dst_index);
+      dst = choose_cleaning_destination();
+      dst_segments.push_back(dst);
     }
     assert(dst->filled_bytes + item->req.size() <= segment_size);
     ++its.at(it_to_incr);
@@ -326,6 +319,8 @@ void lsm::clean()
     for (segment* src : src_segments)
       assert(item.seg != src);
   }
+
+  //dump_cleaning_plan(src_segments, dst_segments);
 
   // Reset each src segment as free for reuse.
   for (auto* src : src_segments) {

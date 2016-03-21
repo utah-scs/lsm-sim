@@ -63,7 +63,7 @@ class lsm : public policy {
     void dump_usage();
 
     std::vector<segment*> choose_cleaning_sources();
-    std::vector<segment*> choose_cleaning_destinations();
+    segment* choose_cleaning_destination();
 
     void dump_cleaning_plan(std::vector<segment*> srcs,
                             std::vector<segment*> dsts);
