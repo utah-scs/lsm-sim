@@ -2,6 +2,8 @@
 #define SLAB_H
 
 #include "policy.h"
+#include "lru.h"
+
 #include <vector>
 #include <memory>
 #include <unordered_map>
@@ -13,48 +15,40 @@ static const uint16_t MAX_CLASSES=256;    // Memcached max no of slabs
 static const size_t   MAX_SIZE=5000000;   // Largest KV pair allowed 
 
 class slab : public policy {
-   
   public:
-    slab(const std::string& filename_suffix, uint64_t size);
+    slab(const std::string& filename_suffix,
+         uint64_t size,
+         double factor,
+         bool memcachier_classes);
    ~slab();
     size_t proc(const request *r, bool warmup);
     void log();
     size_t get_bytes_cached();
 
   private:
+  std::pair<uint64_t, uint64_t> get_slab_class(uint32_t size);
+
+    static constexpr size_t SLABSIZE = 1024 * 1024;
 
     // Number of access requests fed to the cache.
-    size_t accesses();
+    size_t accesses;
 
     // Subset of accesses which hit in the simulated cache.
-    size_t hits(); 
+    size_t hits;
 
-    // Size in bytes of the entire allocated cache.
-    size_t global_cache_size();
-
-    // Chunk size growth factor.
-    double growth;
-	
-    // The current number of bytes in eviction queue.
-    size_t current_size; 
-
-    // Represents a LRU eviction queue for a slab class.
-    class sclru;
-
-    typedef std::pair<uint32_t, uint32_t> ks_pr;
-    typedef std::unique_ptr<sclru> sc_ptr;
+    std::vector<lru> slabs; 
 
     // Simple mapping of existing keys to their respective slab.
     std::unordered_map<uint32_t, uint32_t> slab_for_key;
- 
-    // Container for all slab class eviction queues.
-    std::unordered_map<uint32_t, sc_ptr> slabs;
 
-    // Given initial chunk size and growth factor initializes an sclru for each 
-    // class up to max size or max number of classes, whichever comes first. 
-    // Returns the index of the last slab class created as a bounds check for 
-    // future accesses.
-    uint16_t init_slabs (void); 
+    // If true use memcachier size classes instead of memcacheds.
+    bool memcachier_classes;
+
+    uint32_t slab_count;
+
+    uint64_t mem_in_use;
+
+    uint32_t appid;
 };
 
 #endif

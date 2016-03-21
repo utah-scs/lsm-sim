@@ -77,9 +77,9 @@ size_t shadowslab::proc(const request *r, bool warmup) {
 
   size_t size_distance = slab_class.proc(&copy, warmup);
   if (size_distance == PROC_MISS) {
-    // Don't count compulsory misses.
-    //if (!warmup)
-      //size_curve.miss();
+    // Count compulsory misses.
+    if (!warmup)
+      size_curve.miss();
     return PROC_MISS;
   }
 

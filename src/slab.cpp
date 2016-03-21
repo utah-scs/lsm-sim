@@ -1,160 +1,149 @@
 #include <iostream>
+#include <cassert>
+#include <fstream>
 
 #include "slab.h"
 #include "lru.h"
+#include "mc.h"
 
-slab::slab(const std::string& filename_suffix, uint64_t size)
+slab::slab(
+    const std::string& filename_suffix,
+    uint64_t size,
+    double factor,
+    bool memcachier_classes)
   : policy{filename_suffix, size}
-	, growth{DEF_GFACT}
-  , current_size{}
+  , accesses{}
+  , hits{}
+  , slabs{}
   , slab_for_key{}
-	, slabs{}
+  , memcachier_classes{}
+  , slab_count{}
+  , mem_in_use{}
+  , appid{}
 {
-  init_slabs();
+  if (memcachier_classes)
+    slab_count = 15;
+  else
+    slab_count = slabs_init(factor);
+  slabs.resize(slab_count);
+
+  if (memcachier_classes) {
+    std::cerr << "Initialized with memcachier slab classes" << std::endl;
+  } else {
+    std::cerr << "Initialized with " << slab_count
+              <<" slab classes" << std::endl;
+  }
 }
 
 slab::~slab () {
 }
 
-class slab::sclru : public lru {
-  public:
-    sclru(slab* owner, size_t chunk_sz)
-    : lru("", PAGE_SIZE) 
-    ,	chunk_sz{chunk_sz}
-    , owner{owner}
-    {}
-   ~sclru() {}
-
-    uint32_t get_free(void) { return global_mem - bytes_cached; }
-    void alloc(size_t size) { global_mem += size; }
-    size_t get_hits() { return hits; }
-    size_t get_accs() { return accesses; }
-    size_t get_global_mem() { return global_mem; }
-    size_t get_bytes_cached() { return bytes_cached; }
-  private: 
-    // Chunk size for this slab class.
-    size_t chunk_sz;	
-
-    slab* owner; 
-
-    sclru(const sclru&) = delete;
-    sclru& operator=(const sclru&) = delete;
-    sclru(const sclru&&) = delete;
-    sclru& operator=(sclru&&) = delete;
-};
-
-
-
-
 size_t slab::proc(const request *r, bool warmup) {
+  assert(r->size() > 0);
 
-  // TODO : FIX SO THIS ROUNDS PROPERLY
+  if (appid == ~0u)
+    appid = r->appid;
+  assert(r->appid == appid);
 
-  // Determine slab class LRU chain for request. 
-  size_t size = r->size() > 0 ? r->size() : 0;
-  uint32_t chunk = MIN_CHUNK;
-  while(size > chunk) 
-    chunk *= DEF_GFACT;
-  
-  auto it = slabs.find(chunk);
-  if(it == slabs.end()) {
-    std::cerr << "Object size too large for slab config" << std::endl;
-    std::cerr << "obj_size: " << size << std::endl;
-    return 0;
-  }
-  
-  const auto &s = it->second;
-    
-  // Check current capacity of slab class, if there is not enough room
-  // we need to allocate a new page. (increase the size of slab) and then
-  // process the request normally. If, however, we are out of global mem
-  // we cannot expand the slab, so just process the request and let LRU 
-  // take care of the eviction/put process.
-  if(s->get_free() < size) { 
-    if(global_mem - current_size >= PAGE_SIZE && current_size <= global_mem) {
-      s->alloc(PAGE_SIZE); 
-    }
+  if (!warmup)
+    ++accesses;
+
+  uint64_t class_size = 0;
+  uint64_t klass = 0;
+  std::tie(class_size, klass) = get_slab_class(r->size());
+  if (klass == PROC_MISS) {
+    // We need to count these as misses in case different size to class
+    // mappings don't all cover the same range of object sizes. If some
+    // slab class configuration doesn't handle some subset of the acceses
+    // it must penalized. In practice, memcachier and memcached's policies
+    // cover the same range, so this shouldn't get invoked anyway.
+    return PROC_MISS;
   }
 
-  // See if a slab assignment already exists for this key. If so compare the
-  // size of the slab where the key is currently with the chunk size for the
-  // request. If processing would result in reclassification, remove the 
-  // current association and add the new one.
+  // See if slab assignment already exists for this key.
+  // Check if change in size (if any) requires reclassification
+  // to a different slab. If so, remove from current slab.
   auto csit = slab_for_key.find(r->kid);
-  if(csit != slab_for_key.end()) {
-    if(csit->second != chunk) {
-      auto nsit = slabs.find(csit->second);
-      if(nsit != slabs.end()) {
-        nsit->second->remove(r);
-        slab_for_key.insert(ks_pr(r->kid, chunk));
-      }
-      else
-        std::cerr << "Expected slab class for corresponding key" << std::endl; 
+
+  if (csit != slab_for_key.end() && csit->second != klass) { 
+    lru& sclass = slabs.at(csit->second);
+    sclass.remove(r);
+    slab_for_key.erase(r->kid);
+  }
+ 
+  lru& slab_class = slabs.at(klass);
+
+  // Round up the request size so the per-class LRU holds the right
+  // size.
+  request copy{*r};
+  copy.key_sz   = 0;
+  copy.val_sz   = class_size;
+  copy.frag_sz  = class_size - r->size();
+
+  size_t outcome = slab_class.proc(&copy, warmup);
+  if (outcome == PROC_MISS) {
+    // Expand class and retry.
+    if (mem_in_use < global_mem) {
+      mem_in_use += SLABSIZE;
+      slab_class.expand(SLABSIZE);
+      outcome = slab_class.proc(&copy, warmup);
     }
+    // Count compulsory misses.
+    return PROC_MISS;
   }
 
-  // If we reach this point it's safe to process the request. 
-  current_size += s->proc(r, warmup);
-  
+  // Proc didn't miss, re-validate key/slab pair.
+  slab_for_key.insert(std::pair<uint32_t,uint32_t>(r->kid, klass));
 
-  return 0;
-}
-
-
-// TODO: FIX SO THIS ROUNDS PROPERLY
-
-uint16_t slab::init_slabs (void) {
-  int i = 0;  
-  size_t size = MIN_CHUNK;   
+  if (!warmup)
+    ++hits;
  
-  std::cout << "Creating slab classes" << std::endl;  
-  while(i < MAX_CLASSES && size <= MAX_SIZE / DEF_GFACT) {
-    std::cout << i << " " << size << std::endl;    
-    sc_ptr sc(new sclru(this, size));   
-    slabs.insert(std::make_pair(size, std::move(sc)));
-    size *= DEF_GFACT;
-    i++; 
-  }  
-  return i - 1; 
+  return 1;
 }
+
+
 size_t slab::get_bytes_cached() {
-size_t b = 0;  
-  for (const auto &p : slabs)
-    b += p.second->get_bytes_cached(); 
+  size_t b = 0;  
+  for (const auto &s : slabs)
+    b += s.get_bytes_cached(); 
   return b; 
 }
 
-
-
-// Iterate over the slab classes and sum hits.
-size_t slab::hits() {
-size_t h = 0;
-  for (const auto &p : slabs) 
-    h += p.second->get_hits();
-  return h; 
-}
-
-// Iterate over the slab classes and sum accesses.
-size_t slab::accesses() {
-size_t a = 0;
-  for (const auto &p : slabs)
-    a += p.second->get_accs();
-  return a;
-}
-
-size_t slab::global_cache_size() {
-size_t c = 0;
-  for (const auto &p : slabs)
-    c += p.second->get_global_mem();
-  return c;
-}
-
 void slab::log() {
+  std::ofstream out{"slab" + filename_suffix + ".data"};
+  out << "app policy global_mem segment_size cleaning_width hits accesses hit_rate"
+      << std::endl;
+  out << appid << " "
+      << "slab" << " "
+      << global_mem << " "
+      << 0 << " "
+      << 0 << " "
+      << hits << " "
+      << accesses << " "
+      << double(hits) / accesses
+      << std::endl;
+}
 
-  size_t gbl = global_cache_size();
+std::pair<uint64_t, uint64_t> slab::get_slab_class(uint32_t size) {
+  uint64_t class_size = 64;
+  uint64_t klass = 0;
 
-  std::cout << double(current_size) / gbl << " "
-            << double(current_size) / gbl << " "
-            << gbl << " "
-            << double(hits()) / accesses() << std::endl;
+  if (memcachier_classes) {
+    while (true) {
+      if (size < class_size)
+        return {class_size, klass};
+      class_size <<= 1;
+      ++klass;
+      if (klass == slab_count) {
+        return {PROC_MISS, PROC_MISS};
+      }
+    }
+  } else {
+    std::tie(class_size, klass) = slabs_clsid(size);
+    // Object too big for chosen size classes.
+    if (size > 0 && klass == 0)
+      return {PROC_MISS, PROC_MISS};
+    --klass;
+    return {class_size, klass};
+  }
 }

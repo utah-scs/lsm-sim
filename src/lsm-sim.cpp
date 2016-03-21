@@ -188,10 +188,17 @@ int main(int argc, char *argv[]) {
       policy.reset(new fifo(filename_suffix, global_mem));
       break;
     case LRU : 
+      filename_suffix += "-size";
+      filename_suffix += std::to_string(global_mem / (1u << 20));
+      filename_suffix += "MB";
       policy.reset(new lru(filename_suffix, global_mem));
       break;
     case SLAB :
-      policy.reset(new slab(filename_suffix, global_mem));
+      filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";
+      policy.reset(new slab(filename_suffix,
+                            global_mem,
+                            gfactor,
+                            memcachier_classes));
       break;
     case SHADOWSLAB:
       filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";

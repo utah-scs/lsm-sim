@@ -32,7 +32,7 @@ class policy {
     enum { PROC_MISS = ~0lu };
     virtual size_t proc(const request *r, bool warmup) = 0;
 
-    virtual size_t get_bytes_cached() = 0; 
+    virtual size_t get_bytes_cached() const = 0; 
 
     virtual void log() = 0;
 

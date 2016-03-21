@@ -44,10 +44,9 @@ lsm::~lsm() {}
 size_t lsm::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
-  if (appid == ~0u) {
-    assert(r->appid == appid);
+  if (appid == ~0u)
     appid = r->appid;
-  }
+  assert(r->appid == appid);
 
   if (!warmup)
     ++accesses;
@@ -92,23 +91,24 @@ size_t lsm::proc(const request *r, bool warmup) {
   return 0;
 }
 
-size_t lsm::get_bytes_cached()
+size_t lsm::get_bytes_cached() const
 {
   return 0;
 }
 
 void lsm::log() {
   std::ofstream out{"lsm" + filename_suffix + ".data"};
-  out << "app global_mem segment_size cleaning_width hits accesses hit_rate"
+  out << "app policy global_mem segment_size cleaning_width hits accesses hit_rate"
       << std::endl;
   out << appid << " "
+      << "lsm" << " "
       << global_mem << " "
       << segment_size << " "
       << cleaning_width  << " "
       << hits << " "
       << accesses << " "
-      << double(hits) / accesses <<
-      std::endl;
+      << double(hits) / accesses
+      << std::endl;
 }
 
 void lsm::dump_util(const std::string& filename) {}

@@ -1,6 +1,19 @@
 #include <iostream>
+#include <fstream>
+#include <cassert>
 
 #include "lru.h"
+
+lru::lru()
+  : policy{"", 0}
+  , accesses{}
+  , hits{}
+  , bytes_cached{}
+  , hash{}
+  , queue{}
+  , appid{~0u}
+{
+}
 
 lru::lru(const std::string& filename_suffix, uint64_t size)
   : policy{filename_suffix, size}
@@ -9,6 +22,7 @@ lru::lru(const std::string& filename_suffix, uint64_t size)
   , bytes_cached{}
   , hash{}
   , queue{}
+  , appid{~0u}
 {
 }
 
@@ -16,7 +30,7 @@ lru::~lru () {
 }
 
 // Simply returns the current number of bytes cached.
-size_t lru::get_bytes_cached() { return bytes_cached; }
+size_t lru::get_bytes_cached() const { return bytes_cached; }
 
 // Public accessors for hits and accesses.
 size_t lru::get_hits() { return hits; }
@@ -52,17 +66,24 @@ int64_t lru::remove (const request *r) {
 }
 
 
+void lru::expand(size_t bytes) {
+  global_mem += bytes;
+}
+
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash
 // and to the LRU queue and returns a miss. Returns absolute
 // number of bytes added to the cache.
 size_t lru::proc(const request *r, bool warmup) {
+  assert(r->size() > 0);
+
+  if (appid == ~0u)
+    appid = r->appid;
+  assert(r->appid == appid);
+
   if (!warmup)
     ++accesses;
 
-  // Keep track of initial condition of cache.
-  int64_t bytes_init = bytes_cached;
-  
   auto it = hash.find(r->kid);
   if (it != hash.end()) {
     auto& list_it = it->second;
@@ -76,20 +97,18 @@ size_t lru::proc(const request *r, bool warmup) {
       queue.erase(list_it);
       hash[r->kid] = queue.begin();
 
-      return 0;
+      return 1;
     } else {
-      // Size has changed. Even though it is in cache it must have already been
-      // evicted or shotdown. Since then it must have already been replaced as
-      // well. This means that there must have been some intervening get miss
-      // for it. So we need to count an extra access here (but not an extra
-      // hit). We do need to remove prior_request from the hash table, but
-      // it gets overwritten below anyway when r gets put in the cache.
-
-      // Count the get miss that came between r and prior_request.
-      ++accesses;      
-      // Finally, we need to really put the correct sized value somewhere
-      // in the LRU queue. So fall through to the evict+insert clauses.
+      // If the size changed, then we have to put it in head. Just
+      // falling through to the code below handles that. We still
+      // count this record as a single hit, even though some miss
+      // would have had to have happened to shootdown the old stale
+      // sized value. This is to be fair to other policies like gLRU
+      // that don't detect these size changes.
     }
+  } else {
+    // If miss in hash table, then count a miss. This get will count
+    // as a second access that hits below.
   }
 
   // Throw out enough junk to make room for new record.
@@ -99,7 +118,7 @@ size_t lru::proc(const request *r, bool warmup) {
     // Though, you probably shouldn't be setting the cache size smaller
     // than the max memcache object size.
     if (queue.empty())
-      return 0;
+      return PROC_MISS;
 
     request* victim = &queue.back();
     bytes_cached -= victim->size();
@@ -112,17 +131,20 @@ size_t lru::proc(const request *r, bool warmup) {
   hash[r->kid] = queue.begin();
   bytes_cached += r->size();
  
-  // Count this request as a hit.
-  if (!warmup)
-    ++hits;
-
-  // Cache size has changed, return the difference.
-  return bytes_cached - bytes_init;
+  return PROC_MISS;
 }
 
 void lru::log() {
-  std::cout << double(bytes_cached) / global_mem << " "
-            << double(bytes_cached) / global_mem << " "
-            << global_mem << " "
-            << double(hits) / accesses << std::endl;
+  std::ofstream out{"lru" + filename_suffix + ".data"};
+  out << "app policy global_mem segment_size cleaning_width hits accesses hit_rate"
+      << std::endl;
+  out << appid << " "
+      << "lru" << " "
+      << global_mem << " "
+      << 0 << " "
+      << 0 << " "
+      << hits << " "
+      << accesses << " "
+      << double(hits) / accesses
+      << std::endl;
 }
