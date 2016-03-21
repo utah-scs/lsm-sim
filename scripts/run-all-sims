@@ -1,0 +1,40 @@
+#!/bin/bash
+
+#apps="3 19 18 20 6 5 8 59 227 29 10 94 11 23 2 7 53 13 31"
+apps="19 18 20 6 8 59 227 29 10 94 11 23 2 7 53 13 31 5"
+# ---------------------------------------------------| -> slow apps
+
+mbs="10 20 30 40 50 60 70 80 90 100 200 300 400 500 600 700 800 900 1000 1100 1200"
+
+segment_size=$((1024 * 1024))
+
+rm lsm*.data
+rm lsm*.log
+
+pids=""
+
+for app in $apps; do
+  echo Running app $app
+
+  for mb in $mbs; do
+    echo With cache size $mb MB
+
+    ../lsm-sim \
+      -a $app \
+      -p 6 \
+      -s $(($mb * 1024 * 1024)) \
+      -S $segment_size \
+      -v \
+      -f ../data/app${app} > lsm-app${app}-${mb}MB.log 2>&1 &
+    pids="$pids $!"
+
+    cnt=( $pids )
+    cnt="${#cnt[@]}"
+    if [[ "$cnt" == 8 ]]; then
+      wait $pids
+      pids=""
+    fi
+  done
+done
+
+wait $pids

@@ -18,6 +18,7 @@ lsm::lsm(const std::string& filename_suffix,
   , head{nullptr}
   , segments{}
   , free_segments{}
+  , appid{~0u}
 {
   srand(0);
 
@@ -42,6 +43,11 @@ lsm::~lsm() {}
 
 size_t lsm::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
+
+  if (appid == ~0u) {
+    assert(r->appid == appid);
+    appid = r->appid;
+  }
 
   if (!warmup)
     ++accesses;
@@ -92,10 +98,11 @@ size_t lsm::get_bytes_cached()
 }
 
 void lsm::log() {
-  std::ofstream out{"lsm-" + filename_suffix + ".data"};
-  out << "global_mem segment_size cleaning_width hits accesses hit_rate"
+  std::ofstream out{"lsm" + filename_suffix + ".data"};
+  out << "app global_mem segment_size cleaning_width hits accesses hit_rate"
       << std::endl;
-  out << global_mem << " "
+  out << appid << " "
+      << global_mem << " "
       << segment_size << " "
       << cleaning_width  << " "
       << hits << " "

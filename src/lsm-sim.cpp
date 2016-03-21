@@ -204,7 +204,9 @@ int main(int argc, char *argv[]) {
       policy.reset(new partslab(filename_suffix, partitions));
       break;
     case LSM:
-      filename_suffix += "";
+      filename_suffix += "-size";
+      filename_suffix += std::to_string(global_mem / (1u << 20));
+      filename_suffix += "MB";
       policy.reset(new lsm(filename_suffix, global_mem, segment_size, 4));
       break;
   }

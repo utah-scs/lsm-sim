@@ -84,6 +84,8 @@ class lsm : public policy {
     std::vector<optional<segment>> segments;
     size_t free_segments;
 
+    uint32_t appid;
+
     lsm(const lsm&) = delete;
     lsm& operator=(const lsm&) = delete;
     lsm(lsm&&) = delete;
