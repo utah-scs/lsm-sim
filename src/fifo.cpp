@@ -76,8 +76,8 @@ size_t fifo::proc(const request *r, bool warmup) {
   return current_size - init_bytes;
 }
 
-size_t fifo::get_bytes_cached() {
-size_t cached = 0;
+size_t fifo::get_bytes_cached() const {
+  size_t cached = 0;
   for (const auto& r: queue)
     cached += r.size();
   return cached;

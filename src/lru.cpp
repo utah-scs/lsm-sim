@@ -9,7 +9,7 @@ lru::lru()
   , accesses{}
   , hits{}
   , bytes_cached{}
-  , hash{}
+  , map{}
   , queue{}
   , appid{~0u}
 {
@@ -20,7 +20,7 @@ lru::lru(const std::string& filename_suffix, uint64_t size)
   , accesses{}
   , hits{}
   , bytes_cached{}
-  , hash{}
+  , map{}
   , queue{}
   , appid{~0u}
 {
@@ -42,9 +42,9 @@ size_t lru::get_accs() { return accesses; }
 // the bytes for all requests in the chain until 'r' is reached.
 int64_t lru::remove (const request *r) {
 
-  // If r is not in the hash something weird has happened.
-  auto it = hash.find(r->kid); 
-  if(it == hash.end())
+  // If r is not in the map something weird has happened.
+  auto it = map.find(r->kid); 
+  if(it == map.end())
     return -1; 
 
   // Sum the sizes of all requests up until we reach 'r'.
@@ -60,7 +60,7 @@ int64_t lru::remove (const request *r) {
   auto& list_it = it->second;
   bytes_cached -= list_it->size();
   queue.erase(list_it);
-  hash.erase(it);
+  map.erase(it);
 
   return stack_dist;
 }
@@ -70,8 +70,8 @@ void lru::expand(size_t bytes) {
   global_mem += bytes;
 }
 
-// checks the hashmap for membership, if the key is found
-// returns a hit, otherwise the key is added to the hash
+// checks the map for membership, if the key is found
+// returns a hit, otherwise the key is added to the map
 // and to the LRU queue and returns a miss. Returns absolute
 // number of bytes added to the cache.
 size_t lru::proc(const request *r, bool warmup) {
@@ -84,18 +84,19 @@ size_t lru::proc(const request *r, bool warmup) {
   if (!warmup)
     ++accesses;
 
-  auto it = hash.find(r->kid);
-  if (it != hash.end()) {
+  auto it = map.find(r->kid);
+  if (it != map.end()) {
+    if (!warmup)
+      ++hits;
+
     auto& list_it = it->second;
     request& prior_request = *list_it;
-    if (prior_request.size() == r->size()) {
-      if (!warmup)
-        ++hits;
 
+    if (prior_request.size() == r->size()) {
       // Promote this item to the front.
       queue.emplace_front(prior_request);
       queue.erase(list_it);
-      hash[r->kid] = queue.begin();
+      map[r->kid] = queue.begin();
 
       return 1;
     } else {
@@ -122,13 +123,13 @@ size_t lru::proc(const request *r, bool warmup) {
 
     request* victim = &queue.back();
     bytes_cached -= victim->size();
-    hash.erase(victim->kid);
+    map.erase(victim->kid);
     queue.pop_back();
   }
 
   // Add the new request.
   queue.emplace_front(*r);
-  hash[r->kid] = queue.begin();
+  map[r->kid] = queue.begin();
   bytes_cached += r->size();
  
   return PROC_MISS;
@@ -148,3 +149,8 @@ void lru::log() {
       << double(hits) / accesses
       << std::endl;
 }
+
+double lru::get_running_hit_rate() {
+  return double(hits) / accesses;
+}
+

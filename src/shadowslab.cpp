@@ -104,7 +104,7 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   return 0;
 }
 
-size_t shadowslab::get_bytes_cached() {
+size_t shadowslab::get_bytes_cached() const {
   return 0;
 }
 

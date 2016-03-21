@@ -41,7 +41,7 @@ size_t partslab::proc(const request *r, bool warmup) {
   return 0;
 }
 
-size_t partslab::get_bytes_cached() {
+size_t partslab::get_bytes_cached() const {
   return 0;
 }
 

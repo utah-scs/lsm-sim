@@ -21,7 +21,7 @@ class shadowslab : public policy {
     ~shadowslab();
 
     size_t proc(const request *r, bool warmup);
-    size_t get_bytes_cached();
+    size_t get_bytes_cached() const;
     void log();
     void dump_util(const std::string& filename);
 

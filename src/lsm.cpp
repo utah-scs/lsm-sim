@@ -65,7 +65,7 @@ size_t lsm::proc(const request *r, bool warmup) {
       old_segment->queue.emplace_front(old_segment, *r);
       map[r->kid] = old_segment->queue.begin();
 
-      return 0;
+      return 1;
     } else {
       // If the size changed, then we have to put it in head. Just
       // falling through to the code below handles that. We still
@@ -88,7 +88,7 @@ size_t lsm::proc(const request *r, bool warmup) {
   map[r->kid] = head->queue.begin();
   head->filled_bytes += r->size();
  
-  return 0;
+  return PROC_MISS;
 }
 
 size_t lsm::get_bytes_cached() const
@@ -319,15 +319,32 @@ void lsm::clean()
     }
   }
 
-  // Sanity check - none of the items left in the hash table should point
-  // into a src_segment.
-  for (auto& entry : map) {
-    item& item = *entry.second;
-    for (segment* src : src_segments)
-      assert(item.seg != src);
-  }
+  const bool debug = false;
+  if (debug) {
+    // Sanity check - none of the items left in the hash table should point
+    // into a src_segment.
+    for (auto& entry : map) {
+      item& item = *entry.second;
+      for (segment* src : src_segments)
+        assert(item.seg != src);
+    }
 
-  //dump_cleaning_plan(src_segments, dst_segments);
+    // Sanity check - none of the segments should contain more data than their
+    // rated capacity.
+    for (auto& segment : segments) {
+      if (!segment)
+        continue;
+
+      size_t bytes = 0;
+      for (const auto& item : segment->queue) {
+        assert(item.seg == &segment.value());
+        bytes += item.req.size();
+      }
+      assert(bytes <= segment_size);
+    }
+
+    dump_cleaning_plan(src_segments, dst_segments);
+  } 
 
   // Reset each src segment as free for reuse.
   for (auto* src : src_segments) {

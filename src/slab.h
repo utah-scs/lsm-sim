@@ -23,7 +23,7 @@ class slab : public policy {
    ~slab();
     size_t proc(const request *r, bool warmup);
     void log();
-    size_t get_bytes_cached();
+    size_t get_bytes_cached() const;
 
   private:
   std::pair<uint64_t, uint64_t> get_slab_class(uint32_t size);

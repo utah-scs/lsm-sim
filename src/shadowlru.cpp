@@ -66,7 +66,7 @@ size_t shadowlru::proc(const request *r, bool warmup) {
   return size_distance;
 }
 
-size_t shadowlru::get_bytes_cached() {
+size_t shadowlru::get_bytes_cached() const {
   return bytes_cached;
 }
 

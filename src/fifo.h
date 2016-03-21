@@ -13,7 +13,7 @@ class fifo : public policy {
    ~fifo();
 
     size_t proc(const request *r, bool warmup); 
-    size_t get_bytes_cached();
+    size_t get_bytes_cached() const;
     void log();
 
   private:

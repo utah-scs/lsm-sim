@@ -241,6 +241,7 @@ int main(int argc, char *argv[]) {
 
   // proc file line by line
   std::ifstream t_stream(trace);
+  assert(t_stream.is_open());
   std::string line;
 
   int i = 0;

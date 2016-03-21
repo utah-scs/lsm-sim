@@ -27,7 +27,7 @@ for app in $apps; do
       -p 2 \
       -s $(($mb * 1024 * 1024)) \
       -v \
-      -f ../data/app${app} > lru-app${app}-${mb}MB.log 2>&1 &
+      -f ../data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
 
     cnt=( $pids )
@@ -54,7 +54,7 @@ for app in $apps; do
       -s $(($mb * 1024 * 1024)) \
       -S $segment_size \
       -v \
-      -f ../data/app${app} > lsm-app${app}-${mb}MB.log 2>&1 &
+      -f ../data/app${app} > lsm-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
 
     cnt=( $pids )

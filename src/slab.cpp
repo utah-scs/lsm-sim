@@ -102,7 +102,7 @@ size_t slab::proc(const request *r, bool warmup) {
 }
 
 
-size_t slab::get_bytes_cached() {
+size_t slab::get_bytes_cached() const {
   size_t b = 0;  
   for (const auto &s : slabs)
     b += s.get_bytes_cached(); 

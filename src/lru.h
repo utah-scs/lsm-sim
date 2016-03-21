@@ -26,6 +26,8 @@ class lru : public policy {
     size_t get_accs();
     void log();
 
+  double get_running_hit_rate();
+
   protected:
     // Number of access requests fed to the cache.
     size_t accesses;
@@ -36,7 +38,7 @@ class lru : public policy {
 		// The number of bytes currently cached.
     size_t bytes_cached; 
 
-    hash_map hash; 
+    hash_map map; 
     lru_queue queue; 
 
     uint32_t appid;
