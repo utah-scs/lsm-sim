@@ -12,8 +12,10 @@ lsm::lsm(const std::string& filename_suffix,
   , global_mem{global_mem}
   , segment_size{segment_size}
   , cleaning_width{cleaning_width}
-  , accesses{0}
-  , hits{0}
+  , accesses{}
+  , hits{}
+  , evicted_bytes{}
+  , evicted_items{}
   , map{}
   , head{nullptr}
   , segments{}
@@ -130,7 +132,6 @@ void lsm::rollover()
 
   if (free_segments < cleaning_width)
     clean();
-
 }
 
 void lsm::dump_usage()
@@ -311,15 +312,18 @@ void lsm::clean()
         item* from_list = &*it;
         item* from_hash = &*hash_it->second;
 
-        if (from_list == from_hash)
+        if (from_list == from_hash) {
           map.erase(it->req.kid);
+          ++evicted_items;
+          evicted_bytes += from_list->req.size();
+        }
       }
 
       ++it;
     }
   }
 
-  const bool debug = false;
+  const bool debug = true;
   if (debug) {
     // Sanity check - none of the items left in the hash table should point
     // into a src_segment.
@@ -343,7 +347,7 @@ void lsm::clean()
       assert(bytes <= segment_size);
     }
 
-    dump_cleaning_plan(src_segments, dst_segments);
+    //dump_cleaning_plan(src_segments, dst_segments);
   } 
 
   // Reset each src segment as free for reuse.

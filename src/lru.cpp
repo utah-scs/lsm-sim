@@ -8,6 +8,8 @@ lru::lru()
   : policy{"", 0}
   , accesses{}
   , hits{}
+  , evicted_bytes{}
+  , evicted_items{}
   , bytes_cached{}
   , map{}
   , queue{}
@@ -19,6 +21,8 @@ lru::lru(const std::string& filename_suffix, uint64_t size)
   : policy{filename_suffix, size}
   , accesses{}
   , hits{}
+  , evicted_bytes{}
+  , evicted_items{}
   , bytes_cached{}
   , map{}
   , queue{}
@@ -89,13 +93,13 @@ size_t lru::proc(const request *r, bool warmup) {
     if (!warmup)
       ++hits;
 
-    auto& list_it = it->second;
+    auto list_it = it->second;
     request& prior_request = *list_it;
 
     if (prior_request.size() == r->size()) {
       // Promote this item to the front.
-      queue.emplace_front(prior_request);
       queue.erase(list_it);
+      queue.emplace_front(*r);
       map[r->kid] = queue.begin();
 
       return 1;
@@ -106,6 +110,10 @@ size_t lru::proc(const request *r, bool warmup) {
       // would have had to have happened to shootdown the old stale
       // sized value. This is to be fair to other policies like gLRU
       // that don't detect these size changes.
+
+      queue.erase(list_it);
+      map.erase(prior_request.kid);
+      bytes_cached -= prior_request.size();
     }
   } else {
     // If miss in hash table, then count a miss. This get will count
@@ -113,16 +121,20 @@ size_t lru::proc(const request *r, bool warmup) {
   }
 
   // Throw out enough junk to make room for new record.
-  while (global_mem - bytes_cached < uint32_t(r->size())) {
+  while (bytes_cached + size_t(r->size()) > global_mem) {
     // If the queue is already empty, then we are in trouble. The cache
     // just isn't big enough to hold this object under any circumstances.
     // Though, you probably shouldn't be setting the cache size smaller
     // than the max memcache object size.
-    if (queue.empty())
+    if (queue.empty()) {
+      assert(false);
       return PROC_MISS;
+    }
 
     request* victim = &queue.back();
     bytes_cached -= victim->size();
+    ++evicted_items;
+    evicted_bytes += victim->size();
     map.erase(victim->kid);
     queue.pop_back();
   }

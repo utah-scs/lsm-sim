@@ -54,6 +54,8 @@ class lsm : public policy {
     void log();
 
     double get_running_hit_rate();
+    size_t get_evicted_bytes() { return evicted_bytes; }
+    size_t get_evicted_items() { return evicted_items; }
 
     void dump_util(const std::string& filename);
 
@@ -77,6 +79,9 @@ class lsm : public policy {
 
     // Subset of accesses which hit in the simulated cache.
     size_t hits;
+
+    size_t evicted_bytes;
+    size_t evicted_items;
 
     hash_map map; 
 
