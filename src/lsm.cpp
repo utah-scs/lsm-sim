@@ -13,10 +13,6 @@ lsm::lsm(const std::string& filename_suffix,
   , global_mem{global_mem}
   , segment_size{segment_size}
   , cleaning_width{cleaning_width}
-  , accesses{}
-  , hits{}
-  , evicted_bytes{}
-  , evicted_items{}
   , map{}
   , head{nullptr}
   , segments{}
@@ -52,12 +48,12 @@ size_t lsm::proc(const request *r, bool warmup) {
   assert(r->appid == appid);
 
   if (!warmup)
-    ++accesses;
+    ++stat.accesses;
 
   auto it = map.find(r->kid);
   if (it != map.end()) {
     if (!warmup)
-      ++hits;
+      ++stat.hits;
 
     auto list_it = it->second;
     segment* old_segment = list_it->seg;
@@ -108,9 +104,9 @@ void lsm::log() {
       << global_mem << " "
       << segment_size << " "
       << cleaning_width  << " "
-      << hits << " "
-      << accesses << " "
-      << double(hits) / accesses
+      << stat.hits << " "
+      << stat.accesses << " "
+      << double(stat.hits) / stat.accesses
       << std::endl;
 }
 
@@ -144,7 +140,7 @@ void lsm::dump_usage()
 }
 
 double lsm::get_running_hit_rate() {
-  return double(hits) / accesses;
+  return double(stat.hits) / stat.accesses;
 }
 
 
@@ -317,8 +313,8 @@ void lsm::clean()
 
         if (from_list == from_hash) {
           map.erase(it->req.kid);
-          ++evicted_items;
-          evicted_bytes += from_list->req.size();
+          ++stat.evicted_items;
+          stat.evicted_bytes += from_list->req.size();
         }
       }
 

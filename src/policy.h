@@ -16,15 +16,29 @@ class policy {
     double ov_head;     // m / g
     double hit_rate;    // sum of hits in hits vect over size of hits vector
   };
-
+  typedef struct stats {
+      double utilization;
+      size_t accesses;
+      size_t hits;      
+      size_t evicted_bytes;
+      size_t evicted_items;
+      size_t cleaned_bytes;
+      size_t cleaned_items;
+    }stats;
+  
   protected: 
     std::string filename_suffix;
     uint64_t global_mem;
+
+   
+    stats stat; 
+    
 
   public:
     policy (const std::string& filename_suffix, const uint64_t global_mem)
       : filename_suffix{filename_suffix}
       , global_mem{global_mem}
+      , stat{0,0,0,0,0,0,0}
     {}
 
     virtual ~policy() {}

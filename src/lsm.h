@@ -54,8 +54,8 @@ class lsm : public policy {
     void log();
 
     double get_running_hit_rate();
-    size_t get_evicted_bytes() { return evicted_bytes; }
-    size_t get_evicted_items() { return evicted_items; }
+    size_t get_evicted_bytes() { return stat.evicted_bytes; }
+    size_t get_evicted_items() { return stat.evicted_items; }
 
     void dump_util(const std::string& filename);
 
@@ -73,15 +73,6 @@ class lsm : public policy {
     const size_t global_mem;
     const size_t segment_size;
     const size_t cleaning_width;
-
-    // Number of access requests fed to the cache.
-    size_t accesses;
-
-    // Subset of accesses which hit in the simulated cache.
-    size_t hits;
-
-    size_t evicted_bytes;
-    size_t evicted_items;
 
     hash_map map; 
 
