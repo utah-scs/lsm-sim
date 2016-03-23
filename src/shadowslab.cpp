@@ -4,12 +4,13 @@
 #include "shadowlru.h"
 #include "shadowslab.h"
 #include "mc.h"
+#include "common.h"
 
 shadowslab::shadowslab(
     const std::string& filename_suffix,
     double factor,
     bool memcachier_classes)
-  : policy{filename_suffix, 0}
+  : policy{filename_suffix, 0, stats{"shadowslab", 0}}
   , slabs{}
   , slabids{}
   , slab_for_key{}

@@ -5,40 +5,30 @@
 #include "lru.h"
 
 lru::lru()
-  : policy{"", 0}
-  , accesses{}
-  , hits{}
-  , evicted_bytes{}
-  , evicted_items{}
-  , bytes_cached{}
+  : policy{"", 0, stats{"",0}}
   , map{}
-  , queue{}
-  , appid{~0u}
+  , queue{} 
 {
+  stat.appid = ~0u;
 }
 
-lru::lru(const std::string& filename_suffix, uint64_t size)
-  : policy{filename_suffix, size}
-  , accesses{}
-  , hits{}
-  , evicted_bytes{}
-  , evicted_items{}
-  , bytes_cached{}
+lru::lru(const std::string& filename_suffix, size_t global_mem)
+  : policy{filename_suffix, global_mem, stats{"lru", global_mem}}
   , map{}
   , queue{}
-  , appid{~0u}
 {
+  stat.appid = ~0u;
 }
 
 lru::~lru () {
 }
 
 // Simply returns the current number of bytes cached.
-size_t lru::get_bytes_cached() const { return bytes_cached; }
+size_t lru::get_bytes_cached() const { return stat.bytes_cached; }
 
 // Public accessors for hits and accesses.
-size_t lru::get_hits() { return hits; }
-size_t lru::get_accs() { return accesses; }
+size_t lru::get_hits() { return stat.hits; }
+size_t lru::get_accs() { return stat.accesses; }
 
 // Removes a request with matching key from the chain and
 // updates bytes_cached accordingly.
@@ -62,7 +52,7 @@ int64_t lru::remove (const request *r) {
   // Adjust the local bytes_cached value, remove 'r'
   // from the hash table, and from the LRU chain.
   auto& list_it = it->second;
-  bytes_cached -= list_it->size();
+  stat.bytes_cached -= list_it->size();
   queue.erase(list_it);
   map.erase(it);
 
@@ -71,7 +61,7 @@ int64_t lru::remove (const request *r) {
 
 
 void lru::expand(size_t bytes) {
-  global_mem += bytes;
+  stat.global_mem += bytes;
 }
 
 // checks the map for membership, if the key is found
@@ -81,17 +71,17 @@ void lru::expand(size_t bytes) {
 size_t lru::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
-  if (appid == ~0u)
-    appid = r->appid;
-  assert(r->appid == appid);
+  if (stat.appid == ~0u)
+    stat.appid = r->appid;
+  assert(r->appid == stat.appid);
 
   if (!warmup)
-    ++accesses;
+    ++stat.accesses;
 
   auto it = map.find(r->kid);
   if (it != map.end()) {
     if (!warmup)
-      ++hits;
+      ++stat.hits;
 
     auto list_it = it->second;
     request& prior_request = *list_it;
@@ -113,7 +103,7 @@ size_t lru::proc(const request *r, bool warmup) {
 
       queue.erase(list_it);
       map.erase(prior_request.kid);
-      bytes_cached -= prior_request.size();
+      stat.bytes_cached -= prior_request.size();
     }
   } else {
     // If miss in hash table, then count a miss. This get will count
@@ -121,7 +111,7 @@ size_t lru::proc(const request *r, bool warmup) {
   }
 
   // Throw out enough junk to make room for new record.
-  while (bytes_cached + size_t(r->size()) > global_mem) {
+  while (stat.bytes_cached + size_t(r->size()) > stat.global_mem) {
     // If the queue is already empty, then we are in trouble. The cache
     // just isn't big enough to hold this object under any circumstances.
     // Though, you probably shouldn't be setting the cache size smaller
@@ -132,9 +122,9 @@ size_t lru::proc(const request *r, bool warmup) {
     }
 
     request* victim = &queue.back();
-    bytes_cached -= victim->size();
-    ++evicted_items;
-    evicted_bytes += victim->size();
+    stat.bytes_cached -= victim->size();
+    ++stat.evicted_items;
+    stat.evicted_bytes += victim->size();
     map.erase(victim->kid);
     queue.pop_back();
   }
@@ -142,7 +132,7 @@ size_t lru::proc(const request *r, bool warmup) {
   // Add the new request.
   queue.emplace_front(*r);
   map[r->kid] = queue.begin();
-  bytes_cached += r->size();
+  stat.bytes_cached += r->size();
  
   return PROC_MISS;
 }
@@ -151,19 +141,19 @@ void lru::log() {
   std::ofstream out{"lru" + filename_suffix + ".data"};
   out << "app policy global_mem segment_size cleaning_width hits accesses hit_rate"
       << std::endl;
-  out << appid << " "
+  out << stat.appid << " "
       << "lru" << " "
-      << global_mem << " "
+      << stat.global_mem << " "
       << 0 << " "
       << 0 << " "
-      << hits << " "
-      << accesses << " "
-      << double(hits) / accesses
+      << stat.hits << " "
+      << stat.accesses << " "
+      << double(stat.hits) / stat.accesses
       << std::endl;
 }
 
 double lru::get_running_hit_rate() {
-  return double(hits) / accesses;
+  return double(stat.hits) / stat.accesses;
 }
 
 double lru::get_running_utilization() {
@@ -171,8 +161,8 @@ double lru::get_running_utilization() {
   for (auto& request : queue)
     in_use += request.size();
 
-  assert(in_use == bytes_cached);
+  assert(in_use == stat.bytes_cached);
 
-  return double(in_use) / global_mem;
+  return double(in_use) / stat.global_mem;
 }
 

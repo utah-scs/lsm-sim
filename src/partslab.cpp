@@ -1,6 +1,7 @@
 #include <cassert>
 #include <tuple>
 
+#include "common.h"
 #include "shadowlru.h"
 #include "partslab.h"
 #include "mc.h"
@@ -8,7 +9,7 @@
 partslab::partslab(
     const std::string& filename_suffix,
     size_t partitions)
-  : policy{filename_suffix, 0}
+  : policy{filename_suffix, 0, stats{"partslab", 0 }}
   , partitions{partitions}
   , slabs{}
   , size_curve{}

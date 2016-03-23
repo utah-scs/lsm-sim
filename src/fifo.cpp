@@ -1,9 +1,10 @@
 #include <iostream>
 
 #include "fifo.h"
+#include "common.h"
 
-fifo::fifo(const std::string& filename_suffix, uint64_t size)
-  : policy{filename_suffix, size}
+fifo::fifo(const std::string& filename_suffix, size_t global_mem)
+  : policy{filename_suffix, global_mem, stats{"fifo", global_mem}}
   , accesses{}
   , hits{}
   , current_size{}
@@ -20,7 +21,7 @@ fifo::~fifo () {
 // and to the FIFO queue and returns a miss.
 size_t fifo::proc(const request *r, bool warmup) {
   if (!warmup)
-    ++accesses;
+    ++stat.accesses;
 
   // Keep track of initial condition of cache.
   int64_t init_bytes = current_size;
@@ -42,14 +43,14 @@ size_t fifo::proc(const request *r, bool warmup) {
 
       // Count the get miss that came between r and prior_request.
       if (!warmup)
-        ++accesses;
+        ++stat.accesses;
       // Finally, we need to really put the correct sized value somewhere
       // in the FIFO queue. So fall through to the evict+insert clauses.
     }
   }
 
   // Throw out enough junk to make room for new record.
-  while (global_mem - current_size < uint32_t(r->size())) {
+  while (stat.global_mem - current_size < uint32_t(r->size())) {
     // If the queue is already empty, then we are in trouble. The cache
     // just isn't big enough to hold this object under any circumstances.
     // Though, you probably shouldn't be setting the cache size smaller
@@ -70,7 +71,7 @@ size_t fifo::proc(const request *r, bool warmup) {
  
   // Count this request as a hit.
   if (!warmup)
-    ++hits;
+    ++stat.hits;
 
   // Cache has been modified, return the difference.
   return current_size - init_bytes;
@@ -84,8 +85,8 @@ size_t fifo::get_bytes_cached() const {
 }
 
 void fifo::log() {
-  std::cout << double(current_size) / global_mem << " "
-            << double(current_size) / global_mem << " "
-            << global_mem << " "
-            << double(hits) / accesses << std::endl;
+  std::cout << double(current_size) / stat.global_mem << " "
+            << double(current_size) / stat.global_mem << " "
+            << stat.global_mem << " "
+            << double(hits) / stat.accesses << std::endl;
 }

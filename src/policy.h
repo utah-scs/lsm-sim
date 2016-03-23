@@ -1,7 +1,9 @@
 #ifndef POLICY_H
 #define POLICY_H
 
+#include <string>
 #include "request.h"
+#include "common.h"
 
 // abstract base class for plug-and-play policies
 class policy {
@@ -16,29 +18,18 @@ class policy {
     double ov_head;     // m / g
     double hit_rate;    // sum of hits in hits vect over size of hits vector
   };
-  typedef struct stats {
-      double utilization;
-      size_t accesses;
-      size_t hits;      
-      size_t evicted_bytes;
-      size_t evicted_items;
-      size_t cleaned_bytes;
-      size_t cleaned_items;
-    }stats;
+  
   
   protected: 
     std::string filename_suffix;
-    uint64_t global_mem;
-
-   
+   // uint64_t global_mem; 
     stats stat; 
     
-
   public:
-    policy (const std::string& filename_suffix, const uint64_t global_mem)
-      : filename_suffix{filename_suffix}
-      , global_mem{global_mem}
-      , stat{0,0,0,0,0,0,0}
+    policy (const std::string& filename_suffix, const size_t global_mem, 
+      stats stat)
+      : filename_suffix{filename_suffix} 
+      , stat{stat}
     {}
 
     virtual ~policy() {}
@@ -54,6 +45,28 @@ class policy {
     virtual double get_running_utilization() { return 0.; }
     virtual size_t get_evicted_bytes() { return 0; }
     virtual size_t get_evicted_items() { return 0; }
+
+    void dump_stats(void) {
+      std::ofstream out {"lsm" + filename_suffix + ".data"};
+      out << "app policy global_mem segment_size cleaning_width hits accesses "
+             "hit_rate, bytes_cached, evicted_bytes, evicted_items,"
+             "cleaned_bytes, cleaned_items" 
+          << std::endl;
+      out << stat.appid << " "
+          << stat.policy << " "
+          << stat.global_mem << " "
+          << stat.segment_size << " "
+          << stat.cleaning_width << " "
+          << stat.hits << " "
+          << stat.accesses << " "
+          << double(stat.hits) / stat.accesses << " "
+          << stat.bytes_cached << " "
+          << stat.evicted_bytes << " "
+          << stat.evicted_items << " "
+          << stat.cleaned_bytes << " "
+          << stat.cleaned_items << " "
+          << std::endl;
+    }
 };
 
 

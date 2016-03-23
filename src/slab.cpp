@@ -11,7 +11,7 @@ slab::slab(
     uint64_t size,
     double factor,
     bool memcachier_classes)
-  : policy{filename_suffix, size}
+  : policy{filename_suffix, size, stats{"", 0}}
   , accesses{}
   , hits{}
   , slabs{}
@@ -83,7 +83,7 @@ size_t slab::proc(const request *r, bool warmup) {
   size_t outcome = slab_class.proc(&copy, warmup);
   if (outcome == PROC_MISS) {
     // Expand class and retry.
-    if (mem_in_use < global_mem) {
+    if (mem_in_use < stat.global_mem) {
       mem_in_use += SLABSIZE;
       slab_class.expand(SLABSIZE);
       outcome = slab_class.proc(&copy, warmup);
@@ -115,7 +115,7 @@ void slab::log() {
       << std::endl;
   out << appid << " "
       << "slab" << " "
-      << global_mem << " "
+      << stat.global_mem << " "
       << 0 << " "
       << 0 << " "
       << hits << " "

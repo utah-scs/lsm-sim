@@ -2,9 +2,8 @@
 
 #include "shadowlru.h"
 
-shadowlru::shadowlru(const std::string& filename_suffix, uint64_t global_mem)
-  : policy{filename_suffix, global_mem}
-  , bytes_cached{}
+shadowlru::shadowlru(const std::string& filename_suffix, size_t global_mem)
+  : policy{filename_suffix, global_mem, stats{"shadowlru", global_mem}}
   , class_size{}
   , size_curve{}
   , queue{}
@@ -17,7 +16,7 @@ shadowlru::~shadowlru() {
 
 // Removes an item from the chain and returns its
 // distance in the chain (bytes).
-int64_t shadowlru::remove(const request *r) {
+size_t shadowlru::remove(const request *r) {
 
   // Sum the sizes of all requests up until we reach 'r'.
   size_t stack_dist = 0;
@@ -25,7 +24,7 @@ int64_t shadowlru::remove(const request *r) {
   auto it = queue.begin();
   while (it++ != queue.end()) {
     if (it->kid == r->kid) {
-      bytes_cached -= it->size();
+      stat.bytes_cached -= it->size();
       queue.erase(it); 
       break;
     } 
@@ -44,13 +43,13 @@ size_t shadowlru::proc(const request *r, bool warmup) {
     request& item = *it;
     size_distance += item.size();
     if (item.kid == r->kid) {
-      bytes_cached -= item.size();
+      stat.bytes_cached -= item.size();
       queue.erase(it);
       break;
     }
   }
 
-  bytes_cached += r->size();
+  stat.bytes_cached += r->size();
   queue.emplace_front(*r);
 
   if (!warmup) {
@@ -67,7 +66,7 @@ size_t shadowlru::proc(const request *r, bool warmup) {
 }
 
 size_t shadowlru::get_bytes_cached() const {
-  return bytes_cached;
+  return stat.bytes_cached;
 }
 
 // Iterate over requests summing the associated overhead

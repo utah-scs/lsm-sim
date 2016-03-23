@@ -9,30 +9,29 @@ lsm::lsm(const std::string& filename_suffix,
          size_t global_mem,
          size_t segment_size,
          size_t cleaning_width)
-  : policy{filename_suffix, global_mem}
-  , global_mem{global_mem}
-  , segment_size{segment_size}
-  , cleaning_width{cleaning_width}
+  : policy{filename_suffix, global_mem, stats{"lsm", global_mem}}
   , map{}
   , head{nullptr}
   , segments{}
   , free_segments{}
-  , appid{~0u}
 {
+  stat.segment_size   = segment_size;
+  stat.cleaning_width = cleaning_width;  
+
   srand(0);
 
-  if (global_mem % segment_size != 0) {
+  if (global_mem % stat.segment_size != 0) {
     std::cerr <<
       "WARNING: global_mem not a multiple of segment_size" << std::endl;
   }
-  segments.resize(global_mem / segment_size);
+  segments.resize(global_mem / stat.segment_size);
   free_segments = segments.size();
-  std::cerr << "global_mem " << global_mem
-            << " segment_size " << segment_size
+  std::cerr << "global_mem " << stat.global_mem
+            << " segment_size " << stat.segment_size
             << " segment_count " << segments.size() << std::endl;
 
   // Check for enough segments to sustain cleaning width and head segment.
-  assert(segments.size() > 2 * cleaning_width);
+  assert(segments.size() > 2 * stat.cleaning_width);
 
   // Sets up head.
   rollover();
@@ -43,9 +42,9 @@ lsm::~lsm() {}
 size_t lsm::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
-  if (appid == ~0u)
-    appid = r->appid;
-  assert(r->appid == appid);
+  if (stat.appid == ~0u)
+    stat.appid = r->appid;
+  assert(r->appid == stat.appid);
 
   if (!warmup)
     ++stat.accesses;
@@ -78,9 +77,9 @@ size_t lsm::proc(const request *r, bool warmup) {
     // as a second access that hits below.
   }
 
-  if (head->filled_bytes + r->size() > segment_size)
+  if (head->filled_bytes + r->size() > stat.segment_size)
     rollover();
-  assert(head->filled_bytes + r->size() <= segment_size);
+  assert(head->filled_bytes + r->size() <= stat.segment_size);
 
   // Add the new request.
   head->queue.emplace_front(head, *r);
@@ -99,11 +98,11 @@ void lsm::log() {
   std::ofstream out{"lsm" + filename_suffix + ".data"};
   out << "app policy global_mem segment_size cleaning_width hits accesses hit_rate"
       << std::endl;
-  out << appid << " "
+  out << stat.appid << " "
       << "lsm" << " "
-      << global_mem << " "
-      << segment_size << " "
-      << cleaning_width  << " "
+      << stat.global_mem << " "
+      << stat.segment_size << " "
+      << stat.cleaning_width  << " "
       << stat.hits << " "
       << stat.accesses << " "
       << double(stat.hits) / stat.accesses
@@ -127,7 +126,7 @@ void lsm::rollover()
   }
   assert(rolled);
 
-  if (free_segments < cleaning_width)
+  if (free_segments < stat.cleaning_width)
     clean();
 }
 
@@ -148,7 +147,7 @@ auto lsm::choose_cleaning_sources() -> std::vector<segment*>
 {
   std::vector<segment*> srcs{};
 
-  for (size_t i = 0; i < cleaning_width; ++i) {
+  for (size_t i = 0; i < stat.cleaning_width; ++i) {
     for (size_t j = 0; j < 1000000; ++j) {
       int r = rand() % segments.size();
       auto& segment = segments.at(r);
@@ -281,16 +280,16 @@ void lsm::clean()
     assert(src_segments.at(it_to_incr) == item->seg);
 
     // Check to see if there is room for the item in the dst.
-    if (dst->filled_bytes + item->req.size() > segment_size) {
+    if (dst->filled_bytes + item->req.size() > stat.segment_size) {
       ++dst_index;
       // Break out of relocation if we are out of free space our dst segs.
-      if (dst_index == cleaning_width - 1)
+      if (dst_index == stat.cleaning_width - 1)
         break;
       // Rollover to new dst.
       dst = choose_cleaning_destination();
       dst_segments.push_back(dst);
     }
-    assert(dst->filled_bytes + item->req.size() <= segment_size);
+    assert(dst->filled_bytes + item->req.size() <= stat.segment_size);
     ++its.at(it_to_incr);
 
     // Relocate *to the back* to retain timestamp sort order.
@@ -358,7 +357,7 @@ void lsm::clean()
         assert(item.seg == &segment.value());
         bytes += item.req.size();
       }
-      assert(bytes <= segment_size);
+      assert(bytes <= stat.segment_size);
       assert(bytes == segment->filled_bytes);
       stored_in_whole_cache += bytes;
     }

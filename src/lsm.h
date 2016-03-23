@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "policy.h"
+#include "common.h"
 
 #ifndef LSM_H
 #define LSM_H
@@ -69,18 +70,12 @@ class lsm : public policy {
 
     void dump_cleaning_plan(std::vector<segment*> srcs,
                             std::vector<segment*> dsts);
-
-    const size_t global_mem;
-    const size_t segment_size;
-    const size_t cleaning_width;
-
     hash_map map; 
 
     segment* head;
     std::vector<optional<segment>> segments;
     size_t free_segments;
 
-    uint32_t appid;
 
     lsm(const lsm&) = delete;
     lsm& operator=(const lsm&) = delete;

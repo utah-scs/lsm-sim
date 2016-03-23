@@ -9,11 +9,11 @@
 // policy derived from Cliffhanger paper
 class shadowlru : public policy {
   public:
-    shadowlru(const std::string& filename_suffix = "", uint64_t global_mem = 0);
+    shadowlru(const std::string& filename_suffix = "", size_t global_mem = 0);
     ~shadowlru();
 
     size_t proc(const request *r, bool warmup);
-    int64_t remove(const request *r);
+    size_t remove(const request *r);
      
     size_t get_bytes_cached() const;
     std::vector<size_t> get_class_frags(size_t slab_size) const;
@@ -23,8 +23,7 @@ class shadowlru : public policy {
       return &size_curve;
     }
 
-  private:
-    size_t bytes_cached;
+  private:    
     size_t class_size;
     hit_rate_curve size_curve;
     std::list<request> queue;
