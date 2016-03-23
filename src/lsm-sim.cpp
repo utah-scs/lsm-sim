@@ -265,7 +265,8 @@ int main(int argc, char *argv[]) {
                   << "Rate: " << bytes / (1 << 20) / seconds << " MB/s "
                   << "Hit Rate: " << policy->get_running_hit_rate() * 100 << "% "
                   << "Evicted Items: " << policy->get_evicted_items() << " "
-                  << "Evicted Bytes: " << policy->get_evicted_bytes()
+                  << "Evicted Bytes: " << policy->get_evicted_bytes() << " "
+                  << "Utilization: " << policy->get_running_utilization()
                   << std::endl;
         bytes = 0;
         last_progress = now;

@@ -27,6 +27,7 @@ class lru : public policy {
     void log();
 
     double get_running_hit_rate();
+    double get_running_utilization();
     size_t get_evicted_bytes() { return evicted_bytes; }
     size_t get_evicted_items() { return evicted_items; }
 

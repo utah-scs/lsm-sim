@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <cassert>
+#include <unordered_set>
 
 #include "lsm.h"
 
@@ -281,6 +282,8 @@ void lsm::clean()
       continue;
     }
 
+    assert(src_segments.at(it_to_incr) == item->seg);
+
     // Check to see if there is room for the item in the dst.
     if (dst->filled_bytes + item->req.size() > segment_size) {
       ++dst_index;
@@ -296,7 +299,7 @@ void lsm::clean()
 
     // Relocate *to the back* to retain timestamp sort order.
     dst->queue.emplace_back(dst, item->req);
-    map[item->req.kid] = dst->queue.end();
+    map[item->req.kid] = (--dst->queue.end());
     dst->filled_bytes += item->req.size();
   }
 
@@ -333,22 +336,8 @@ void lsm::clean()
         assert(item.seg != src);
     }
 
-    // Sanity check - none of the segments should contain more data than their
-    // rated capacity.
-    for (auto& segment : segments) {
-      if (!segment)
-        continue;
-
-      size_t bytes = 0;
-      for (const auto& item : segment->queue) {
-        assert(item.seg == &segment.value());
-        bytes += item.req.size();
-      }
-      assert(bytes <= segment_size);
-    }
-
     //dump_cleaning_plan(src_segments, dst_segments);
-  } 
+  }
 
   // Reset each src segment as free for reuse.
   for (auto* src : src_segments) {
@@ -359,6 +348,51 @@ void lsm::clean()
       }
     }
   }
+
+  if (debug) {
+    // Sanity check - none of the segments should contain more data than their
+    // rated capacity.
+    size_t stored_in_whole_cache = 0;
+    for (auto& segment : segments) {
+      if (!segment)
+        continue;
+
+      size_t bytes = 0;
+      for (const auto& item : segment->queue) {
+        assert(item.seg == &segment.value());
+        bytes += item.req.size();
+      }
+      assert(bytes <= segment_size);
+      assert(bytes == segment->filled_bytes);
+      stored_in_whole_cache += bytes;
+    }
+
+    // Sanity check - the sum of all of the requests active in the hash table
+    // should not be greater than the combined space in all of the in use
+    // segments.
+    size_t reachable_from_map = 0;
+    std::unordered_set<int32_t> seen{};
+    for (auto& entry : map) {
+      item& item = *entry.second;
+      // HT key had better only point to objects with the same kid.
+      if (entry.first != item.req.kid) {
+        std::cerr << "Mismatch! map entry "
+                  << entry.first << " != " << item.req.kid << std::endl;
+        item.req.dump();
+      }
+      assert(entry.first == item.req.kid);
+      // Better not see the same kid twice among the objects in the HT.
+      assert(seen.find(item.req.kid) == seen.end());
+      reachable_from_map += item.req.size();
+      seen.insert(item.req.kid);
+    }
+    if (reachable_from_map > stored_in_whole_cache) {
+      std::cerr << "reachable_from_map: " << reachable_from_map << std::endl
+                << "stored_in_whole_cache: " << stored_in_whole_cache
+                << std::endl;
+    }
+    assert(reachable_from_map <= stored_in_whole_cache);
+  } 
 }
 
 

@@ -166,3 +166,13 @@ double lru::get_running_hit_rate() {
   return double(hits) / accesses;
 }
 
+double lru::get_running_utilization() {
+  size_t in_use = 0;
+  for (auto& request : queue)
+    in_use += request.size();
+
+  assert(in_use == bytes_cached);
+
+  return double(in_use) / global_mem;
+}
+
