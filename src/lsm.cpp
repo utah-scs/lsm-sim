@@ -37,6 +37,9 @@ lsm::~lsm() {}
 size_t lsm::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
+  if(stat.accesses % 10000 == 0)
+    dump_stats(); 
+
   if (stat.appid == ~0u)
     stat.appid = r->appid;
   assert(r->appid == stat.appid);
