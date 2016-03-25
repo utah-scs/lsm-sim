@@ -22,8 +22,9 @@ class slab : public policy {
     void log();
     size_t get_bytes_cached() const;
 
+
   private:
-  std::pair<uint64_t, uint64_t> get_slab_class(uint32_t size);
+    std::pair<uint64_t, uint64_t> get_slab_class(uint32_t size);
 
     static constexpr size_t SLABSIZE = 1024 * 1024;
 

@@ -13,7 +13,60 @@ segment_size=$((1024 * 1024))
 
 pids=""
 
-echo === LRU ===
+# echo === LRU ===
+# for app in $apps; do
+#   echo Running app $app
+# 
+#   for mb in $mbs; do
+#     echo With cache size $mb MB
+# 
+#     ../lsm-sim \
+#       -a $app \
+#       -p 2 \
+#       -s $(($mb * 1024 * 1024)) \
+#       -v \
+#       -f ../data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
+#     pids="$pids $!"
+# 
+#     cnt=( $pids )
+#     cnt="${#cnt[@]}"
+#     if [[ "$cnt" == 8 ]]; then
+#       wait $pids
+#       pids=""
+#     fi
+#   done
+# done
+# 
+# wait $pids
+# 
+# echo === LSM ===
+# for app in $apps; do
+#   echo Running app $app
+# 
+#   for mb in $mbs; do
+#     echo With cache size $mb MB
+# 
+#     ../lsm-sim \
+#       -a $app \
+#       -p 6 \
+#       -s $(($mb * 1024 * 1024)) \
+#       -S $segment_size \
+#       -v \
+#       -f ../data/app${app} > lsm-app${app}-size${mb}MB.log 2>&1 &
+#     pids="$pids $!"
+# 
+#     cnt=( $pids )
+#     cnt="${#cnt[@]}"
+#     if [[ "$cnt" == 8 ]]; then
+#       wait $pids
+#       pids=""
+#     fi
+#   done
+# done
+# 
+# wait $pids
+
+echo === SLAB 2.0 ===
 for app in $apps; do
   echo Running app $app
 
@@ -22,10 +75,11 @@ for app in $apps; do
 
     ../lsm-sim \
       -a $app \
-      -p 2 \
+      -p 3 \
+      -M \
       -s $(($mb * 1024 * 1024)) \
       -v \
-      -f ../data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
+      -f ../data/app${app} > slab-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
 
     cnt=( $pids )
@@ -39,7 +93,7 @@ done
 
 wait $pids
 
-echo === LSM ===
+echo === SLAB 1.25 ===
 for app in $apps; do
   echo Running app $app
 
@@ -48,11 +102,11 @@ for app in $apps; do
 
     ../lsm-sim \
       -a $app \
-      -p 6 \
+      -p 3 \
+      -g 1.25 \
       -s $(($mb * 1024 * 1024)) \
-      -S $segment_size \
       -v \
-      -f ../data/app${app} > lsm-app${app}-size${mb}MB.log 2>&1 &
+      -f ../data/app${app} > slab-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
 
     cnt=( $pids )

@@ -51,6 +51,7 @@ size_t slab::proc(const request *r, bool warmup) {
     // cover the same range, so this shouldn't get invoked anyway.
     return PROC_MISS;
   }
+  assert(klass < slabs.size());
 
   // See if slab assignment already exists for this key.
   // Check if change in size (if any) requires reclassification

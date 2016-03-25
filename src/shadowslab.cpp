@@ -28,7 +28,7 @@ shadowslab::shadowslab(stats stat)
   } else {
     std::cerr << "Initialized with " << slab_count
               <<" slab classes" << std::endl;
-  }  
+  }
 }
 
 shadowslab::~shadowslab() {

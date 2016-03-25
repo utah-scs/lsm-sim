@@ -115,6 +115,10 @@ size_t lru::proc(const request *r, bool warmup) {
     // just isn't big enough to hold this object under any circumstances.
     // Though, you probably shouldn't be setting the cache size smaller
     // than the max memcache object size.
+    //
+    // This case can occur when an lru is part of a slab allocator, since
+    // initially all lrus start with 0 bytes and expand as the slab pool
+    // allows.
     if (queue.empty()) {
       return PROC_MISS;
     }
