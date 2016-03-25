@@ -102,20 +102,6 @@ size_t slab::get_bytes_cached() const {
   return b; 
 }
 
-void slab::log() {
-  std::ofstream out{"slab" + stat.filename_suffix + ".data"};
-  out << "app policy global_mem segment_size cleaning_width hits accesses hit_rate"
-      << std::endl;
-  out << stat.appid << " "
-      << "slab" << " "
-      << stat.global_mem << " "
-      << 0 << " "
-      << 0 << " "
-      << stat.hits << " "
-      << stat.accesses << " "
-      << double(stat.hits) / stat.accesses
-      << std::endl;
-}
 
 std::pair<uint64_t, uint64_t> slab::get_slab_class(uint32_t size) {
   uint64_t class_size = 64;

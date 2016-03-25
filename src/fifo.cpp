@@ -82,9 +82,4 @@ size_t fifo::get_bytes_cached() const {
   return cached;
 }
 
-void fifo::log() {
-  std::cout << double(current_size) / stat.global_mem << " "
-            << double(current_size) / stat.global_mem << " "
-            << stat.global_mem << " "
-            << double(stat.hits) / stat.accesses << std::endl;
-}
+

@@ -18,8 +18,7 @@ class slab : public policy {
   public:
     slab(stats stat);
    ~slab();
-    size_t proc(const request *r, bool warmup);
-    void log();
+    size_t proc(const request *r, bool warmup); 
     size_t get_bytes_cached() const;
 
 

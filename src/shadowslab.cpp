@@ -128,7 +128,7 @@ std::pair<uint64_t, uint64_t> shadowslab::get_slab_class(uint32_t size) {
   }
 }
 
-void shadowslab::log() {
+void shadowslab::log_curves() {
   size_curve.dump_cdf("shadowslab-size-curve" + stat.filename_suffix + ".data");
   dump_util("shadowslab-util" + stat.filename_suffix + ".data");
 }

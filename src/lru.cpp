@@ -139,21 +139,6 @@ size_t lru::proc(const request *r, bool warmup) {
   return PROC_MISS;
 }
 
-void lru::log() {
-  std::ofstream out{"lru" + stat.filename_suffix + ".data"};
-  out << "app policy global_mem segment_size cleaning_width hits accesses hit_rate"
-      << std::endl;
-  out << stat.appid << " "
-      << "lru" << " "
-      << stat.global_mem << " "
-      << 0 << " "
-      << 0 << " "
-      << stat.hits << " "
-      << stat.accesses << " "
-      << double(stat.hits) / stat.accesses
-      << std::endl;
-}
-
 double lru::get_running_hit_rate() {
   return double(stat.hits) / stat.accesses;
 }

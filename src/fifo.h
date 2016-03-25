@@ -14,7 +14,6 @@ class fifo : public policy {
 
     size_t proc(const request *r, bool warmup); 
     size_t get_bytes_cached() const;
-    void log();
 
   private:
     uint32_t current_size;  // the current number of bytes in eviction queue

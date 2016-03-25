@@ -17,7 +17,7 @@ class partslab : public policy {
 
     size_t proc(const request *r, bool warmup);
     size_t get_bytes_cached() const;
-    void log();
+    void log_curves();
 
     void dump_util(const std::string& filename);
 

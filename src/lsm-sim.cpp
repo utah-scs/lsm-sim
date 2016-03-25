@@ -288,7 +288,12 @@ int main(int argc, char *argv[]) {
   }
   auto stop = hrc::now();
 
-  policy->log();
+  // Log curves for shadowlru, shadowslab, and partslab.
+  if(p_type == 0 || p_type == 4 || p_type == 5)
+    policy->log_curves();
+ 
+  // Dump stats for all policies. 
+  policy->dump_stats();
 
   double seconds =
     ch::duration_cast<ch::milliseconds>(stop - start).count() / 1000.;

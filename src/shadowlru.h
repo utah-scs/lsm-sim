@@ -17,11 +17,12 @@ class shadowlru : public policy {
      
     size_t get_bytes_cached() const;
     std::vector<size_t> get_class_frags(size_t slab_size) const;
-    void log();
-
+    
     const hit_rate_curve* get_size_curve() const {
       return &size_curve;
     }
+
+    void log_curves();
 
   private:    
     size_t class_size;

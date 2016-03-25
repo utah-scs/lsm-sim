@@ -95,6 +95,6 @@ std::vector<size_t> shadowlru::get_class_frags(size_t slab_size) const {
 }
 
 
-void shadowlru::log() {
+void shadowlru::log_curves() {
   size_curve.dump_cdf("shadowlru-size-curve" + stat.filename_suffix + ".data");
 }

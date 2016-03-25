@@ -45,7 +45,7 @@ size_t partslab::get_bytes_cached() const {
   return 0;
 }
 
-void partslab::log() {
+void partslab::log_curves() {
   size_curve.dump_cdf("partslab-size-curve" + stat.filename_suffix + ".data");
   dump_util("partslab-util" + stat.filename_suffix + ".data");
 }

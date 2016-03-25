@@ -48,7 +48,7 @@ class lsm : public policy {
 
     size_t proc(const request *r, bool warmup);
     size_t get_bytes_cached() const;
-    void log();
+   
 
     double get_running_hit_rate();
     size_t get_evicted_bytes() { return stat.evicted_bytes; }

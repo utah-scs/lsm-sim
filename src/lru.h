@@ -24,7 +24,6 @@ class lru : public policy {
     size_t get_bytes_cached() const;
     size_t get_hits(); 
     size_t get_accs();
-    void log();
 
     double get_running_hit_rate();
     double get_running_utilization();

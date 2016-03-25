@@ -35,7 +35,8 @@ class policy {
 
     virtual size_t get_bytes_cached() const = 0; 
 
-    virtual void log() = 0;
+    void log_curves() { std::cout << "Not enabled for this policy" 
+      << std::endl; }
 
     stats get_stats() { return stat; }
 
