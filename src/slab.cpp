@@ -6,28 +6,20 @@
 #include "lru.h"
 #include "mc.h"
 
-slab::slab(
-    const std::string& filename_suffix,
-    uint64_t size,
-    double factor,
-    bool memcachier_classes)
-  : policy{filename_suffix, size, stats{"", 0}}
-  , accesses{}
-  , hits{}
+slab::slab(stats stat)
+  : policy{stat}
   , slabs{}
   , slab_for_key{}
-  , memcachier_classes{}
   , slab_count{}
   , mem_in_use{}
-  , appid{}
 {
-  if (memcachier_classes)
+  if (stat.memcachier_classes)
     slab_count = 15;
   else
-    slab_count = slabs_init(factor);
+    slab_count = slabs_init(stat.gfactor);
   slabs.resize(slab_count);
 
-  if (memcachier_classes) {
+  if (stat.memcachier_classes) {
     std::cerr << "Initialized with memcachier slab classes" << std::endl;
   } else {
     std::cerr << "Initialized with " << slab_count
@@ -41,12 +33,12 @@ slab::~slab () {
 size_t slab::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
-  if (appid == ~0u)
-    appid = r->appid;
-  assert(r->appid == appid);
+   if (stat.appid == ~0u)
+    stat.appid = r->appid;
+  assert(r->appid == stat.appid);
 
   if (!warmup)
-    ++accesses;
+    ++stat.accesses;
 
   uint64_t class_size = 0;
   uint64_t klass = 0;
@@ -96,7 +88,7 @@ size_t slab::proc(const request *r, bool warmup) {
   slab_for_key.insert(std::pair<uint32_t,uint32_t>(r->kid, klass));
 
   if (!warmup)
-    ++hits;
+    ++stat.hits;
  
   return 1;
 }
@@ -110,17 +102,17 @@ size_t slab::get_bytes_cached() const {
 }
 
 void slab::log() {
-  std::ofstream out{"slab" + filename_suffix + ".data"};
+  std::ofstream out{"slab" + stat.filename_suffix + ".data"};
   out << "app policy global_mem segment_size cleaning_width hits accesses hit_rate"
       << std::endl;
-  out << appid << " "
+  out << stat.appid << " "
       << "slab" << " "
       << stat.global_mem << " "
       << 0 << " "
       << 0 << " "
-      << hits << " "
-      << accesses << " "
-      << double(hits) / accesses
+      << stat.hits << " "
+      << stat.accesses << " "
+      << double(stat.hits) / stat.accesses
       << std::endl;
 }
 
@@ -128,7 +120,7 @@ std::pair<uint64_t, uint64_t> slab::get_slab_class(uint32_t size) {
   uint64_t class_size = 64;
   uint64_t klass = 0;
 
-  if (memcachier_classes) {
+  if (stat.memcachier_classes) {
     while (true) {
       if (size < class_size)
         return {class_size, klass};

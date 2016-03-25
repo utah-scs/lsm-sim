@@ -5,26 +5,21 @@
 
 #include "lsm.h"
 
-lsm::lsm(const std::string& filename_suffix,
-         size_t global_mem,
-         size_t segment_size,
-         size_t cleaning_width)
-  : policy{filename_suffix, global_mem, stats{"lsm", global_mem}}
+lsm::lsm(stats stat)
+  : policy{stat}
   , map{}
   , head{nullptr}
   , segments{}
   , free_segments{}
 {
-  stat.segment_size   = segment_size;
-  stat.cleaning_width = cleaning_width;  
-
+ 
   srand(0);
 
-  if (global_mem % stat.segment_size != 0) {
+  if (stat.global_mem % stat.segment_size != 0) {
     std::cerr <<
       "WARNING: global_mem not a multiple of segment_size" << std::endl;
   }
-  segments.resize(global_mem / stat.segment_size);
+  segments.resize(stat.global_mem / stat.segment_size);
   free_segments = segments.size();
   std::cerr << "global_mem " << stat.global_mem
             << " segment_size " << stat.segment_size
@@ -41,6 +36,9 @@ lsm::~lsm() {}
 
 size_t lsm::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
+
+  if(stat.accesses % 10000 == 0)
+    log();
 
   if (stat.appid == ~0u)
     stat.appid = r->appid;
@@ -79,7 +77,7 @@ size_t lsm::proc(const request *r, bool warmup) {
 
   if (head->filled_bytes + r->size() > stat.segment_size)
     rollover();
-  assert(head->filled_bytes + r->size() <= stat.segment_size);
+    //assert(head->filled_bytes + r->size() <= stat.segment_size);
 
   // Add the new request.
   head->queue.emplace_front(head, *r);
@@ -95,7 +93,7 @@ size_t lsm::get_bytes_cached() const
 }
 
 void lsm::log() {
-  std::ofstream out{"lsm" + filename_suffix + ".data"};
+  std::ofstream out{"lsm" + stat.filename_suffix + ".data"};
   out << "app policy global_mem segment_size cleaning_width hits accesses hit_rate"
       << std::endl;
   out << stat.appid << " "

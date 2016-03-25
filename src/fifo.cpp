@@ -3,10 +3,8 @@
 #include "fifo.h"
 #include "common.h"
 
-fifo::fifo(const std::string& filename_suffix, size_t global_mem)
-  : policy{filename_suffix, global_mem, stats{"fifo", global_mem}}
-  , accesses{}
-  , hits{}
+fifo::fifo(stats stat)
+  : policy{stat}
   , current_size{}
   , hash{}
   , queue{}
@@ -22,7 +20,7 @@ fifo::~fifo () {
 size_t fifo::proc(const request *r, bool warmup) {
   if (!warmup)
     ++stat.accesses;
-
+  
   // Keep track of initial condition of cache.
   int64_t init_bytes = current_size;
 
@@ -31,7 +29,7 @@ size_t fifo::proc(const request *r, bool warmup) {
     request* prior_request = it->second;
     if (prior_request->size() == r->size()) {
       if (!warmup)
-        ++hits;
+        ++stat.hits;
       return 0;
     } else {
       // Size has changed. Even though it is in cache it must have already been
@@ -88,5 +86,5 @@ void fifo::log() {
   std::cout << double(current_size) / stat.global_mem << " "
             << double(current_size) / stat.global_mem << " "
             << stat.global_mem << " "
-            << double(hits) / stat.accesses << std::endl;
+            << double(stat.hits) / stat.accesses << std::endl;
 }

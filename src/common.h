@@ -13,6 +13,7 @@ int csv_tokenize(const std::string &s, string_vec *tokens);
 
 
 typedef struct stats {
+  std::string filename_suffix;
   std::string policy;
   size_t appid;
   size_t global_mem; 
@@ -26,10 +27,17 @@ typedef struct stats {
   size_t cleaned_items;
   size_t segment_size;
   size_t cleaning_width;
+  bool   memcachier_classes;
+  double gfactor;
+  size_t partitions;
 
-  stats(std::string policy, size_t global_mem)
-    : policy{policy}
-    , appid{}
+  stats(std::string filename_suffix, 
+        std::string policy, 
+        size_t appid, 
+        size_t global_mem)
+    : filename_suffix{filename_suffix}
+    , policy{policy}
+    , appid{appid}
     , global_mem{global_mem} 
     , utilization{}
     , accesses{}
@@ -41,6 +49,9 @@ typedef struct stats {
     , cleaned_items{}
     , segment_size{}
     , cleaning_width{}
+    , memcachier_classes{}
+    , gfactor{}
+    , partitions{}
   {}
 
 

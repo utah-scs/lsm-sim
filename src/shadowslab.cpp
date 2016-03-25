@@ -6,34 +6,29 @@
 #include "mc.h"
 #include "common.h"
 
-shadowslab::shadowslab(
-    const std::string& filename_suffix,
-    double factor,
-    bool memcachier_classes)
-  : policy{filename_suffix, 0, stats{"shadowslab", 0}}
+shadowslab::shadowslab(stats stat)
+  : policy{stat}
   , slabs{}
   , slabids{}
   , slab_for_key{}
   , next_slabid{0}
   , size_curve{}
-  , memcachier_classes{memcachier_classes}
   , slab_count{}
 {
-  if (memcachier_classes)
+ 
+  if (stat.memcachier_classes)
     slab_count = 15;
   else
-    slab_count = slabs_init(factor);
+    slab_count = slabs_init(stat.gfactor);
   slabs.resize(slab_count);
   slabids.resize(slab_count);
 
-  if (memcachier_classes) {
+  if (stat.memcachier_classes) {
     std::cerr << "Initialized with memcachier slab classes" << std::endl;
   } else {
     std::cerr << "Initialized with " << slab_count
               <<" slab classes" << std::endl;
-  }
-
-  
+  }  
 }
 
 shadowslab::~shadowslab() {
@@ -113,7 +108,7 @@ std::pair<uint64_t, uint64_t> shadowslab::get_slab_class(uint32_t size) {
   uint64_t class_size = 64;
   uint64_t klass = 0;
 
-  if (memcachier_classes) {
+  if (stat.memcachier_classes) {
     while (true) {
       if (size < class_size)
         return {class_size, klass};
@@ -134,8 +129,8 @@ std::pair<uint64_t, uint64_t> shadowslab::get_slab_class(uint32_t size) {
 }
 
 void shadowslab::log() {
-  size_curve.dump_cdf("shadowslab-size-curve" + filename_suffix + ".data");
-  dump_util("shadowslab-util" + filename_suffix + ".data");
+  size_curve.dump_cdf("shadowslab-size-curve" + stat.filename_suffix + ".data");
+  dump_util("shadowslab-util" + stat.filename_suffix + ".data");
 }
 
 // Given a slab id, searches over the slabids vectors and finds the vector

@@ -16,10 +16,7 @@ static const size_t   MAX_SIZE=5000000;   // Largest KV pair allowed
 
 class slab : public policy {
   public:
-    slab(const std::string& filename_suffix,
-         uint64_t size,
-         double factor,
-         bool memcachier_classes);
+    slab(stats stat);
    ~slab();
     size_t proc(const request *r, bool warmup);
     void log();
@@ -30,25 +27,15 @@ class slab : public policy {
 
     static constexpr size_t SLABSIZE = 1024 * 1024;
 
-    // Number of access requests fed to the cache.
-    size_t accesses;
-
-    // Subset of accesses which hit in the simulated cache.
-    size_t hits;
-
     std::vector<lru> slabs; 
 
     // Simple mapping of existing keys to their respective slab.
     std::unordered_map<uint32_t, uint32_t> slab_for_key;
 
-    // If true use memcachier size classes instead of memcacheds.
-    bool memcachier_classes;
-
     uint32_t slab_count;
 
     uint64_t mem_in_use;
 
-    uint32_t appid;
 };
 
 #endif

@@ -2,12 +2,12 @@
 
 #include "shadowlru.h"
 
-shadowlru::shadowlru(const std::string& filename_suffix, size_t global_mem)
-  : policy{filename_suffix, global_mem, stats{"shadowlru", global_mem}}
+shadowlru::shadowlru(stats stat)
+  : policy{stat}
   , class_size{}
   , size_curve{}
   , queue{}
-  , part_of_slab_allocator{filename_suffix == ""}
+  , part_of_slab_allocator{stat.filename_suffix == ""}
 {
 }
 
@@ -30,7 +30,6 @@ size_t shadowlru::remove(const request *r) {
     } 
     stack_dist += it->size();
   }
-
   return stack_dist;
 }
 
@@ -97,5 +96,5 @@ std::vector<size_t> shadowlru::get_class_frags(size_t slab_size) const {
 
 
 void shadowlru::log() {
-  size_curve.dump_cdf("shadowlru-size-curve" + filename_suffix + ".data");
+  size_curve.dump_cdf("shadowlru-size-curve" + stat.filename_suffix + ".data");
 }

@@ -14,10 +14,7 @@ class shadowslab : public policy {
  
     static constexpr size_t SLABSIZE = 1024 * 1024;
 
-    shadowslab(
-        const std::string& filename_suffix,
-        double factor,
-        bool memcachier_classes);
+    shadowslab(stats stat);
     ~shadowslab();
 
     size_t proc(const request *r, bool warmup);
@@ -43,7 +40,7 @@ class shadowslab : public policy {
     hit_rate_curve size_curve;
 
     // If true use memcachier size classes instead of memcacheds.
-    bool memcachier_classes;
+  
 
     uint32_t slab_count;
 };

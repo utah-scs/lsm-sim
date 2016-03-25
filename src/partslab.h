@@ -12,9 +12,7 @@
 class partslab : public policy {
   public:
  
-    partslab(
-        const std::string& filename_suffix,
-        size_t partitions);
+    partslab(stats stat);
     ~partslab();
 
     size_t proc(const request *r, bool warmup);
@@ -24,7 +22,6 @@ class partslab : public policy {
     void dump_util(const std::string& filename);
 
   private:
-    size_t partitions;
     std::vector<shadowlru> slabs;
     hit_rate_curve size_curve;
 };

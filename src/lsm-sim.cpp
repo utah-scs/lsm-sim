@@ -36,7 +36,8 @@ const char* policy_names[7] = { "shadowlru"
                               , "partslab"
                               , "lsm"
                               };
-enum pol_typ { SHADOWLRU = 0
+enum pol_typ { 
+    SHADOWLRU = 0
   , FIFO
   , LRU
   , SLAB
@@ -45,7 +46,7 @@ enum pol_typ { SHADOWLRU = 0
   , LSM };
 
 // globals
-std::set<uint16_t>    apps{};                           // apps to consider
+size_t                appid;                           // app to consider
 bool                  all_apps = true;                  // run all by default 
 bool                  roundup  = false;                 // no rounding default
 float                 lsm_util = 1.0;                   // default util factor
@@ -73,7 +74,7 @@ int request_limit = 0;
 #endif
 
 const std::string     usage  = "-f    specify file path\n"
-                               "-a    specify apps to eval\n"
+                               "-a    specify app to eval\n"
                                "-r    enable rounding\n"
                                "-u    specify utilization\n"
                                "-w    specify warmup period\n"
@@ -84,7 +85,7 @@ const std::string     usage  = "-f    specify file path\n"
                                "-g    specify slab growth factor\n"
                                "-M    use memcachier slab classes\n"
                                "-P    number of partitions for partslab\n"
-                               "-s    segment size in bytes for lsm\n";
+                               "-S    segment size in bytes for lsm\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -95,12 +96,12 @@ const int orig_alloc[15] = {
 
 // returns true if an ID is in the spec'd set
 // returns true if set is empty
-bool valid_id(const request *r) {
-  if (all_apps)
-    return true;
-  else
-    return apps.count(r->appid);
-}
+// bool valid_id(const request *r) {
+//  if (all_apps)
+//    return true;
+//  else
+//    return apps.count(r->appid);
+//}
 
 int main(int argc, char *argv[]) {
 
@@ -139,12 +140,7 @@ int main(int argc, char *argv[]) {
         break;
       case 'a':
         {
-          string_vec v;
-          app_str = optarg;
-          csv_tokenize(std::string(optarg), &v);
-          all_apps = false;
-          for (const auto& e : v)
-            apps.insert(stoi(e));
+          appid = atoi(optarg);
           break;
         }
       case 'r':
@@ -174,47 +170,54 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  assert(apps.size() == 1);
+  //assert(apps.size() == 1);
 
-  std::string filename_suffix = "-app" + std::to_string(*apps.cbegin());
+  std::string filename_suffix = "-app" + std::to_string(appid);
 
+  // build a stats struct with basic info relevant to every policy.
+  stats sts{filename_suffix, policy_names[p_type], appid, global_mem};
+
+  printf("APPID: %lu\n", appid);
+ 
   // instantiate a policy
   std::unique_ptr<policy> policy{};
   switch(p_type) {
     case SHADOWLRU:
-      policy.reset(new shadowlru(filename_suffix, global_mem));
+      policy.reset(new shadowlru(sts));
       break;
     case FIFO : 
-      policy.reset(new fifo(filename_suffix, global_mem));
+      policy.reset(new fifo(sts));
       break;
     case LRU : 
-      filename_suffix += "-size";
-      filename_suffix += std::to_string(global_mem / (1u << 20));
-      filename_suffix += "MB";
-      policy.reset(new lru(filename_suffix, global_mem));
+      sts.filename_suffix += "-size";
+      sts.filename_suffix += std::to_string(global_mem / (1u << 20));
+      sts.filename_suffix += "MB";
+      policy.reset(new lru(sts));
       break;
     case SLAB :
-      filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";
-      policy.reset(new slab(filename_suffix,
-                            global_mem,
-                            gfactor,
-                            memcachier_classes));
+      sts.filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";
+      sts.gfactor = gfactor;
+      sts.memcachier_classes = memcachier_classes;
+      policy.reset(new slab(sts));
       break;
     case SHADOWSLAB:
-      filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";
-      policy.reset(new shadowslab(filename_suffix,
-                                  gfactor,
-                                  memcachier_classes));
+      sts.filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";
+      sts.memcachier_classes = memcachier_classes;
+      sts.gfactor = gfactor;
+      policy.reset(new shadowslab(sts));
     case PARTSLAB:
-      filename_suffix += "-partitions";
-      filename_suffix += std::to_string(partitions);
-      policy.reset(new partslab(filename_suffix, partitions));
+      sts.filename_suffix += "-partitions";
+      sts.filename_suffix += std::to_string(partitions);
+      sts.partitions = partitions;
+      policy.reset(new partslab(sts));
       break;
     case LSM:
-      filename_suffix += "-size";
-      filename_suffix += std::to_string(global_mem / (1u << 20));
-      filename_suffix += "MB";
-      policy.reset(new lsm(filename_suffix, global_mem, segment_size, 4));
+      sts.filename_suffix += "-size";
+      sts.filename_suffix += std::to_string(global_mem / (1u << 20));
+      sts.filename_suffix += "MB";
+      sts.segment_size    = segment_size;
+      sts.cleaning_width  = 4;
+      policy.reset(new lsm(sts));
       break;
   }
 
@@ -273,9 +276,9 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // Only process requests for specified apps, of type GET,
+    // Only process requests for specified app, of type GET,
     // and values of size > 0, after time 'hit_start_time'.
-    if ((r.type != request::GET) || !valid_id(&r) || (r.val_sz <= 0))
+    if ((r.type != request::GET) || (r.appid != appid) || (r.val_sz <= 0))
       continue;
 
     policy->proc(&r, r.time < hit_start_time);

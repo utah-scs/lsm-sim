@@ -12,7 +12,7 @@ class lru : public policy {
 
   public:
     lru();
-    lru(const std::string& filename_suffix, size_t global_mem);
+    lru(stats stat);
    ~lru();
 
     // Modifiers.
@@ -32,22 +32,9 @@ class lru : public policy {
     size_t get_evicted_items() { return stat.evicted_items; }
 
   protected:
-    // Number of access requests fed to the cache.
-    // size_t accesses;
-
-    // Subset of accesses which hit in the simulated cache.
-    // size_t hits;
-
-    // size_t evicted_bytes;
-    //size_t evicted_items;
-
-		// The number of bytes currently cached.
-    // size_t bytes_cached; 
-
     hash_map map; 
     lru_queue queue; 
 
-    // uint32_t appid;
 };
 
 #endif

@@ -5,19 +5,18 @@
 #include "lru.h"
 
 lru::lru()
-  : policy{"", 0, stats{"",0}}
-  , map{}
-  , queue{} 
-{
-  stat.appid = ~0u;
-}
-
-lru::lru(const std::string& filename_suffix, size_t global_mem)
-  : policy{filename_suffix, global_mem, stats{"lru", global_mem}}
+  : policy{stats{"","",0,0}}
   , map{}
   , queue{}
 {
   stat.appid = ~0u;
+}  
+
+lru::lru(stats stat)
+  : policy{stat}
+  , map{}
+  , queue{}
+{
 }
 
 lru::~lru () {
@@ -117,7 +116,6 @@ size_t lru::proc(const request *r, bool warmup) {
     // Though, you probably shouldn't be setting the cache size smaller
     // than the max memcache object size.
     if (queue.empty()) {
-      assert(false);
       return PROC_MISS;
     }
 
@@ -138,7 +136,7 @@ size_t lru::proc(const request *r, bool warmup) {
 }
 
 void lru::log() {
-  std::ofstream out{"lru" + filename_suffix + ".data"};
+  std::ofstream out{"lru" + stat.filename_suffix + ".data"};
   out << "app policy global_mem segment_size cleaning_width hits accesses hit_rate"
       << std::endl;
   out << stat.appid << " "

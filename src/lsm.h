@@ -43,11 +43,7 @@ class lsm : public policy {
     };
 
   public:
-    lsm(
-        const std::string& filename_suffix,
-        size_t cache_size,
-        size_t segment_size,
-        size_t cleaning_width);
+    lsm(stats sts);
     ~lsm();
 
     size_t proc(const request *r, bool warmup);

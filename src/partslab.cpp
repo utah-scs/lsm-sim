@@ -6,16 +6,14 @@
 #include "partslab.h"
 #include "mc.h"
 
-partslab::partslab(
-    const std::string& filename_suffix,
-    size_t partitions)
-  : policy{filename_suffix, 0, stats{"partslab", 0 }}
-  , partitions{partitions}
+partslab::partslab(stats stat)
+  : policy{stat}
   , slabs{}
   , size_curve{}
 {
-  slabs.resize(partitions);
-  std::cerr << "Initialized with " << partitions << " partitions" << std::endl;
+  slabs.resize(stat.partitions);
+  std::cerr << "Initialized with " << stat.partitions << 
+  " partitions" << std::endl;
 }
 
 partslab::~partslab() {
@@ -24,7 +22,7 @@ partslab::~partslab() {
 size_t partslab::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
-  size_t klass = std::hash<decltype(r->kid)>{}(r->kid) % partitions;
+  size_t klass = std::hash<decltype(r->kid)>{}(r->kid) % stat.partitions;
   shadowlru& slab_class = slabs.at(klass);
 
   size_t size_distance = slab_class.proc(r, warmup);
@@ -35,7 +33,8 @@ size_t partslab::proc(const request *r, bool warmup) {
     return PROC_MISS;
   }
 
-  const size_t approx_global_size_distance = size_distance * partitions + klass;
+  const size_t approx_global_size_distance = size_distance * 
+    stat.partitions + klass;
   if (!warmup)
     size_curve.hit(approx_global_size_distance);
 
@@ -47,8 +46,8 @@ size_t partslab::get_bytes_cached() const {
 }
 
 void partslab::log() {
-  size_curve.dump_cdf("partslab-size-curve" + filename_suffix + ".data");
-  dump_util("partslab-util" + filename_suffix + ".data");
+  size_curve.dump_cdf("partslab-size-curve" + stat.filename_suffix + ".data");
+  dump_util("partslab-util" + stat.filename_suffix + ".data");
 }
 
 void partslab::dump_util(const std::string& filename) {}

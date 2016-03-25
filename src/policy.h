@@ -20,16 +20,12 @@ class policy {
   };
   
   
-  protected: 
-    std::string filename_suffix;
-   // uint64_t global_mem; 
+  protected:  
     stats stat; 
     
   public:
-    policy (const std::string& filename_suffix, const size_t global_mem, 
-      stats stat)
-      : filename_suffix{filename_suffix} 
-      , stat{stat}
+    policy (stats stat)
+      :stat{stat}
     {}
 
     virtual ~policy() {}
@@ -47,7 +43,7 @@ class policy {
     virtual size_t get_evicted_items() { return 0; }
 
     void dump_stats(void) {
-      std::ofstream out {"lsm" + filename_suffix + ".data"};
+      std::ofstream out { stat.policy + stat.filename_suffix + ".data"};
       out << "app policy global_mem segment_size cleaning_width hits accesses "
              "hit_rate, bytes_cached, evicted_bytes, evicted_items,"
              "cleaned_bytes, cleaned_items" 

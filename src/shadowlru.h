@@ -9,7 +9,7 @@
 // policy derived from Cliffhanger paper
 class shadowlru : public policy {
   public:
-    shadowlru(const std::string& filename_suffix = "", size_t global_mem = 0);
+    shadowlru(const stats stat = stats{"","",0,0});
     ~shadowlru();
 
     size_t proc(const request *r, bool warmup);
