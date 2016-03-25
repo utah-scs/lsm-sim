@@ -264,12 +264,13 @@ int main(int argc, char *argv[]) {
       double seconds =
         ch::duration_cast<ch::nanoseconds>(now - last_progress).count() / 1e9;
       if (seconds > 1.0) {
+        stats stats = policy->get_stats();
         std::cerr << "Progress: " << r.time << " "
                   << "Rate: " << bytes / (1 << 20) / seconds << " MB/s "
-                  << "Hit Rate: " << policy->get_running_hit_rate() * 100 << "% "
-                  << "Evicted Items: " << policy->get_evicted_items() << " "
-                  << "Evicted Bytes: " << policy->get_evicted_bytes() << " "
-                  << "Utilization: " << policy->get_running_utilization()
+                  << "Hit Rate: " << stats.get_hit_rate() * 100 << "% "
+                  << "Evicted Items: " << stats.evicted_items << " "
+                  << "Evicted Bytes: " << stats.evicted_bytes << " "
+                  << "Utilization: " << stats.get_utilization()
                   << std::endl;
         bytes = 0;
         last_progress = now;

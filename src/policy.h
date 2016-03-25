@@ -38,7 +38,6 @@ class policy {
     virtual void log() = 0;
 
     stats get_stats() { return stat; }
-    double get_running_hit_rate() { return double(stat.hits) / stat.accesses; }
 
     void dump_stats(void) {
       std::ofstream out { stat.policy + stat.filename_suffix + ".data"};

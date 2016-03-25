@@ -11,8 +11,7 @@ typedef std::vector<std::string> string_vec;
 // breaks a CSV string into a vector of tokens
 int csv_tokenize(const std::string &s, string_vec *tokens);
 
-
-typedef struct stats {
+struct stats {
   std::string filename_suffix;
   std::string policy;
   size_t appid;
@@ -54,8 +53,9 @@ typedef struct stats {
     , partitions{}
   {}
 
-
-}stats;
+  double get_hit_rate() { return double(hits) / accesses; }
+  double get_utilization() { return double(bytes_cached) / global_mem; }
+};
 
 
 #endif
