@@ -2,6 +2,8 @@
 
 #apps="3 19 18 20 6 5 8 59 227 29 10 94 11 23 2 7 53 13 31"
 apps="19 18 20 6 8 59 227 29 10 94 11 23 2 7 53 13 31 5"
+#apps="19"
+
 # ---------------------------------------------------| -> slow apps
 
 mbs="10 20 30 40 50 60 70 80 90 100 200 300 400 500 600 700 800 900 1000 1100 1200"
@@ -13,58 +15,58 @@ segment_size=$((1024 * 1024))
 
 pids=""
 
-# echo === LRU ===
-# for app in $apps; do
-#   echo Running app $app
-# 
-#   for mb in $mbs; do
-#     echo With cache size $mb MB
-# 
-#     ../lsm-sim \
-#       -a $app \
-#       -p 2 \
-#       -s $(($mb * 1024 * 1024)) \
-#       -v \
-#       -f ../data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
-#     pids="$pids $!"
-# 
-#     cnt=( $pids )
-#     cnt="${#cnt[@]}"
-#     if [[ "$cnt" == 8 ]]; then
-#       wait $pids
-#       pids=""
-#     fi
-#   done
-# done
-# 
-# wait $pids
-# 
-# echo === LSM ===
-# for app in $apps; do
-#   echo Running app $app
-# 
-#   for mb in $mbs; do
-#     echo With cache size $mb MB
-# 
-#     ../lsm-sim \
-#       -a $app \
-#       -p 6 \
-#       -s $(($mb * 1024 * 1024)) \
-#       -S $segment_size \
-#       -v \
-#       -f ../data/app${app} > lsm-app${app}-size${mb}MB.log 2>&1 &
-#     pids="$pids $!"
-# 
-#     cnt=( $pids )
-#     cnt="${#cnt[@]}"
-#     if [[ "$cnt" == 8 ]]; then
-#       wait $pids
-#       pids=""
-#     fi
-#   done
-# done
-# 
-# wait $pids
+echo === LRU ===
+for app in $apps; do
+   echo Running app $app
+ 
+   for mb in $mbs; do
+     echo With cache size $mb MB
+ 
+     ../lsm-sim \
+       -a $app \
+       -p lru \
+       -s $(($mb * 1024 * 1024)) \
+       -v \
+       -f ../data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
+     pids="$pids $!"
+ 
+     cnt=( $pids )
+     cnt="${#cnt[@]}"
+     if [[ "$cnt" == 8 ]]; then
+       wait $pids
+       pids=""
+     fi
+   done
+ done
+ 
+ wait $pids
+ 
+ echo === LSM ===
+ for app in $apps; do
+   echo Running app $app
+ 
+   for mb in $mbs; do
+     echo With cache size $mb MB
+ 
+     ../lsm-sim \
+       -a $app \
+       -p lsm \
+       -s $(($mb * 1024 * 1024)) \
+       -S $segment_size \
+       -v \
+       -f ../data/app${app} > lsm-app${app}-size${mb}MB.log 2>&1 &
+     pids="$pids $!"
+ 
+     cnt=( $pids )
+     cnt="${#cnt[@]}"
+     if [[ "$cnt" == 8 ]]; then
+       wait $pids
+       pids=""
+     fi
+   done
+ done
+ 
+ wait $pids
 
 echo === SLAB 2.0 ===
 for app in $apps; do
@@ -75,7 +77,7 @@ for app in $apps; do
 
     ../lsm-sim \
       -a $app \
-      -p 3 \
+      -p slab \
       -M \
       -s $(($mb * 1024 * 1024)) \
       -v \
@@ -102,7 +104,7 @@ for app in $apps; do
 
     ../lsm-sim \
       -a $app \
-      -p 3 \
+      -p slab \
       -g 1.25 \
       -s $(($mb * 1024 * 1024)) \
       -v \
