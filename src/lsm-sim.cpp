@@ -36,7 +36,7 @@ const char* policy_names[7] = { "shadowlru"
                               , "partslab"
                               , "lsm"
                               };
-enum pol_typ { 
+enum pol_type { 
     SHADOWLRU = 0
   , FIFO
   , LRU
@@ -46,7 +46,7 @@ enum pol_typ {
   , LSM };
 
 // globals
-size_t                appid;                           // app to consider
+size_t                appid;                            // app to consider
 bool                  all_apps = true;                  // run all by default 
 bool                  roundup  = false;                 // no rounding default
 float                 lsm_util = 1.0;                   // default util factor
@@ -54,7 +54,7 @@ std::string           trace    = "data/m.cap.out";      // default filepath
 std::string           app_str;                          // for logging apps
 double                hit_start_time = 86400;           // default time 
 size_t                global_mem = 0;
-pol_typ               p_type;                           // policy type
+pol_type              policy_type;                      // policy type
 bool                  verbose = false;
 double                gfactor = 1.25;                   // def slab growth fact
 bool                  memcachier_classes = false;
@@ -127,7 +127,24 @@ int main(int argc, char *argv[]) {
         trace = optarg;
         break;
       case 'p':
-        p_type = pol_typ(atoi(optarg)); 
+        if (std::string(optarg) == "shadowlru")
+          policy_type = pol_type(0); 
+        else if (std::string(optarg) == "fifo")
+          policy_type = pol_type(1); 
+        else if (std::string(optarg) == "lru")
+          policy_type = pol_type(2); 
+        else if (std::string(optarg) == "slab")
+          policy_type = pol_type(3);
+        else if (std::string(optarg) == "shadowslab")
+          policy_type = pol_type(4);
+        else if (std::string(optarg) == "partslab")
+          policy_type = pol_type(5);
+        else if (std::string(optarg) == "lsm")
+          policy_type = pol_type(6);
+        else {
+          std::cerr << "Invalid policy specified" << std::endl;
+          exit(EXIT_FAILURE);
+        }            
         break;
       case 's':
         global_mem = atol(optarg);
@@ -175,13 +192,13 @@ int main(int argc, char *argv[]) {
   std::string filename_suffix = "-app" + std::to_string(appid);
 
   // build a stats struct with basic info relevant to every policy.
-  stats sts{filename_suffix, policy_names[p_type], appid, global_mem};
+  stats sts{filename_suffix, policy_names[policy_type], appid, global_mem};
 
   printf("APPID: %lu\n", appid);
  
   // instantiate a policy
   std::unique_ptr<policy> policy{};
-  switch(p_type) {
+  switch(policy_type) {
     case SHADOWLRU:
       policy.reset(new shadowlru(sts));
       break;
@@ -228,14 +245,14 @@ int main(int argc, char *argv[]) {
 
   // List input parameters
   std::cerr << "performing trace analysis on apps: " << app_str << std::endl
-            << "policy: " << policy_names[p_type] << std::endl
+            << "policy: " << policy_names[policy_type] << std::endl
             << "using trace file: " << trace << std::endl
             << "rounding: " << (roundup ? "on" : "off") << std::endl
             << "utilization rate: " << lsm_util << std::endl
             << "start counting hits at t = " << hit_start_time << std::endl
             << "request limit: " << request_limit << std::endl
             << "global mem: " << global_mem << std::endl;
-  if (p_type == SHADOWSLAB) {
+  if (policy_type == SHADOWSLAB) {
     if (memcachier_classes)
       std::cerr << "slab growth factor: memcachier" << std::endl;
     else
@@ -289,7 +306,7 @@ int main(int argc, char *argv[]) {
   auto stop = hrc::now();
 
   // Log curves for shadowlru, shadowslab, and partslab.
-  if(p_type == 0 || p_type == 4 || p_type == 5)
+  if(policy_type == 0 || policy_type == 4 || policy_type == 5)
     policy->log_curves();
  
   // Dump stats for all policies. 
