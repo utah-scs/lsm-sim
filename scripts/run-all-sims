@@ -15,6 +15,8 @@ segment_size=$((1024 * 1024))
 
 pids=""
 
+maxprocs=4
+
 echo === LRU ===
 for app in $apps; do
    echo Running app $app
@@ -32,7 +34,7 @@ for app in $apps; do
  
      cnt=( $pids )
      cnt="${#cnt[@]}"
-     if [[ "$cnt" == 8 ]]; then
+     if [[ "$cnt" == "$maxprocs" ]]; then
        wait $pids
        pids=""
      fi
@@ -59,7 +61,7 @@ for app in $apps; do
  
      cnt=( $pids )
      cnt="${#cnt[@]}"
-     if [[ "$cnt" == 8 ]]; then
+     if [[ "$cnt" == "$maxprocs" ]]; then
        wait $pids
        pids=""
      fi
@@ -86,7 +88,7 @@ for app in $apps; do
 
     cnt=( $pids )
     cnt="${#cnt[@]}"
-    if [[ "$cnt" == 8 ]]; then
+    if [[ "$cnt" == "$maxprocs" ]]; then
       wait $pids
       pids=""
     fi
@@ -113,7 +115,7 @@ for app in $apps; do
 
     cnt=( $pids )
     cnt="${#cnt[@]}"
-    if [[ "$cnt" == 8 ]]; then
+    if [[ "$cnt" == "$maxprocs" ]]; then
       wait $pids
       pids=""
     fi
