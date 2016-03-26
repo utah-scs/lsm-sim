@@ -38,7 +38,7 @@ class policy {
     void log_curves() { std::cout << "Not enabled for this policy" 
       << std::endl; }
 
-    stats get_stats() { return stat; }
+    stats* get_stats() { return &stat; }
 
     void dump_stats(void) {
 

@@ -63,6 +63,11 @@ void lru::expand(size_t bytes) {
   stat.global_mem += bytes;
 }
 
+bool lru::would_cause_eviction(const request* r) {
+  return (map.find(r->kid) == map.end()) &&
+         (stat.bytes_cached + size_t(r->size()) > stat.global_mem);
+}
+
 // checks the map for membership, if the key is found
 // returns a hit, otherwise the key is added to the map
 // and to the LRU queue and returns a miss. Returns absolute

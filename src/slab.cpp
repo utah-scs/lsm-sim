@@ -73,20 +73,22 @@ size_t slab::proc(const request *r, bool warmup) {
   copy.val_sz   = class_size;
   copy.frag_sz  = class_size - r->size();
 
-  size_t outcome = slab_class.proc(&copy, warmup);
-  if (outcome == PROC_MISS) {
-    // Expand class and retry.
-    if (mem_in_use < stat.global_mem) {
-      mem_in_use += SLABSIZE;
+  // If the LRU has used all of its allocated space up, try to expand it.
+  while (mem_in_use < stat.global_mem &&
+         slab_class.would_cause_eviction(r))
+  {
       slab_class.expand(SLABSIZE);
-      outcome = slab_class.proc(&copy, warmup);
-    }
+  }
+
+  size_t outcome = slab_class.proc(&copy, warmup);
+
+  // Trace the move of the key into its new slab class.
+  slab_for_key.insert(std::pair<uint32_t,uint32_t>(r->kid, klass));
+
+  if (outcome == PROC_MISS) {
     // Count compulsory misses.
     return PROC_MISS;
   }
-
-  // Proc didn't miss, re-validate key/slab pair.
-  slab_for_key.insert(std::pair<uint32_t,uint32_t>(r->kid, klass));
 
   if (!warmup)
     ++stat.hits;

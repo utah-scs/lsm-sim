@@ -18,6 +18,7 @@ class lru : public policy {
     // Modifiers.
     size_t proc (const request *r, bool warmup);
     int64_t remove (const request *r);
+    bool would_cause_eviction(const request *r);
     void expand(size_t bytes);
   
     // Accessors.
