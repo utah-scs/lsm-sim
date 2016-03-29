@@ -2,12 +2,21 @@
 
 #include "shadowlru.h"
 
-shadowlru::shadowlru(stats stat)
+shadowlru::shadowlru()
+  : policy{{"", 0, 0}}
+  , class_size{}
+  , size_curve{}
+  , queue{}
+  , part_of_slab_allocator{true}
+{
+}
+
+shadowlru::shadowlru(const stats& stat)
   : policy{stat}
   , class_size{}
   , size_curve{}
   , queue{}
-  , part_of_slab_allocator{stat.filename_suffix == ""}
+  , part_of_slab_allocator{false}
 {
 }
 
@@ -96,5 +105,8 @@ std::vector<size_t> shadowlru::get_class_frags(size_t slab_size) const {
 
 
 void shadowlru::log_curves() {
-  size_curve.dump_cdf("shadowlru-size-curve" + stat.filename_suffix + ".data");
+  std::string filename_suffix{"-app" + std::to_string(stat.appid)
+                             + (stat.memcachier_classes ?
+                                 "-memcachier" : "-memcached")};
+  size_curve.dump_cdf("shadowlru-size-curve" + filename_suffix + ".data");
 }

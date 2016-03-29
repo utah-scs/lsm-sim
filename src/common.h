@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 
 typedef std::vector<std::string> string_vec;
 
@@ -12,7 +14,6 @@ typedef std::vector<std::string> string_vec;
 int csv_tokenize(const std::string &s, string_vec *tokens);
 
 struct stats {
-  std::string filename_suffix;
   std::string policy;
   size_t appid;
   size_t global_mem; 
@@ -30,12 +31,10 @@ struct stats {
   double gfactor;
   size_t partitions;
 
-  stats(std::string filename_suffix, 
-        std::string policy, 
+  stats(std::string policy, 
         size_t appid, 
         size_t global_mem)
-    : filename_suffix{filename_suffix}
-    , policy{policy}
+    : policy{policy}
     , appid{appid}
     , global_mem{global_mem} 
     , utilization{}
@@ -57,6 +56,13 @@ struct stats {
   double get_utilization() { return double(bytes_cached) / global_mem; }
 };
 
+template <typename T>
+std::string to_string_with_precision(const T a_value, const int n = 2)
+{
+  std::ostringstream out{};
+  out << std::setprecision(n) << a_value;
+  return out.str();
+}
 
 #endif
 

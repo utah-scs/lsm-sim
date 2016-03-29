@@ -41,36 +41,34 @@ class policy {
     stats* get_stats() { return &stat; }
 
     void dump_stats(void) {
-
-      // Compulsory filename.
-      std::string filename =  
-      ""            + stat.policy + 
-      ""            + std::to_string(stat.appid) +
-      "global_mem"  + std::to_string(stat.global_mem);
+      std::string filename{stat.policy
+                          + "-app" + std::to_string(stat.appid)
+                          + "-global_mem" + std::to_string(stat.global_mem)};
                              
       // Specific filename additions. 
       filename += stat.segment_size > 0 ? 
-        "segment_size" + std::to_string(stat.segment_size) : ""; 
+        "-segment_size" + std::to_string(stat.segment_size) : ""; 
       filename += stat.cleaning_width > 0 ?
-        "cleaning_width" + std::to_string(stat.cleaning_width) : "";
+        "-cleaning_width" + std::to_string(stat.cleaning_width) : "";
       filename += stat.gfactor > 0 ? 
-        "growth_factor" + std::to_string(stat.gfactor) : "";
+        "-growth_factor" + to_string_with_precision(stat.gfactor) : "";
       filename += stat.partitions > 0 ?
-        "partitions" + std::to_string(stat.partitions) : "";  
+        "-partitions" + std::to_string(stat.partitions) : "";  
 
       filename += ".data";
 
       std::ofstream out { filename };
 
-      out << "app policy global_mem segment_size cleaning_width hits accesses "
-             "hit_rate, bytes_cached, evicted_bytes, evicted_items,"
-             "cleaned_bytes, cleaned_items" 
+      out << "app policy global_mem segment_size cleaning_width growth_factor "
+             "hits accesses hit_rate bytes_cached evicted_bytes evicted_items "
+             "cleaned_bytes cleaned_items" 
           << std::endl;
       out << stat.appid << " "
           << stat.policy << " "
           << stat.global_mem << " "
           << stat.segment_size << " "
           << stat.cleaning_width << " "
+          << stat.gfactor << " "
           << stat.hits << " "
           << stat.accesses << " "
           << double(stat.hits) / stat.accesses << " "

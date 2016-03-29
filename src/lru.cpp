@@ -5,7 +5,7 @@
 #include "lru.h"
 
 lru::lru()
-  : policy{stats{"","",0,0}}
+  : policy{stats{"",0,0}}
   , map{}
   , queue{}
 {

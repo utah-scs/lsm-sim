@@ -12,63 +12,68 @@ segment_size=$((1024 * 1024))
 
 #rm lsm*.data
 #rm lsm*.log
+#rm lru*.data
+#rm lru*.log
+rm slab*.data
+rm slab*.log
 
 pids=""
 
-maxprocs=4
+maxprocs=8
 
 echo === LRU ===
 for app in $apps; do
-   echo Running app $app
- 
-   for mb in $mbs; do
-     echo With cache size $mb MB
- 
-     ../lsm-sim \
-       -a $app \
-       -p lru \
-       -s $(($mb * 1024 * 1024)) \
-       -v \
-       -f ../data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
-     pids="$pids $!"
- 
-     cnt=( $pids )
-     cnt="${#cnt[@]}"
-     if [[ "$cnt" == "$maxprocs" ]]; then
-       wait $pids
-       pids=""
-     fi
-   done
- done
- 
- wait $pids
- 
- echo === LSM ===
- for app in $apps; do
-   echo Running app $app
- 
-   for mb in $mbs; do
-     echo With cache size $mb MB
- 
-     ../lsm-sim \
-       -a $app \
-       -p lsm \
-       -s $(($mb * 1024 * 1024)) \
-       -S $segment_size \
-       -v \
-       -f ../data/app${app} > lsm-app${app}-size${mb}MB.log 2>&1 &
-     pids="$pids $!"
- 
-     cnt=( $pids )
-     cnt="${#cnt[@]}"
-     if [[ "$cnt" == "$maxprocs" ]]; then
-       wait $pids
-       pids=""
-     fi
-   done
- done
- 
- wait $pids
+  echo Running app $app
+
+  for mb in $mbs; do
+    echo With cache size $mb MB
+
+    ../lsm-sim \
+      -a $app \
+      -p lru \
+      -s $(($mb * 1024 * 1024)) \
+      -v \
+      -f ../data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
+    pids="$pids $!"
+
+    cnt=( $pids )
+    cnt="${#cnt[@]}"
+    if [[ "$cnt" == "$maxprocs" ]]; then
+      wait $pids
+      pids=""
+    fi
+  done
+done
+
+wait $pids
+
+echo === LSM ===
+for app in $apps; do
+  echo Running app $app
+
+  for mb in $mbs; do
+    echo With cache size $mb MB
+
+    ../lsm-sim \
+      -a $app \
+      -p lsm \
+      -s $(($mb * 1024 * 1024)) \
+      -S $segment_size \
+      -v \
+      -f ../data/app${app} > lsm-app${app}-size${mb}MB.log 2>&1 &
+    pids="$pids $!"
+
+    cnt=( $pids )
+    cnt="${#cnt[@]}"
+    if [[ "$cnt" == "$maxprocs" ]]; then
+      wait $pids
+      pids=""
+    fi
+  done
+done
+
+wait $pids
+
 
 echo === SLAB 2.0 ===
 for app in $apps; do

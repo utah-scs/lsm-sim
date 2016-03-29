@@ -78,6 +78,7 @@ size_t slab::proc(const request *r, bool warmup) {
          slab_class.would_cause_eviction(r))
   {
       slab_class.expand(SLABSIZE);
+      mem_in_use += SLABSIZE;
   }
 
   size_t outcome = slab_class.proc(&copy, warmup);

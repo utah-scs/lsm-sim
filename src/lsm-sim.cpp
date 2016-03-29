@@ -189,10 +189,8 @@ int main(int argc, char *argv[]) {
 
   //assert(apps.size() == 1);
 
-  std::string filename_suffix = "-app" + std::to_string(appid);
-
   // build a stats struct with basic info relevant to every policy.
-  stats sts{filename_suffix, policy_names[policy_type], appid, global_mem};
+  stats sts{policy_names[policy_type], appid, global_mem};
 
   printf("APPID: %lu\n", appid);
  
@@ -206,32 +204,30 @@ int main(int argc, char *argv[]) {
       policy.reset(new fifo(sts));
       break;
     case LRU : 
-      sts.filename_suffix += "-size";
-      sts.filename_suffix += std::to_string(global_mem / (1u << 20));
-      sts.filename_suffix += "MB";
       policy.reset(new lru(sts));
       break;
     case SLAB :
-      sts.filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";
-      sts.gfactor = gfactor;
+      if (memcachier_classes) {
+        sts.gfactor = 2.0;
+      } else {
+        sts.gfactor = gfactor;
+      }
       sts.memcachier_classes = memcachier_classes;
       policy.reset(new slab(sts));
       break;
     case SHADOWSLAB:
-      sts.filename_suffix += memcachier_classes ? "-memcachier" : "-memcached";
+      if (memcachier_classes) {
+        sts.gfactor = 2.0;
+      } else {
+        sts.gfactor = gfactor;
+      }
       sts.memcachier_classes = memcachier_classes;
-      sts.gfactor = gfactor;
       policy.reset(new shadowslab(sts));
     case PARTSLAB:
-      sts.filename_suffix += "-partitions";
-      sts.filename_suffix += std::to_string(partitions);
       sts.partitions = partitions;
       policy.reset(new partslab(sts));
       break;
     case LSM:
-      sts.filename_suffix += "-size";
-      sts.filename_suffix += std::to_string(global_mem / (1u << 20));
-      sts.filename_suffix += "MB";
       sts.segment_size    = segment_size;
       sts.cleaning_width  = 4;
       policy.reset(new lsm(sts));

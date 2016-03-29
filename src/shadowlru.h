@@ -9,7 +9,8 @@
 // policy derived from Cliffhanger paper
 class shadowlru : public policy {
   public:
-    shadowlru(const stats stat = stats{"","",0,0});
+    shadowlru();
+    shadowlru(const stats& stat);
     ~shadowlru();
 
     size_t proc(const request *r, bool warmup);

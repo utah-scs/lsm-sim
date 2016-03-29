@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cat lru-*.data lsm-*.data slab-*.data | awk '
+cat lru*.data lsm*.data slab*.data | awk '
 
   /^app / {
     if (!header_printed) { print $0 }
