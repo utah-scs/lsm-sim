@@ -57,27 +57,8 @@ class policy {
 
       filename += ".data";
 
-      std::ofstream out { filename };
-
-      out << "app policy global_mem segment_size cleaning_width growth_factor "
-             "hits accesses hit_rate bytes_cached evicted_bytes evicted_items "
-             "cleaned_bytes cleaned_items" 
-          << std::endl;
-      out << stat.appid << " "
-          << stat.policy << " "
-          << stat.global_mem << " "
-          << stat.segment_size << " "
-          << stat.cleaning_width << " "
-          << stat.gfactor << " "
-          << stat.hits << " "
-          << stat.accesses << " "
-          << double(stat.hits) / stat.accesses << " "
-          << stat.bytes_cached << " "
-          << stat.evicted_bytes << " "
-          << stat.evicted_items << " "
-          << stat.cleaned_bytes << " "
-          << stat.cleaned_items << " "
-          << std::endl;
+      std::ofstream out{filename};
+      stat.dump(out);
     }
 };
 

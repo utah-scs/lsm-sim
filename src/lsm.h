@@ -36,13 +36,20 @@ class lsm : public policy {
         segment()
           : queue{}
           , filled_bytes{}
+          , access_count{}
+          , low_timestamp{}
         {}
 
         lru_queue queue;
         size_t filled_bytes;
+
+        uint64_t access_count;
+        double low_timestamp;
     };
 
   public:
+    enum class cleaning_policy { RANDOM, RUMBLE, ROUND_ROBIN, OLDEST_ITEM };
+
     lsm(stats sts);
     ~lsm();
 
@@ -57,21 +64,27 @@ class lsm : public policy {
     void dump_util(const std::string& filename);
 
   private:
-    void rollover();
+    void rollover(double timestamp);
     void clean();
     void dump_usage();
 
     std::vector<segment*> choose_cleaning_sources();
+    std::vector<segment*> choose_cleaning_sources_random();
+    std::vector<segment*> choose_cleaning_sources_rumble();
+    std::vector<segment*> choose_cleaning_sources_round_robin();
+    std::vector<segment*> choose_cleaning_sources_oldest_item();
     segment* choose_cleaning_destination();
 
     void dump_cleaning_plan(std::vector<segment*> srcs,
                             std::vector<segment*> dsts);
+
+    cleaning_policy cleaner;
+
     hash_map map; 
 
     segment* head;
     std::vector<optional<segment>> segments;
     size_t free_segments;
-
 
     lsm(const lsm&) = delete;
     lsm& operator=(const lsm&) = delete;

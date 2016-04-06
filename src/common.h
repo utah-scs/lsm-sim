@@ -27,6 +27,8 @@ struct stats {
   size_t cleaned_items;
   size_t segment_size;
   size_t cleaning_width;
+  size_t cleaned_generated_segs;
+  size_t cleaned_ext_frag_bytes;
   bool   memcachier_classes;
   double gfactor;
   size_t partitions;
@@ -47,6 +49,8 @@ struct stats {
     , cleaned_items{}
     , segment_size{}
     , cleaning_width{}
+    , cleaned_generated_segs{}
+    , cleaned_ext_frag_bytes{}
     , memcachier_classes{}
     , gfactor{}
     , partitions{}
@@ -54,6 +58,43 @@ struct stats {
 
   double get_hit_rate() { return double(hits) / accesses; }
   double get_utilization() { return double(bytes_cached) / global_mem; }
+
+  void dump(std::ofstream& out) const {
+      out << "app "
+             "policy "
+             "global_mem "
+             "segment_size "
+             "cleaning_width "
+             "growth_factor "
+             "hits accesses "
+             "hit_rate "
+             "bytes_cached "
+             "evicted_bytes "
+             "evicted_items "
+             "cleaned_bytes "
+             "cleaned_items " 
+             "cleaned_generated_segs "
+             "cleaned_ext_frag_bytes "
+          << std::endl;
+      out << appid << " "
+          << policy << " "
+          << global_mem << " "
+          << segment_size << " "
+          << cleaning_width << " "
+          << gfactor << " "
+          << hits << " "
+          << accesses << " "
+          << double(hits) / accesses << " "
+          << bytes_cached << " "
+          << evicted_bytes << " "
+          << evicted_items << " "
+          << cleaned_bytes << " "
+          << cleaned_items << " "
+          << cleaned_generated_segs << " "
+          << cleaned_ext_frag_bytes << " "
+          << std::endl;
+  }
+  
 };
 
 template <typename T>

@@ -2,11 +2,13 @@
 #include <fstream>
 #include <cassert>
 #include <unordered_set>
+#include <algorithm>
 
 #include "lsm.h"
 
 lsm::lsm(stats stat)
   : policy{stat}
+  , cleaner{cleaning_policy::OLDEST_ITEM}
   , map{}
   , head{nullptr}
   , segments{}
@@ -29,7 +31,7 @@ lsm::lsm(stats stat)
   assert(segments.size() > 2 * stat.cleaning_width);
 
   // Sets up head.
-  rollover();
+  rollover(0.);
 }
 
 lsm::~lsm() {}
@@ -58,6 +60,8 @@ size_t lsm::proc(const request *r, bool warmup) {
       old_segment->queue.emplace_front(old_segment, *r);
       map[r->kid] = old_segment->queue.begin();
 
+      ++old_segment->access_count;
+
       return 1;
     } else {
       // If the size changed, then we have to put it in head. Just
@@ -73,13 +77,15 @@ size_t lsm::proc(const request *r, bool warmup) {
   }
 
   if (head->filled_bytes + r->size() > stat.segment_size)
-    rollover();
+    rollover(r->time);
     //assert(head->filled_bytes + r->size() <= stat.segment_size);
 
   // Add the new request.
   head->queue.emplace_front(head, *r);
   map[r->kid] = head->queue.begin();
   head->filled_bytes += r->size();
+
+  ++head->access_count;
  
   return PROC_MISS;
 }
@@ -91,7 +97,7 @@ size_t lsm::get_bytes_cached() const
 
 void lsm::dump_util(const std::string& filename) {}
 
-void lsm::rollover()
+void lsm::rollover(double timestamp)
 {
   bool rolled = false;
   for (auto& segment : segments) {
@@ -101,6 +107,7 @@ void lsm::rollover()
     segment.emplace();
     --free_segments;
     head = &segment.value();
+    head->low_timestamp = timestamp;
     rolled = true;
     break;
   }
@@ -122,8 +129,22 @@ double lsm::get_running_hit_rate() {
   return double(stat.hits) / stat.accesses;
 }
 
-
 auto lsm::choose_cleaning_sources() -> std::vector<segment*>
+{
+  switch (cleaner) {
+    case cleaning_policy::OLDEST_ITEM:
+      return choose_cleaning_sources_oldest_item();
+    case cleaning_policy::ROUND_ROBIN:
+      return choose_cleaning_sources_round_robin();
+    case cleaning_policy::RUMBLE:
+      return choose_cleaning_sources_rumble();
+    case cleaning_policy::RANDOM:
+    default:
+      return choose_cleaning_sources_random();
+  }
+}
+
+auto lsm::choose_cleaning_sources_random() -> std::vector<segment*>
 {
   std::vector<segment*> srcs{};
 
@@ -156,6 +177,116 @@ auto lsm::choose_cleaning_sources() -> std::vector<segment*>
 
   return srcs;
 }
+
+auto lsm::choose_cleaning_sources_oldest_item() -> std::vector<segment*>
+{
+  std::vector<segment*> srcs{};
+
+  for (auto& segment : segments) {
+    // Don't pick free segments.
+    if (!segment)
+      continue;
+
+    // Don't pick the head segment.
+    if (&segment.value() == head)
+      continue;
+
+    srcs.emplace_back(&segment.value());
+  }
+
+  std::sort(srcs.begin(), srcs.end(),
+      [](const segment* left, const segment* right) {
+        return left->low_timestamp < right->low_timestamp;
+      });
+  //std::cout << "Sorted list" << std::endl;
+  //for (segment* src : srcs)
+    //std::cout << src->low_timestamp << std::endl;
+  srcs.resize(stat.cleaning_width);
+  //std::cout << "Selected list" << std::endl;
+  //for (segment* src : srcs)
+    //std::cout << src->low_timestamp << std::endl;
+  //std::cout << "==============" << std::endl;
+
+  for (auto& segment : segments) {
+    // Don't pick free segments.
+    if (!segment)
+      continue;
+    segment->access_count = 0;
+  }
+
+  // Check for enough in use segments during cleaning; if not then a bug!
+  assert(srcs.size() == stat.cleaning_width);
+
+  return srcs;
+}
+
+auto lsm::choose_cleaning_sources_rumble() -> std::vector<segment*>
+{
+  std::vector<segment*> srcs{};
+
+  for (auto& segment : segments) {
+    // Don't pick free segments.
+    if (!segment)
+      continue;
+
+    // Don't pick the head segment.
+    if (&segment.value() == head)
+      continue;
+
+    srcs.emplace_back(&segment.value());
+  }
+
+  std::sort(srcs.begin(), srcs.end(),
+      [](const segment* left, const segment* right) {
+        return left->access_count < right->access_count;
+      });
+  //std::cout << "Sorted list" << std::endl;
+  //for (segment* src : srcs)
+    //std::cout << src->access_count << std::endl;
+  srcs.resize(stat.cleaning_width);
+  //std::cout << "Selected list" << std::endl;
+  //for (segment* src : srcs)
+    //std::cout << src->access_count << std::endl;
+  //std::cout << "==============" << std::endl;
+
+  for (auto& segment : segments) {
+    // Don't pick free segments.
+    if (!segment)
+      continue;
+    segment->access_count = 0;
+  }
+
+  // Check for enough in use segments during cleaning; if not then a bug!
+  assert(srcs.size() == stat.cleaning_width);
+
+  return srcs;
+}
+
+auto lsm::choose_cleaning_sources_round_robin() -> std::vector<segment*>
+{
+  static size_t next = 0;
+
+  std::vector<segment*> srcs{};
+
+  while (srcs.size() < stat.cleaning_width) {
+    auto& segment = segments.at(next);
+
+    if (!segment)
+      continue;
+
+    // Don't pick the head segment.
+    if (&segment.value() == head)
+      continue;
+
+    srcs.emplace_back(&segment.value());
+
+    ++next;
+    next %= segments.size();
+  }
+
+  return srcs;
+}
+
 
 auto lsm::choose_cleaning_destination() -> segment* {
   for (auto& segment : segments) {
@@ -241,6 +372,10 @@ void lsm::clean()
     if (!item) {
       for (size_t i = 0; i < src_segments.size(); ++i)
         assert(its.at(i) == src_segments.at(i)->queue.end());
+
+      stat.cleaned_ext_frag_bytes += (stat.segment_size - dst->filled_bytes);
+      ++stat.cleaned_generated_segs;
+
       break;
     }
 
@@ -261,10 +396,15 @@ void lsm::clean()
 
     // Check to see if there is room for the item in the dst.
     if (dst->filled_bytes + item->req.size() > stat.segment_size) {
+      std::cerr << "Couldn't put in item of size " << item->req.size() << " bytes" << std::endl;
+      stat.cleaned_ext_frag_bytes += (stat.segment_size - dst->filled_bytes);
+      ++stat.cleaned_generated_segs;
+
       ++dst_index;
       // Break out of relocation if we are out of free space our dst segs.
       if (dst_index == stat.cleaning_width - 1)
         break;
+
       // Rollover to new dst.
       dst = choose_cleaning_destination();
       dst_segments.push_back(dst);
@@ -276,6 +416,7 @@ void lsm::clean()
     dst->queue.emplace_back(dst, item->req);
     map[item->req.kid] = (--dst->queue.end());
     dst->filled_bytes += item->req.size();
+    dst->low_timestamp = item->req.time;
   }
 
   // Clear items that are going to get thrown on the floor from the hashtable.
@@ -301,7 +442,7 @@ void lsm::clean()
     }
   }
 
-  const bool debug = true;
+  const bool debug = false;
   if (debug) {
     // Sanity check - none of the items left in the hash table should point
     // into a src_segment.

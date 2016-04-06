@@ -2,130 +2,116 @@
 
 #apps="3 19 18 20 6 5 8 59 227 29 10 94 11 23 2 7 53 13 31"
 apps="19 18 20 6 8 59 227 29 10 94 11 23 2 7 53 13 31 5"
+#apps="2 10 19 20 29 31 94"
+#apps="18 6 8 59 227 11 23 7 53 13 5"
+#apps="2 20 31"
 #apps="19"
 
 # ---------------------------------------------------| -> slow apps
 
-mbs="10 20 30 40 50 60 70 80 90 100 200 300 400 500 600 700 800 900 1000 1100 1200"
+#mbs="10 20 30 40 50 60 70 80 90 100 200 300 400 500 600 700 800 900 1000 1100 1200"
+#mbs="10 20 30 40 50 60 70 80 90 100 999999999"
+mbs="999999999 100 50 10 70 80 60 40 30 20 200 1000 400 600 300 700 800 900"
 
-segment_size=$((1024 * 1024))
+segment_size=$((1 * 1024 * 1024))
 
 #rm lsm*.data
 #rm lsm*.log
 #rm lru*.data
 #rm lru*.log
-rm slab*.data
-rm slab*.log
+#rm slab*.data
+#rm slab*.log
+
+declare -A memcachier_app_size
+memcachier_app_size[2]=118577408
+memcachier_app_size[5]=35743872
+memcachier_app_size[6]=7108608
+memcachier_app_size[7]=77842880
+memcachier_app_size[8]=10485760
+memcachier_app_size[10]=684898304
+memcachier_app_size[11]=7829952
+memcachier_app_size[13]=36647040
+memcachier_app_size[19]=51209600
+memcachier_app_size[18]=6313216
+memcachier_app_size[20]=70953344
+memcachier_app_size[23]=4542897472
+memcachier_app_size[29]=187378624
+memcachier_app_size[31]=1409535488
+memcachier_app_size[59]=1713664
+memcachier_app_size[94]=23238784
+memcachier_app_size[227]=20237184
+memcachier_app_size[53]=11044096
 
 pids=""
-
 maxprocs=8
 
-echo === LRU ===
-for app in $apps; do
-  echo Running app $app
+wait_too_many() {
+  cnt=( $pids )
+  cnt="${#cnt[@]}"
+  if [[ "$cnt" == "$maxprocs" ]]; then
+    wait $pids
+    pids=""
+  fi
+}
 
-  for mb in $mbs; do
-    echo With cache size $mb MB
+finish() {
+  pkill lsm-sim
+}
+trap finish EXIT
 
-    ../lsm-sim \
-      -a $app \
-      -p lru \
-      -s $(($mb * 1024 * 1024)) \
-      -v \
-      -f ../data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
-    pids="$pids $!"
-
-    cnt=( $pids )
-    cnt="${#cnt[@]}"
-    if [[ "$cnt" == "$maxprocs" ]]; then
-      wait $pids
-      pids=""
+for mbnum in $mbs; do
+  for app in $apps; do
+    if [[ "$mbnum" == "999999999" ]]; then
+      mb=$((${memcachier_app_size[$app]} / 1024 / 1024))
+      bytes=${memcachier_app_size[$app]}
+    else
+      mb=$mbnum
+      bytes=$(($mb * 1024 * 1024))
     fi
-  done
-done
 
-wait $pids
-
-echo === LSM ===
-for app in $apps; do
-  echo Running app $app
-
-  for mb in $mbs; do
-    echo With cache size $mb MB
-
+    echo Running LSM on app $app with cache size $mb MB
     ../lsm-sim \
       -a $app \
       -p lsm \
-      -s $(($mb * 1024 * 1024)) \
+      -s $bytes \
       -S $segment_size \
       -v \
       -f ../data/app${app} > lsm-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
+    wait_too_many
 
-    cnt=( $pids )
-    cnt="${#cnt[@]}"
-    if [[ "$cnt" == "$maxprocs" ]]; then
-      wait $pids
-      pids=""
-    fi
-  done
-done
+    echo Running LRU on app $app with cache size $mb MB
+    ../lsm-sim \
+      -a $app \
+      -p lru \
+      -s $bytes \
+      -v \
+      -f ../data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
+    pids="$pids $!"
+    wait_too_many
 
-wait $pids
-
-
-echo === SLAB 2.0 ===
-for app in $apps; do
-  echo Running app $app
-
-  for mb in $mbs; do
-    echo With cache size $mb MB
-
+    echo Running SLAB 2.0 on app $app with cache size $mb MB
     ../lsm-sim \
       -a $app \
       -p slab \
       -M \
-      -s $(($mb * 1024 * 1024)) \
+      -s $bytes \
       -v \
       -f ../data/app${app} > slab-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
+    wait_too_many
 
-    cnt=( $pids )
-    cnt="${#cnt[@]}"
-    if [[ "$cnt" == "$maxprocs" ]]; then
-      wait $pids
-      pids=""
-    fi
-  done
-done
-
-wait $pids
-
-echo === SLAB 1.25 ===
-for app in $apps; do
-  echo Running app $app
-
-  for mb in $mbs; do
-    echo With cache size $mb MB
-
+    echo Running SLAB 1.25 on app $app with cache size $mb MB
     ../lsm-sim \
       -a $app \
       -p slab \
       -g 1.25 \
-      -s $(($mb * 1024 * 1024)) \
+      -s $bytes \
       -v \
       -f ../data/app${app} > slab-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
-
-    cnt=( $pids )
-    cnt="${#cnt[@]}"
-    if [[ "$cnt" == "$maxprocs" ]]; then
-      wait $pids
-      pids=""
-    fi
+    wait_too_many
   done
 done
 
 wait $pids
-
