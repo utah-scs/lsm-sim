@@ -3,7 +3,7 @@
 #include "shadowlru.h"
 
 shadowlru::shadowlru()
-  : policy{{"", 0, 0}}
+  : policy{{"", {}, 0}}
   , class_size{}
   , size_curve{}
   , queue{}
@@ -105,7 +105,13 @@ std::vector<size_t> shadowlru::get_class_frags(size_t slab_size) const {
 
 
 void shadowlru::log_curves() {
-  std::string filename_suffix{"-app" + std::to_string(stat.appid)
+
+  std::string app_ids = "";
+
+  for(auto &a : stat.apps)
+    app_ids += std::to_string(a);
+
+  std::string filename_suffix{"-app" + app_ids
                              + (stat.memcachier_classes ?
                                  "-memcachier" : "-memcached")};
   size_curve.dump_cdf("shadowlru-size-curve" + filename_suffix + ".data");

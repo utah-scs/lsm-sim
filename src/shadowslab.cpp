@@ -1,10 +1,12 @@
 #include <cassert>
 #include <tuple>
+#include <string>
 
 #include "shadowlru.h"
 #include "shadowslab.h"
 #include "mc.h"
 #include "common.h"
+
 
 shadowslab::shadowslab(stats stat)
   : policy{stat}
@@ -129,7 +131,13 @@ std::pair<uint64_t, uint64_t> shadowslab::get_slab_class(uint32_t size) {
 }
 
 void shadowslab::log_curves() {
-  std::string filename_suffix{"-app" + std::to_string(stat.appid)
+  
+  std::string app_ids = "";
+
+  for(auto &a : stat.apps)
+    app_ids += std::to_string(a); 
+
+  std::string filename_suffix{"-app" + app_ids
                              + (stat.memcachier_classes ?
                                  "-memcachier" : "-memcached")};
   size_curve.dump_cdf("shadowslab-size-curve" + filename_suffix + ".data");

@@ -46,7 +46,7 @@ enum pol_type {
   , LSM };
 
 // globals
-size_t                appid;                            // app to consider
+std::set<uint32_t>    apps{};                           // apps to consider
 bool                  all_apps = true;                  // run all by default 
 bool                  roundup  = false;                 // no rounding default
 float                 lsm_util = 1.0;                   // default util factor
@@ -157,7 +157,13 @@ int main(int argc, char *argv[]) {
         break;
       case 'a':
         {
-          appid = atoi(optarg);
+          string_vec v;
+          csv_tokenize(std::string(optarg), &v);
+          for ( const auto& e : v) {
+            apps.insert(stoi(e));
+            app_str += e;
+            app_str += ",";
+          }
           break;
         }
       case 'r':
@@ -190,9 +196,9 @@ int main(int argc, char *argv[]) {
   //assert(apps.size() == 1);
 
   // build a stats struct with basic info relevant to every policy.
-  stats sts{policy_names[policy_type], appid, global_mem};
+  stats sts{policy_names[policy_type], apps, global_mem};
 
-  printf("APPID: %lu\n", appid);
+  //printf("APPID: %lu\n", appid);
  
   // instantiate a policy
   std::unique_ptr<policy> policy{};
@@ -292,7 +298,7 @@ int main(int argc, char *argv[]) {
 
     // Only process requests for specified app, of type GET,
     // and values of size > 0, after time 'hit_start_time'.
-    if ((r.type != request::GET) || (r.appid != appid) || (r.val_sz <= 0))
+    if ((r.type != request::GET) || apps.count(r.appid) == 0 || (r.val_sz <= 0))
       continue;
 
     policy->proc(&r, r.time < hit_start_time);

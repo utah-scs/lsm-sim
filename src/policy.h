@@ -42,7 +42,7 @@ class policy {
 
     void dump_stats(void) {
       std::string filename{stat.policy
-                          + "-app" + std::to_string(stat.appid)
+                          + "-app" //+ std::to_string(stat.appid)
                           + "-global_mem" + std::to_string(stat.global_mem)};
                              
       // Specific filename additions. 

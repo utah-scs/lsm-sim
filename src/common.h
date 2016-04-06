@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <set>
 
 typedef std::vector<std::string> string_vec;
 
@@ -15,7 +16,7 @@ int csv_tokenize(const std::string &s, string_vec *tokens);
 
 struct stats {
   std::string policy;
-  size_t appid;
+  std::set<uint32_t> apps;
   size_t global_mem; 
   double utilization;
   size_t accesses;
@@ -34,10 +35,10 @@ struct stats {
   size_t partitions;
 
   stats(std::string policy, 
-        size_t appid, 
+        std::set<uint32_t> apps, 
         size_t global_mem)
     : policy{policy}
-    , appid{appid}
+    , apps{apps}
     , global_mem{global_mem} 
     , utilization{}
     , accesses{}
@@ -76,7 +77,7 @@ struct stats {
              "cleaned_generated_segs "
              "cleaned_ext_frag_bytes "
           << std::endl;
-      out << appid << " "
+      out << "" << " "
           << policy << " "
           << global_mem << " "
           << segment_size << " "

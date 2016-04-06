@@ -46,7 +46,13 @@ size_t partslab::get_bytes_cached() const {
 }
 
 void partslab::log_curves() {
-  std::string filename_suffix{"-app" + std::to_string(stat.appid)
+
+  std::string app_ids = "";
+
+  for(auto &a : stat.apps)
+    app_ids += std::to_string(a);
+
+  std::string filename_suffix{"-app" + app_ids
                              + (stat.memcachier_classes ?
                                  "-memcachier" : "-memcached")};
   size_curve.dump_cdf("partslab-size-curve" + filename_suffix + ".data");

@@ -5,11 +5,11 @@
 #include "lru.h"
 
 lru::lru()
-  : policy{stats{"",0,0}}
+  : policy{stats{"",{},0}}
   , map{}
   , queue{}
 {
-  stat.appid = ~0u;
+  stat.apps = {};
 }  
 
 lru::lru(stats stat)
@@ -75,9 +75,9 @@ bool lru::would_cause_eviction(const request* r) {
 size_t lru::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
-  if (stat.appid == ~0u)
-    stat.appid = r->appid;
-  assert(r->appid == stat.appid);
+  if (stat.apps.empty())
+    stat.apps.insert(r->appid);
+  assert(stat.apps.count(r->appid) == 1);
 
   if (!warmup)
     ++stat.accesses;
