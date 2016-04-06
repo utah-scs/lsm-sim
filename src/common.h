@@ -33,6 +33,10 @@ struct stats {
   bool   memcachier_classes;
   double gfactor;
   size_t partitions;
+  size_t min_mem;
+  size_t target_mem;
+  size_t epoch_len;
+  size_t period_len;
 
   stats(std::string policy, 
         std::set<uint32_t> apps, 
@@ -55,6 +59,10 @@ struct stats {
     , memcachier_classes{}
     , gfactor{}
     , partitions{}
+    , min_mem{}
+    , target_mem{}
+    , epoch_len{}
+    , period_len{}
   {}
 
   double get_hit_rate() { return double(hits) / accesses; }
