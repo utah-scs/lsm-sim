@@ -13,6 +13,7 @@ template <class T>
 using optional = std::experimental::optional<T>;
 constexpr auto nullopt = std::experimental::nullopt;
 
+
 class lsc_multi : public policy {
   private:
     class segment;
@@ -47,16 +48,30 @@ class lsc_multi : public policy {
         double low_timestamp;
     };
 
+    class application {
+      public:
+        application(size_t min_mem, size_t target_mem)
+        : min_mem{}
+        , target_mem{}
+        , owed_mem{}
+        , average_hits{} 
+      {}
+ 
+      size_t min_mem;
+      size_t target_mem;
+      size_t owed_mem;
+      double average_hits;
+    };
+
   public:
     enum class cleaning_policy { RANDOM, RUMBLE, ROUND_ROBIN, OLDEST_ITEM };
 
-    lsm(stats sts);
-    ~lsm();
+    lsc_multi(stats sts);
+    ~lsc_multi();
 
     size_t proc(const request *r, bool warmup);
     size_t get_bytes_cached() const;
    
-
     double get_running_hit_rate();
     size_t get_evicted_bytes() { return stat.evicted_bytes; }
     size_t get_evicted_items() { return stat.evicted_items; }
@@ -64,6 +79,7 @@ class lsc_multi : public policy {
     void dump_util(const std::string& filename);
 
   private:
+
     void rollover(double timestamp);
     void clean();
     void dump_usage();
@@ -80,16 +96,18 @@ class lsc_multi : public policy {
 
     cleaning_policy cleaner;
 
+    std::unordered_map<size_t, application> applications;
+
     hash_map map; 
 
     segment* head;
     std::vector<optional<segment>> segments;
     size_t free_segments;
 
-    lsm(const lsm&) = delete;
-    lsm& operator=(const lsm&) = delete;
-    lsm(lsm&&) = delete;
-    lsm& operator=(lsm&&) = delete;
+    lsc_multi(const lsc_multi&) = delete;
+    lsc_multi& operator=(const lsc_multi&) = delete;
+    lsc_multi(lsc_multi&&) = delete;
+    lsc_multi& operator=(lsc_multi&&) = delete;
 };
 
 #endif
