@@ -5,6 +5,7 @@
 
 #include "policy.h"
 #include "common.h"
+#include "application.h"
 
 #ifndef LSC_MULTI_H
 #define LSC_MULTI_H
@@ -46,21 +47,6 @@ class lsc_multi : public policy {
 
         uint64_t access_count;
         double low_timestamp;
-    };
-
-    class application {
-      public:
-        application(size_t min_mem, size_t target_mem)
-        : min_mem{}
-        , target_mem{}
-        , owed_mem{}
-        , average_hits{} 
-      {}
- 
-      size_t min_mem;
-      size_t target_mem;
-      size_t owed_mem;
-      double average_hits;
     };
 
   public:
