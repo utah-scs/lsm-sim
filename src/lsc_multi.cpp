@@ -6,20 +6,30 @@
 
 #include "lsc_multi.h"
 
+lsc_multi::application::application(
+    size_t appid,
+    size_t min_mem,
+    size_t target_mem)
+  : appid{appid}
+  , min_mem{min_mem}
+  , target_mem{target_mem}
+  , credit_bytes{}
+  , shadow_q{}
+{
+  shadow_q.expand(1 * 1024 * 1024);
+}
+
+lsc_multi::application::~application() {}
+
 lsc_multi::lsc_multi(stats stat)
   : policy{stat}
   , cleaner{cleaning_policy::OLDEST_ITEM}
-  , applications{}
+  , apps{}
   , map{}
   , head{nullptr}
   , segments{}
   , free_segments{}
 {
- 
-  // Initialize application objects.
-  for( auto &a : stat.apps ) 
-    applications.emplace(a, application(0,0));  
-  
   srand(0);
 
   if (stat.global_mem % stat.segment_size != 0) {
@@ -40,6 +50,13 @@ lsc_multi::lsc_multi(stats stat)
 }
 
 lsc_multi::~lsc_multi() {}
+
+void lsc_multi::add_app(size_t appid, size_t min_memory, size_t target_memory)
+{
+  assert(!head);
+  assert(apps.find(appid) == apps.end());
+  apps.emplace(appid, application{appid, min_memory, target_memory});
+}
 
 size_t lsc_multi::proc(const request *r, bool warmup) {
   assert(r->size() > 0);

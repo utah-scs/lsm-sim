@@ -21,6 +21,7 @@
 #include "shadowslab.h"
 #include "partslab.h"
 #include "lsm.h"
+#include "lsc_multi.h"
 #include "lru.h"
 #include "slab.h"
 #include "mc.h"
@@ -28,13 +29,14 @@
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[7] = { "shadowlru"
+const char* policy_names[8] = { "shadowlru"
                               , "fifo"
                               , "lru"
 															, "slab"
                               , "shadowslab"
                               , "partslab"
                               , "lsm"
+                              , "multi"
                               };
 enum pol_type { 
     SHADOWLRU = 0
@@ -43,7 +45,8 @@ enum pol_type {
   , SLAB
   , SHADOWSLAB
   , PARTSLAB
-  , LSM };
+  , LSM
+  , MULTI };
 
 // globals
 std::set<uint32_t>    apps{};                           // apps to consider
@@ -92,6 +95,26 @@ const int orig_alloc[15] = {
   1664, 2304, 512, 17408, 266240, 16384, 73728, 188416, 442368,
   3932160, 11665408, 34340864, 262144, 0 , 0
 };
+
+std::unordered_map<size_t, size_t> memcachier_app_size = { {2, 118577408}
+                                                         , {5, 35743872}
+                                                         , {6, 7108608}
+                                                         , {7, 77842880}
+                                                         , {8, 10485760}
+                                                         , {10, 684898304}
+                                                         , {11, 7829952}
+                                                         , {13, 36647040}
+                                                         , {19, 51209600}
+                                                         , {18, 6313216}
+                                                         , {20, 70953344}
+                                                         , {23, 4542897472}
+                                                         , {29, 187378624}
+                                                         , {31, 1409535488}
+                                                         , {53, 11044096}
+                                                         , {59, 1713664}
+                                                         , {94, 23238784}
+                                                         , {227, 20237184}
+                                                         };
 
 
 // returns true if an ID is in the spec'd set
@@ -234,9 +257,23 @@ int main(int argc, char *argv[]) {
       policy.reset(new partslab(sts));
       break;
     case LSM:
-      sts.segment_size    = segment_size;
-      sts.cleaning_width  = 4;
+      sts.segment_size = segment_size;
+      sts.cleaning_width = 4;
       policy.reset(new lsm(sts));
+      break;
+    case MULTI:
+      sts.segment_size = segment_size;
+      sts.cleaning_width = 4;
+      lsc_multi* multi = new lsc_multi(sts);
+      policy.reset(multi);
+
+      for (size_t appid : apps) {
+        multi->add_app(
+            appid,
+            memcachier_app_size[appid] / 2,
+            memcachier_app_size[appid]);
+      }
+
       break;
   }
 

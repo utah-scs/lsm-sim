@@ -9,10 +9,6 @@
 #ifndef LSM_H
 #define LSM_H
 
-template <class T>
-using optional = std::experimental::optional<T>;
-constexpr auto nullopt = std::experimental::nullopt;
-
 class lsm : public policy {
   private:
     class segment;

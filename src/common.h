@@ -1,6 +1,4 @@
-#ifndef COMMON_H
-#define COMMON_H
-
+#include <experimental/optional>
 #include <cinttypes>
 #include <string>
 #include <vector>
@@ -8,6 +6,14 @@
 #include <sstream>
 #include <iomanip>
 #include <set>
+
+#ifndef COMMON_H
+#define COMMON_H
+
+template <class T>
+using optional = std::experimental::optional<T>;
+
+constexpr auto nullopt = std::experimental::nullopt;
 
 typedef std::vector<std::string> string_vec;
 

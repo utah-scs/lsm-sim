@@ -1,22 +1,29 @@
-#include <experimental/optional>
 #include <list>
 #include <unordered_map>
 #include <vector>
 
-#include "policy.h"
 #include "common.h"
-#include "application.h"
+#include "lru.h"
+#include "policy.h"
 
 #ifndef LSC_MULTI_H
 #define LSC_MULTI_H
 
-template <class T>
-using optional = std::experimental::optional<T>;
-constexpr auto nullopt = std::experimental::nullopt;
-
-
 class lsc_multi : public policy {
   private:
+    class application {
+      public:
+        application(size_t appid, size_t min_mem, size_t target_mem);
+        ~application();
+      
+      private:
+        size_t appid;
+        size_t min_mem;
+        size_t target_mem;
+        size_t credit_bytes;
+        lru shadow_q;
+    };
+
     class segment;
 
     class item {
@@ -55,6 +62,8 @@ class lsc_multi : public policy {
     lsc_multi(stats sts);
     ~lsc_multi();
 
+  void add_app(size_t appid, size_t min_memory, size_t target_memory);
+
     size_t proc(const request *r, bool warmup);
     size_t get_bytes_cached() const;
    
@@ -82,7 +91,7 @@ class lsc_multi : public policy {
 
     cleaning_policy cleaner;
 
-    std::unordered_map<size_t, application> applications;
+    std::unordered_map<size_t, application> apps;
 
     hash_map map; 
 
