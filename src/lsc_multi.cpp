@@ -14,6 +14,7 @@ lsc_multi::application::application(
   , min_mem{min_mem}
   , target_mem{target_mem}
   , credit_bytes{}
+  , bytes_in_use{}
   , shadow_q{}
 {
   shadow_q.expand(1 * 1024 * 1024);
@@ -108,6 +109,25 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
   head->filled_bytes += r->size();
 
   ++head->access_count;
+
+  // Bill the correct app for its use of log space.
+  auto appit = apps.find(r->appid);
+  assert(appit != apps.end());
+  application& app = appit->second;
+
+  app.bill_for_bytes(r->size());
+
+  // Check to see if the access would have hit in the app's shadow Q.
+  if (app.proc(r) != PROC_MISS) {
+    // Hit in shadow Q! We get to steal!
+    const size_t steal_size = 4096;
+    for (auto& other : apps) {
+      application& other_app = other.second;
+      if (app.try_steal_from(other_app, steal_size))
+        break;
+    }
+    // May not have been able to steal, but oh well.
+  }
  
   return PROC_MISS;
 }

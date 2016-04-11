@@ -15,12 +15,42 @@ class lsc_multi : public policy {
       public:
         application(size_t appid, size_t min_mem, size_t target_mem);
         ~application();
+
+        void bill_for_bytes(size_t bytes) {
+          bytes_in_use += bytes;
+        }
+
+        size_t bytes_limit() const {
+          return target_mem + credit_bytes;
+        }
+
+        bool try_steal_from(application& other, size_t bytes) {
+          if (other.bytes_limit() < bytes)
+            return false;
+
+          const size_t would_become = other.bytes_limit() - bytes;
+          if (would_become < min_mem)
+            return false;
+
+          other.credit_bytes -= bytes;
+          credit_bytes += bytes;
+
+          return true;
+        }
+
+        size_t proc(const request *r) {
+          return shadow_q.proc(r, false);
+        }
       
       private:
-        size_t appid;
-        size_t min_mem;
-        size_t target_mem;
-        size_t credit_bytes;
+        const size_t appid;
+        const size_t min_mem;
+
+        const size_t target_mem;
+        ssize_t credit_bytes;
+
+        size_t bytes_in_use;
+
         lru shadow_q;
     };
 
