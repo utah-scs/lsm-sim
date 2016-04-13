@@ -15,9 +15,14 @@ lsc_multi::application::application(
   , target_mem{target_mem}
   , credit_bytes{}
   , bytes_in_use{}
+  , accesses{}
+  , hits{}
+  , shadow_q_hits{}
   , shadow_q{}
+  , cleaning_q{}
+  , cleaning_it{cleaning_q.end()}
 {
-  shadow_q.expand(1 * 1024 * 1024);
+  shadow_q.expand(10 * 1024 * 1024);
 }
 
 lsc_multi::application::~application() {}
@@ -54,7 +59,7 @@ lsc_multi::~lsc_multi() {}
 
 void lsc_multi::add_app(size_t appid, size_t min_memory, size_t target_memory)
 {
-  assert(!head);
+  assert(head->filled_bytes == 0);
   assert(apps.find(appid) == apps.end());
   apps.emplace(appid, application{appid, min_memory, target_memory});
 }
@@ -66,13 +71,21 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
     stat.apps.insert (r->appid);
   assert(stat.apps.count(r->appid) == 1);
 
-  if (!warmup)
+  auto appit = apps.find(r->appid);
+  assert(appit != apps.end());
+  application& app = appit->second;
+
+  if (!warmup) {
     ++stat.accesses;
+    ++app.accesses;
+  }
 
   auto it = map.find(r->kid);
   if (it != map.end()) {
-    if (!warmup)
+    if (!warmup) {
       ++stat.hits;
+      ++app.hits;
+    }
 
     auto list_it = it->second;
     segment* old_segment = list_it->seg;
@@ -111,18 +124,22 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
   ++head->access_count;
 
   // Bill the correct app for its use of log space.
-  auto appit = apps.find(r->appid);
-  assert(appit != apps.end());
-  application& app = appit->second;
+  app.bytes_in_use += r->size();
 
-  app.bill_for_bytes(r->size());
+  std::vector<size_t> appids{};
+  for (size_t appid : stat.apps)
+    appids.push_back(appid);
 
   // Check to see if the access would have hit in the app's shadow Q.
   if (app.proc(r) != PROC_MISS) {
+    ++app.shadow_q_hits;
     // Hit in shadow Q! We get to steal!
     const size_t steal_size = 4096;
-    for (auto& other : apps) {
-      application& other_app = other.second;
+    for (int i = 0; i < 10; ++i) {
+      size_t victim = appids.at(rand() % appids.size());
+      auto it = apps.find(victim);
+      assert(it != apps.end());
+      application& other_app = it->second;
       if (app.try_steal_from(other_app, steal_size))
         break;
     }
@@ -375,6 +392,20 @@ next:
   std::cerr << "]" << std::endl;
 } 
 
+auto lsc_multi::find_app_most_in_need() -> application* {
+  application* r = nullptr;
+  for (auto& p : apps) {
+    application& app = p.second;
+    if (app.target_mem + app.credit_bytes <= app.min_mem)
+      continue;
+    if (app.cleaning_it == app.cleaning_q.end())
+      continue;
+    if (r == nullptr || app.need() > r->need())
+      r = &app;
+  }
+  return r;
+}
+
 void lsc_multi::clean()
 {
   /*
@@ -385,12 +416,39 @@ void lsc_multi::clean()
 
   std::vector<segment*> src_segments = choose_cleaning_sources();
 
-  // One iterator for each segment to be cleaned. We use these to keep a
-  // finger into each queue and merge them into a sorted order in the
-  // destination segments.
-  std::vector<lru_queue::iterator> its{};
-  for (auto* segment : src_segments)
-    its.emplace_back(segment->queue.begin());
+  // Push all items into the app-specific cleaning queues.
+  for (segment* segment : src_segments) {
+    for (auto& item : segment->queue) {
+      auto appit = apps.find(item.req.appid);
+      assert(appit != apps.end());
+      application& app = appit->second;
+
+      // Remove all objects in the segments to clean from the apps
+      // memory budget. Will get re-added for each object that gets
+      // 'salvaged'.
+      app.bytes_in_use -= item.req.size();
+
+      // Check to see if this version is still needed.
+      auto it = map.find(item.req.kid);
+      // If not in the hash table, just drop it.
+      if (it == map.end())
+        continue;
+      // If hash table pointer refers to a different version, drop this one.
+      if (&*it->second != &item)
+        continue;
+
+      app.add_to_cleaning_queue(&item);
+    }
+  }
+
+  // Sort each app's queue and reset its cleaning
+  // iterator.
+  for (auto& p : apps) {
+    application& app = p.second;
+    app.sort_cleaning_queue();
+  }
+
+  std::cerr << std::endl;
 
   size_t dst_index = 0;
   segment* dst = choose_cleaning_destination();
@@ -398,47 +456,37 @@ void lsc_multi::clean()
   dst_segments.push_back(dst);
 
   while (true) {
-    item* item = nullptr;
-    size_t it_to_incr = 0;
-    for (size_t i = 0; i < src_segments.size(); ++i) {
-      auto& it = its.at(i);
-      if (it == src_segments.at(i)->queue.end())
-        continue;
-      if (!item || it->req.time > item->req.time) {
-        item = &*it;
-        it_to_incr = i;
-      }
-    }
+    application* selected_app = find_app_most_in_need();
 
     // All done with all its.
-    if (!item) {
-      for (size_t i = 0; i < src_segments.size(); ++i)
-        assert(its.at(i) == src_segments.at(i)->queue.end());
-
+    if (!selected_app) {
       stat.cleaned_ext_frag_bytes += (stat.segment_size - dst->filled_bytes);
       ++stat.cleaned_generated_segs;
 
       break;
     }
 
-    // Check to see if this version is still needed.
+    item* item = *selected_app->cleaning_it;
+
     auto it = map.find(item->req.kid);
-    // If not in the hash table, just drop it.
+
+    // Should exist else we would have thrown it out in the first
+    // pass constructing the per-app lists.
     if (it == map.end()) {
-      ++its.at(it_to_incr);
-      continue;
+      std::cerr << "Found dead object during cleaning" << std::endl;
+      item->req.dump();
     }
+    assert(it != map.end());
     // If hash table pointer refers to a different version, drop this one.
     if (&*it->second != item) {
-      ++its.at(it_to_incr);
+      ++selected_app->cleaning_it;
       continue;
     }
-
-    assert(src_segments.at(it_to_incr) == item->seg);
 
     // Check to see if there is room for the item in the dst.
     if (dst->filled_bytes + item->req.size() > stat.segment_size) {
-      std::cerr << "Couldn't put in item of size " << item->req.size() << " bytes" << std::endl;
+      //std::cerr << "Couldn't put in item of size "
+                //<< item->req.size() << " bytes" << std::endl;
       stat.cleaned_ext_frag_bytes += (stat.segment_size - dst->filled_bytes);
       ++stat.cleaned_generated_segs;
 
@@ -452,36 +500,41 @@ void lsc_multi::clean()
       dst_segments.push_back(dst);
     }
     assert(dst->filled_bytes + item->req.size() <= stat.segment_size);
-    ++its.at(it_to_incr);
+    ++selected_app->cleaning_it;
 
     // Relocate *to the back* to retain timestamp sort order.
     dst->queue.emplace_back(dst, item->req);
     map[item->req.kid] = (--dst->queue.end());
     dst->filled_bytes += item->req.size();
     dst->low_timestamp = item->req.time;
+    
+    // Bill the app that hosts it for the space use for preserving this.
+    selected_app->bytes_in_use += item->req.size();
   }
 
   // Clear items that are going to get thrown on the floor from the hashtable.
-  for (size_t i = 0; i < src_segments.size(); ++i) {
-    auto& it = its.at(i);
-    while (it != src_segments.at(i)->queue.end()) {
+  for (auto& p : apps) {
+    application& app = p.second;
+    while (app.cleaning_it != app.cleaning_q.end()) {
       // Need to do a double check here. The item we are evicting may
       // still exist in the hash table but it may point to a newer version
       // of this object. In that case, skip the erase from the hash table.
-      auto hash_it = map.find(it->req.kid);
+      auto hash_it = map.find((*app.cleaning_it)->req.kid);
       if (hash_it != map.end()) {
-        item* from_list = &*it;
+        item* from_list = *app.cleaning_it;
         item* from_hash = &*hash_it->second;
 
         if (from_list == from_hash) {
-          map.erase(it->req.kid);
+          map.erase((*app.cleaning_it)->req.kid);
           ++stat.evicted_items;
           stat.evicted_bytes += from_list->req.size();
         }
       }
 
-      ++it;
+      ++app.cleaning_it;
     }
+    assert(app.cleaning_it == app.cleaning_q.end());
+    app.cleaning_q.clear();
   }
 
   const bool debug = false;

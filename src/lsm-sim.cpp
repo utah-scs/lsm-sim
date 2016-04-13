@@ -164,6 +164,8 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(5);
         else if (std::string(optarg) == "lsm")
           policy_type = pol_type(6);
+        else if (std::string(optarg) == "multi")
+          policy_type = pol_type(7);
         else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
