@@ -22,6 +22,10 @@ class lsc_multi : public policy {
           , req{req}
         {}
 
+        // Sorting by request timestamp is ok, because we also
+        // store the request object even when the access is a
+        // hit to an existing object. That is, timestamps
+        // represent access times as a result.
         static bool rcmp(const item* left, const item* right) {
           return left->req.time > right->req.time;
         }
@@ -75,8 +79,8 @@ class lsc_multi : public policy {
           return true;
         }
 
-        size_t proc(const request *r) {
-          return shadow_q.proc(r, false);
+        bool would_hit(const request *r) {
+          return shadow_q.would_hit(r);
         }
 
         void add_to_cleaning_queue(item* item) {
@@ -88,17 +92,45 @@ class lsc_multi : public policy {
                     cleaning_q.end(),
                     item::rcmp);
           cleaning_it = cleaning_q.begin();
-          std::cout << "App " << appid
-                    << " target_mem " << target_mem
-                    << " credit_bytes " << credit_bytes
-                    << " share " << target_mem + credit_bytes
-                    << " min_mem " << min_mem
-                    << " bytes_in_use " << bytes_in_use
-                    << " need " << need()
-                    << " hits " << hits
-                    << " accesses " << accesses
-                    << " shadow_q_hits " << shadow_q_hits
-                    << " hit_rate " << double(hits) / accesses
+        }
+
+        static void dump_stats_header() {
+          std::cout << "time "
+                    << "app "
+                    << "target_mem "
+                    << "credit_bytes "
+                    << "share "
+                    << "min_mem "
+                    << "bytes_in_use "
+                    << "need "
+                    << "hits "
+                    << "accesses "
+                    << "shadow_q_hits "
+                    << "survivor_items "
+                    << "survivor_bytes "
+                    << "evicted_items "
+                    << "evicted_bytes "
+                    << "hit_rate "
+                    << std::endl;
+        }
+
+        void dump_stats(double time) {
+          std::cout << int64_t(time) << " "
+                    << appid << " "
+                    << target_mem << " "
+                    << credit_bytes << " "
+                    << target_mem + credit_bytes << " "
+                    << min_mem << " "
+                    << bytes_in_use << " "
+                    << need() << " "
+                    << hits << " "
+                    << accesses << " "
+                    << shadow_q_hits << " "
+                    << survivor_items << " "
+                    << survivor_bytes << " "
+                    << evicted_items << " "
+                    << evicted_bytes << " "
+                    << double(hits) / accesses << " "
                     << std::endl;
         }
 
@@ -117,6 +149,10 @@ class lsc_multi : public policy {
         size_t accesses;
         size_t hits;
         size_t shadow_q_hits;
+        size_t survivor_items;
+        size_t survivor_bytes;
+        size_t evicted_items;
+        size_t evicted_bytes;
 
         lru shadow_q;
 
@@ -157,6 +193,10 @@ class lsc_multi : public policy {
 
     void dump_cleaning_plan(std::vector<segment*> srcs,
                             std::vector<segment*> dsts);
+
+    void dump_app_stats(double time);
+    
+    double last_dump;
 
     cleaning_policy cleaner;
 

@@ -18,18 +18,23 @@ lsc_multi::application::application(
   , accesses{}
   , hits{}
   , shadow_q_hits{}
+  , survivor_items{}
+  , survivor_bytes{}
+  , evicted_items{}
+  , evicted_bytes{}
   , shadow_q{}
   , cleaning_q{}
   , cleaning_it{cleaning_q.end()}
 {
-  shadow_q.expand(10 * 1024 * 1024);
+  shadow_q.expand(1 * 1024 * 1024);
 }
 
 lsc_multi::application::~application() {}
 
 lsc_multi::lsc_multi(stats stat)
   : policy{stat}
-  , cleaner{cleaning_policy::OLDEST_ITEM}
+  , last_dump{0.}
+  , cleaner{cleaning_policy::RANDOM}
   , apps{}
   , map{}
   , head{nullptr}
@@ -64,8 +69,22 @@ void lsc_multi::add_app(size_t appid, size_t min_memory, size_t target_memory)
   apps.emplace(appid, application{appid, min_memory, target_memory});
 }
 
+void lsc_multi::dump_app_stats(double time) {
+  for (auto& p : apps) {
+    application& app = p.second;
+    app.dump_stats(time);
+  }
+}
+
 size_t lsc_multi::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
+
+  if (!warmup && ((last_dump == 0.) || (r->time - last_dump > 1000.))) {
+    if (last_dump == 0.)
+      application::dump_stats_header();
+    dump_app_stats(r->time);
+    last_dump = r->time;
+  }
 
   if (stat.apps.empty())
     stat.apps.insert (r->appid);
@@ -131,7 +150,7 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
     appids.push_back(appid);
 
   // Check to see if the access would have hit in the app's shadow Q.
-  if (app.proc(r) != PROC_MISS) {
+  if (app.would_hit(r)) {
     ++app.shadow_q_hits;
     // Hit in shadow Q! We get to steal!
     const size_t steal_size = 4096;
@@ -448,8 +467,6 @@ void lsc_multi::clean()
     app.sort_cleaning_queue();
   }
 
-  std::cerr << std::endl;
-
   size_t dst_index = 0;
   segment* dst = choose_cleaning_destination();
   std::vector<segment*> dst_segments{};
@@ -510,9 +527,12 @@ void lsc_multi::clean()
     
     // Bill the app that hosts it for the space use for preserving this.
     selected_app->bytes_in_use += item->req.size();
+    ++selected_app->survivor_items;
+    selected_app->survivor_bytes += item->req.size();
   }
 
   // Clear items that are going to get thrown on the floor from the hashtable.
+  // And push them into the app's shadow queue.
   for (auto& p : apps) {
     application& app = p.second;
     while (app.cleaning_it != app.cleaning_q.end()) {
@@ -525,9 +545,13 @@ void lsc_multi::clean()
         item* from_hash = &*hash_it->second;
 
         if (from_list == from_hash) {
+          app.shadow_q.remove(&from_list->req);
+          app.shadow_q.try_add_tail(&from_list->req);
           map.erase((*app.cleaning_it)->req.kid);
           ++stat.evicted_items;
           stat.evicted_bytes += from_list->req.size();
+          ++app.evicted_items;
+          app.evicted_bytes += from_list->req.size();
         }
       }
 

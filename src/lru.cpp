@@ -68,6 +68,59 @@ bool lru::would_cause_eviction(const request* r) {
          (stat.bytes_cached + size_t(r->size()) > stat.global_mem);
 }
 
+bool lru::would_hit(const request *r) {
+  auto it = map.find(r->kid);
+  return it != map.end();
+}
+
+void lru::add(const request *r) {
+  auto it = map.find(r->kid);
+  assert(it == map.end());
+
+  // Throw out enough junk to make room for new record.
+  while (stat.bytes_cached + size_t(r->size()) > stat.global_mem) {
+    // If the queue is already empty, then we are in trouble. The cache
+    // just isn't big enough to hold this object under any circumstances.
+    // Though, you probably shouldn't be setting the cache size smaller
+    // than the max memcache object size.
+    //
+    // This case can occur when an lru is part of a slab allocator, since
+    // initially all lrus start with 0 bytes and expand as the slab pool
+    // allows.
+    if (queue.empty())
+      return;
+
+    request* victim = &queue.back();
+    stat.bytes_cached -= victim->size();
+    ++stat.evicted_items;
+    stat.evicted_bytes += victim->size();
+    map.erase(victim->kid);
+    queue.pop_back();
+  }
+
+  // Add the new request.
+  queue.emplace_front(*r);
+  map[r->kid] = queue.begin();
+  stat.bytes_cached += r->size();
+}
+
+bool lru::try_add_tail(const request *r) {
+  auto it = map.find(r->kid);
+  assert(it == map.end());
+
+  if (stat.bytes_cached + size_t(r->size()) > stat.global_mem)
+    return false;
+
+  // Add the new request.
+  queue.emplace_back(*r);
+  auto back_it = queue.end();
+  --back_it;
+  map[r->kid] = back_it;
+  stat.bytes_cached += r->size();
+
+  return true;
+}
+
 // checks the map for membership, if the key is found
 // returns a hit, otherwise the key is added to the map
 // and to the LRU queue and returns a miss. Returns absolute
@@ -114,33 +167,8 @@ size_t lru::proc(const request *r, bool warmup) {
     // as a second access that hits below.
   }
 
-  // Throw out enough junk to make room for new record.
-  while (stat.bytes_cached + size_t(r->size()) > stat.global_mem) {
-    // If the queue is already empty, then we are in trouble. The cache
-    // just isn't big enough to hold this object under any circumstances.
-    // Though, you probably shouldn't be setting the cache size smaller
-    // than the max memcache object size.
-    //
-    // This case can occur when an lru is part of a slab allocator, since
-    // initially all lrus start with 0 bytes and expand as the slab pool
-    // allows.
-    if (queue.empty()) {
-      return PROC_MISS;
-    }
+  add(r);
 
-    request* victim = &queue.back();
-    stat.bytes_cached -= victim->size();
-    ++stat.evicted_items;
-    stat.evicted_bytes += victim->size();
-    map.erase(victim->kid);
-    queue.pop_back();
-  }
-
-  // Add the new request.
-  queue.emplace_front(*r);
-  map[r->kid] = queue.begin();
-  stat.bytes_cached += r->size();
- 
   return PROC_MISS;
 }
 

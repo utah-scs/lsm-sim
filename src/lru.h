@@ -20,6 +20,9 @@ class lru : public policy {
     int64_t remove (const request *r);
     bool would_cause_eviction(const request *r);
     void expand(size_t bytes);
+    bool would_hit(const request *r);
+    void add(const request *r);
+    bool try_add_tail(const request *r);
   
     // Accessors.
     size_t get_bytes_cached() const;

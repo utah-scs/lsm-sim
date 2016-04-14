@@ -24,8 +24,8 @@ void request::parse(const std::string &s) {
     kid    = std::stoi(tokens.at(5), &sz);
     // r->hit    = stoi(tokens.at(6), &sz) == 1 ? true : false;
   } catch (const std::out_of_range& e) {
-    std::cerr << "Malformed line couldn't be parsed: " << e.what() << std::endl
-              << "\t" << s << std::endl;
+    std::cerr << "! Malformed line couldn't be parsed: " << e.what() << ". "
+              << s << std::endl;
   }
 }
 
