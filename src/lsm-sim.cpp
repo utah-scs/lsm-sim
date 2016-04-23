@@ -58,6 +58,7 @@ std::string           app_str;                          // for logging apps
 double                hit_start_time = 86400;           // default time 
 size_t                global_mem = 0;
 pol_type              policy_type;                      // policy type
+lsc_multi::subpolicy  subpolicy;                        // subpolicy type
 bool                  verbose = false;
 double                gfactor = 1.25;                   // def slab growth fact
 bool                  memcachier_classes = false;
@@ -88,7 +89,8 @@ const std::string     usage  = "-f    specify file path\n"
                                "-g    specify slab growth factor\n"
                                "-M    use memcachier slab classes\n"
                                "-P    number of partitions for partslab\n"
-                               "-S    segment size in bytes for lsm\n";
+                               "-S    segment size in bytes for lsm\n"
+                               "-E    eviction subpolicy (for multi)\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -143,7 +145,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::string sets;
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -168,6 +170,18 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(7);
         else {
           std::cerr << "Invalid policy specified" << std::endl;
+          exit(EXIT_FAILURE);
+        }            
+        break;
+      case 'E':
+        if (std::string(optarg) == "normal")
+          subpolicy = lsc_multi::subpolicy(0); 
+        else if (std::string(optarg) == "greedy")
+          subpolicy = lsc_multi::subpolicy(1); 
+        else if (std::string(optarg) == "static")
+          subpolicy = lsc_multi::subpolicy(2); 
+        else {
+          std::cerr << "Invalid subpolicy specified" << std::endl;
           exit(EXIT_FAILURE);
         }            
         break;
@@ -260,19 +274,20 @@ int main(int argc, char *argv[]) {
       break;
     case LSM:
       sts.segment_size = segment_size;
-      sts.cleaning_width = 4;
+      sts.cleaning_width = 10;
       policy.reset(new lsm(sts));
       break;
     case MULTI:
       sts.segment_size = segment_size;
-      sts.cleaning_width = 4;
-      lsc_multi* multi = new lsc_multi(sts);
+      sts.cleaning_width = 10;
+      lsc_multi* multi = new lsc_multi(sts, subpolicy);
       policy.reset(multi);
 
       for (size_t appid : apps) {
         multi->add_app(
             appid,
-            memcachier_app_size[appid] / 2,
+            //0,
+            memcachier_app_size[appid] / 3,
             memcachier_app_size[appid]);
       }
 

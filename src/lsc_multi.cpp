@@ -26,15 +26,18 @@ lsc_multi::application::application(
   , cleaning_q{}
   , cleaning_it{cleaning_q.end()}
 {
-  shadow_q.expand(1 * 1024 * 1024);
+  shadow_q.expand(10 * 1024 * 1024);
 }
 
 lsc_multi::application::~application() {}
 
-lsc_multi::lsc_multi(stats stat)
+lsc_multi::lsc_multi(stats stat, subpolicy eviction_policy)
   : policy{stat}
   , last_dump{0.}
-  , cleaner{cleaning_policy::RANDOM}
+  , eviction_policy{eviction_policy}
+  , cleaner{eviction_policy == subpolicy::GREEDY ? cleaning_policy::RANDOM
+                                                 : cleaning_policy::LOW_NEED}
+  //, cleaner{cleaning_policy::LOW_NEED}
   , apps{}
   , map{}
   , head{nullptr}
@@ -72,12 +75,14 @@ void lsc_multi::add_app(size_t appid, size_t min_memory, size_t target_memory)
 void lsc_multi::dump_app_stats(double time) {
   for (auto& p : apps) {
     application& app = p.second;
-    app.dump_stats(time);
+    app.dump_stats(time, eviction_policy);
   }
 }
 
 size_t lsc_multi::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
+
+  assert(apps.find(r->appid) != apps.end());
 
   if (!warmup && ((last_dump == 0.) || (r->time - last_dump > 1000.))) {
     if (last_dump == 0.)
@@ -139,6 +144,12 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
   head->queue.emplace_front(head, *r);
   map[r->kid] = head->queue.begin();
   head->filled_bytes += r->size();
+  auto ait = head->app_bytes.find(app.appid);
+  if (ait == head->app_bytes.end()) {
+    head->app_bytes.emplace(app.appid, r->size());
+  } else {
+    ait->second = ait->second + r->size();
+  }
 
   ++head->access_count;
 
@@ -153,7 +164,7 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
   if (app.would_hit(r)) {
     ++app.shadow_q_hits;
     // Hit in shadow Q! We get to steal!
-    const size_t steal_size = 4096;
+    const size_t steal_size = eviction_policy == subpolicy::NORMAL ? 65536 : 0;
     for (int i = 0; i < 10; ++i) {
       size_t victim = appids.at(rand() % appids.size());
       auto it = apps.find(victim);
@@ -216,6 +227,8 @@ auto lsc_multi::choose_cleaning_sources() -> std::vector<segment*>
       return choose_cleaning_sources_round_robin();
     case cleaning_policy::RUMBLE:
       return choose_cleaning_sources_rumble();
+    case cleaning_policy::LOW_NEED:
+      return choose_cleaning_sources_low_need();
     case cleaning_policy::RANDOM:
     default:
       return choose_cleaning_sources_random();
@@ -365,6 +378,51 @@ auto lsc_multi::choose_cleaning_sources_round_robin() -> std::vector<segment*>
   return srcs;
 }
 
+auto lsc_multi::choose_cleaning_sources_low_need() -> std::vector<segment*>
+{
+  application* low_need_app = nullptr;
+
+  // Choose app most in need.
+  // Those at/below min_mem get priority.
+  for (auto& p : apps) {
+    application& app = p.second;
+    if (app.cleaning_it == app.cleaning_q.end())
+      continue;
+    if (low_need_app == nullptr || app.need() < low_need_app->need())
+      low_need_app = &app;
+  }
+
+  std::vector<std::pair<size_t, segment*>> candidates{};
+  for (auto& seg : segments) {
+    if (!seg)
+      continue;
+
+    // Don't pick the head segment.
+    if (&seg.value() == head)
+      continue;
+
+    size_t bytes = 0;
+    auto it = seg->app_bytes.find(low_need_app->appid);
+    if (it != seg->app_bytes.end())
+      bytes = it->second;
+
+    candidates.emplace_back(std::make_pair(bytes, &seg.value()));
+  }
+
+  std::sort(candidates.begin(), candidates.end());
+
+  std::vector<segment*> r{};
+  auto rit = candidates.rbegin();
+  for (size_t i = 0; i < stat.cleaning_width; ++i) {
+    if (rit == candidates.rend())
+      break;
+    r.emplace_back(rit->second);
+    ++rit;
+  }
+  assert(r.size() == stat.cleaning_width);
+
+  return r;
+}
 
 auto lsc_multi::choose_cleaning_destination() -> segment* {
   for (auto& segment : segments) {
@@ -382,7 +440,7 @@ auto lsc_multi::choose_cleaning_destination() -> segment* {
 
   assert(false);
 }
-
+ 
 void lsc_multi::dump_cleaning_plan(std::vector<segment*> srcs,
                              std::vector<segment*> dsts)
 {
@@ -409,19 +467,75 @@ next:
     continue;
   }
   std::cerr << "]" << std::endl;
+
+  size_t seg_num = 0;
+  for (auto& segment : srcs) {
+    std::cerr << "Source Segment " << seg_num++ << " ";
+
+    std::unordered_map<int32_t, size_t> per_app_in_use{};
+    assert(segment);
+    for (item& item : segment->queue)
+      per_app_in_use[item.req.appid] += item.req.size();
+    for (auto& pr : per_app_in_use) {
+      int32_t appid = pr.first;
+      size_t bytes_in_srcs = pr.second;
+      std::cerr << "App " << appid << " " << bytes_in_srcs << " ";
+    }
+    std::cerr << std::endl;
+  }
 } 
 
-auto lsc_multi::find_app_most_in_need() -> application* {
+auto lsc_multi::choose_survivor() -> application* {
   application* r = nullptr;
-  for (auto& p : apps) {
-    application& app = p.second;
-    if (app.target_mem + app.credit_bytes <= app.min_mem)
-      continue;
-    if (app.cleaning_it == app.cleaning_q.end())
-      continue;
-    if (r == nullptr || app.need() > r->need())
-      r = &app;
+
+  if (eviction_policy == subpolicy::NORMAL) {
+    // Choose app most in need.
+    // Those at/below min_mem get priority.
+    for (auto& p : apps) {
+      application& app = p.second;
+      if (app.cleaning_it == app.cleaning_q.end())
+        continue;
+      if (app.target_mem + app.credit_bytes > app.min_mem)
+        continue;
+      if (r == nullptr || app.need() > r->need())
+        r = &app;
+    }
+    if (r)
+      return r;
+    // Then apps above min_mem, if needed.
+    for (auto& p : apps) {
+      application& app = p.second;
+      if (app.cleaning_it == app.cleaning_q.end())
+        continue;
+      if (r == nullptr || app.need() > r->need())
+        r = &app;
+    }
+    return r;
+  } else if (eviction_policy == subpolicy::GREEDY) {
+    // Choose app with newest uncleaned item.
+    double newest = 0.;
+    for (auto& p : apps) {
+      application& app = p.second;
+      if (app.cleaning_it == app.cleaning_q.end())
+        continue;
+      if (r == nullptr || (*app.cleaning_it)->req.time > newest) {
+        newest = (*app.cleaning_it)->req.time;
+        r = &app;
+      }
+    }
+  } else if (eviction_policy == subpolicy::STATIC) {
+    for (auto& p : apps) {
+      application& app = p.second;
+      if (app.cleaning_it == app.cleaning_q.end())
+        continue;
+      if (r == nullptr || app.need() > r->need())
+        r = &app;
+    }
+    return r;
+  } else {
+    assert(false);
   }
+
   return r;
 }
 
@@ -433,12 +547,47 @@ void lsc_multi::clean()
   std::cerr << spinner[last++ & 0x03] << '\r';
   */
 
+  const bool debug = false;
+  if (debug) {
+    std::cerr << "Before cleaning need ";
+    for (auto& pr : apps) {
+      int32_t appid = pr.first;
+      auto& app = pr.second;
+      std::cerr << "App " << appid << " " << app.need() << " ";
+    }
+    std::cerr << std::endl;
+
+    // Check to see if we counting per-app memory correctly.
+    std::unordered_map<int32_t, size_t> per_app_in_use{};
+    for (auto& segment : segments) {
+      if (!segment)
+        continue;
+      for (item& item : segment->queue)
+        per_app_in_use[item.req.appid] += item.req.size();
+    }
+    for (auto& pr : per_app_in_use) {
+      int32_t appid = pr.first;
+      size_t discovered_in_use = pr.second;
+      auto appit = apps.find(appid);
+      assert(appit != apps.end());
+      assert(discovered_in_use == appit->second.bytes_in_use);
+    }
+  }
+
   std::vector<segment*> src_segments = choose_cleaning_sources();
 
   // Push all items into the app-specific cleaning queues.
   for (segment* segment : src_segments) {
+    if (segment->filled_bytes == 0) {
+      std::cerr << "Weird segment to clean" << std::endl;
+    }
+    assert(segment->filled_bytes == 0 || !segment->queue.empty());
     for (auto& item : segment->queue) {
       auto appit = apps.find(item.req.appid);
+      if (appit == apps.end()) {
+        std::cerr << "Couldn't find " << item.req.appid << " in apps" << std::endl;
+        item.req.dump();
+      }
       assert(appit != apps.end());
       application& app = appit->second;
 
@@ -460,6 +609,16 @@ void lsc_multi::clean()
     }
   }
 
+  if (debug) {
+    std::cerr << "After discounting srcs ";
+    for (auto& pr : apps) {
+      int32_t appid = pr.first;
+      auto& app = pr.second;
+      std::cerr << "App " << appid << " " << app.need() << " ";
+    }
+    std::cerr << std::endl;
+  }
+
   // Sort each app's queue and reset its cleaning
   // iterator.
   for (auto& p : apps) {
@@ -467,13 +626,12 @@ void lsc_multi::clean()
     app.sort_cleaning_queue();
   }
 
+  segment* dst = nullptr;
   size_t dst_index = 0;
-  segment* dst = choose_cleaning_destination();
   std::vector<segment*> dst_segments{};
-  dst_segments.push_back(dst);
 
   while (true) {
-    application* selected_app = find_app_most_in_need();
+    application* selected_app = choose_survivor();
 
     // All done with all its.
     if (!selected_app) {
@@ -501,16 +659,17 @@ void lsc_multi::clean()
     }
 
     // Check to see if there is room for the item in the dst.
-    if (dst->filled_bytes + item->req.size() > stat.segment_size) {
+    if (!dst || dst->filled_bytes + item->req.size() > stat.segment_size) {
       //std::cerr << "Couldn't put in item of size "
                 //<< item->req.size() << " bytes" << std::endl;
-      stat.cleaned_ext_frag_bytes += (stat.segment_size - dst->filled_bytes);
+      if (dst)
+        stat.cleaned_ext_frag_bytes += (stat.segment_size - dst->filled_bytes);
       ++stat.cleaned_generated_segs;
 
-      ++dst_index;
       // Break out of relocation if we are out of free space our dst segs.
       if (dst_index == stat.cleaning_width - 1)
         break;
+      ++dst_index;
 
       // Rollover to new dst.
       dst = choose_cleaning_destination();
@@ -523,8 +682,14 @@ void lsc_multi::clean()
     dst->queue.emplace_back(dst, item->req);
     map[item->req.kid] = (--dst->queue.end());
     dst->filled_bytes += item->req.size();
+    auto ait = dst->app_bytes.find(item->req.appid);
+    if (ait == dst->app_bytes.end()) {
+      dst->app_bytes.emplace(item->req.appid, item->req.size());
+    } else {
+      ait->second = ait->second + item->req.size();
+    }
     dst->low_timestamp = item->req.time;
-    
+
     // Bill the app that hosts it for the space use for preserving this.
     selected_app->bytes_in_use += item->req.size();
     ++selected_app->survivor_items;
@@ -561,7 +726,6 @@ void lsc_multi::clean()
     app.cleaning_q.clear();
   }
 
-  const bool debug = false;
   if (debug) {
     // Sanity check - none of the items left in the hash table should point
     // into a src_segment.
@@ -571,7 +735,7 @@ void lsc_multi::clean()
         assert(item.seg != src);
     }
 
-    //dump_cleaning_plan(src_segments, dst_segments);
+    dump_cleaning_plan(src_segments, dst_segments);
   }
 
   // Reset each src segment as free for reuse.
@@ -627,6 +791,32 @@ void lsc_multi::clean()
                 << std::endl;
     }
     assert(reachable_from_map <= stored_in_whole_cache);
+
+    size_t seg_num = 0;
+    for (auto& segment : dst_segments) {
+      if (!segment)
+        continue;
+
+      std::cerr << "Destintation Segment " << seg_num++ << " ";
+
+      std::unordered_map<int32_t, size_t> per_app_in_use{};
+      for (item& item : segment->queue)
+        per_app_in_use[item.req.appid] += item.req.size();
+      for (auto& pr : per_app_in_use) {
+        int32_t appid = pr.first;
+        size_t bytes_in_srcs = pr.second;
+        std::cerr << "App " << appid << " " << bytes_in_srcs << " ";
+      }
+      std::cerr << std::endl;
+    }
+
+    std::cerr << "After cleaning ";
+    for (auto& pr : apps) {
+      int32_t appid = pr.first;
+      auto& app = pr.second;
+      std::cerr << "App " << appid << " " << app.need() << " ";
+    }
+    std::cerr << std::endl;
   } 
 }
 

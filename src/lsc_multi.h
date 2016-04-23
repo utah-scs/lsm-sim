@@ -12,6 +12,10 @@
 #define LSC_MULTI_H
 
 class lsc_multi : public policy {
+  public:
+    enum class cleaning_policy { RANDOM, RUMBLE, ROUND_ROBIN, OLDEST_ITEM, LOW_NEED };
+    enum class subpolicy { NORMAL, GREEDY, STATIC };
+
   private:
     class segment;
 
@@ -41,12 +45,15 @@ class lsc_multi : public policy {
       public:
         segment()
           : queue{}
+          , app_bytes{}
           , filled_bytes{}
           , access_count{}
           , low_timestamp{}
         {}
 
         lru_queue queue;
+        std::unordered_map<int32_t, size_t> app_bytes;
+
         size_t filled_bytes;
 
         uint64_t access_count;
@@ -97,6 +104,7 @@ class lsc_multi : public policy {
         static void dump_stats_header() {
           std::cout << "time "
                     << "app "
+                    << "subpolicy "
                     << "target_mem "
                     << "credit_bytes "
                     << "share "
@@ -114,9 +122,14 @@ class lsc_multi : public policy {
                     << std::endl;
         }
 
-        void dump_stats(double time) {
+        void dump_stats(double time, subpolicy policy) {
+          const char* policy_name[3] = { "normal"
+                                       , "greedy"
+                                       , "static"
+                                       };
           std::cout << int64_t(time) << " "
                     << appid << " "
+                    << policy_name[uint32_t(policy)] << " "
                     << target_mem << " "
                     << credit_bytes << " "
                     << target_mem + credit_bytes << " "
@@ -161,9 +174,7 @@ class lsc_multi : public policy {
     };
 
   public:
-    enum class cleaning_policy { RANDOM, RUMBLE, ROUND_ROBIN, OLDEST_ITEM };
-
-    lsc_multi(stats sts);
+    lsc_multi(stats sts, subpolicy eviction_policy);
     ~lsc_multi();
 
     void add_app(size_t appid, size_t min_memory, size_t target_memory);
@@ -188,16 +199,18 @@ class lsc_multi : public policy {
     std::vector<segment*> choose_cleaning_sources_rumble();
     std::vector<segment*> choose_cleaning_sources_round_robin();
     std::vector<segment*> choose_cleaning_sources_oldest_item();
+    std::vector<segment*> choose_cleaning_sources_low_need();
     segment* choose_cleaning_destination();
-    auto find_app_most_in_need() -> application*;
+    auto choose_survivor() -> application*;
 
     void dump_cleaning_plan(std::vector<segment*> srcs,
                             std::vector<segment*> dsts);
 
     void dump_app_stats(double time);
-    
+
     double last_dump;
 
+    subpolicy eviction_policy;
     cleaning_policy cleaner;
 
     std::unordered_map<size_t, application> apps;
