@@ -130,7 +130,7 @@ size_t lru::proc(const request *r, bool warmup) {
 
   if (stat.apps.empty())
     stat.apps.insert(r->appid);
-  assert(stat.apps.count(r->appid) == 1);
+  //assert(stat.apps.count(r->appid) == 1);
 
   if (!warmup)
     ++stat.accesses;
@@ -186,3 +186,11 @@ double lru::get_running_utilization() {
   return double(in_use) / stat.global_mem;
 }
 
+std::unordered_map<int32_t, size_t> lru::get_per_app_bytes_in_use() const
+{
+  std::unordered_map<int32_t, size_t> result{};
+  for (auto& request : queue)
+    result[request.appid] += request.size();
+
+  return result;
+}

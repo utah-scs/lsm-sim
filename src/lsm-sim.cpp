@@ -22,6 +22,7 @@
 #include "partslab.h"
 #include "lsm.h"
 #include "lsc_multi.h"
+#include "slab_multi.h"
 #include "lru.h"
 #include "slab.h"
 #include "mc.h"
@@ -29,7 +30,7 @@
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[8] = { "shadowlru"
+const char* policy_names[9] = { "shadowlru"
                               , "fifo"
                               , "lru"
 															, "slab"
@@ -37,6 +38,7 @@ const char* policy_names[8] = { "shadowlru"
                               , "partslab"
                               , "lsm"
                               , "multi"
+                              , "multislab"
                               };
 enum pol_type { 
     SHADOWLRU = 0
@@ -46,7 +48,8 @@ enum pol_type {
   , SHADOWSLAB
   , PARTSLAB
   , LSM
-  , MULTI };
+  , MULTI
+  , MULTISLAB };
 
 // globals
 std::set<uint32_t>    apps{};                           // apps to consider
@@ -168,6 +171,8 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(6);
         else if (std::string(optarg) == "multi")
           policy_type = pol_type(7);
+        else if (std::string(optarg) == "multislab")
+          policy_type = pol_type(8);
         else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -280,11 +285,32 @@ int main(int argc, char *argv[]) {
     case MULTI:
       sts.segment_size = segment_size;
       sts.cleaning_width = 10;
-      lsc_multi* multi = new lsc_multi(sts, subpolicy);
-      policy.reset(multi);
+      {
+        lsc_multi* multi = new lsc_multi(sts, subpolicy);
+        policy.reset(multi);
+
+        for (size_t appid : apps) {
+          multi->add_app(
+              appid,
+              //0,
+              memcachier_app_size[appid] / 3,
+              memcachier_app_size[appid]);
+        }
+      }
+
+      break;
+    case MULTISLAB:
+      if (memcachier_classes) {
+        sts.gfactor = 2.0;
+      } else {
+        sts.gfactor = gfactor;
+      }
+      sts.memcachier_classes = memcachier_classes;
+      slab_multi* slmulti = new slab_multi(sts);
+      policy.reset(slmulti);
 
       for (size_t appid : apps) {
-        multi->add_app(
+        slmulti->add_app(
             appid,
             //0,
             memcachier_app_size[appid] / 3,

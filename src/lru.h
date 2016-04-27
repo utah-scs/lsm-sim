@@ -34,6 +34,8 @@ class lru : public policy {
     size_t get_evicted_bytes() { return stat.evicted_bytes; }
     size_t get_evicted_items() { return stat.evicted_items; }
 
+    std::unordered_map<int32_t, size_t> get_per_app_bytes_in_use() const;
+
   protected:
     hash_map map; 
     lru_queue queue; 
