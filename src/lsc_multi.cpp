@@ -8,11 +8,12 @@
 
 lsc_multi::application::application(
     size_t appid,
-    size_t min_mem,
+    size_t min_mem_pct,
     size_t target_mem)
   : appid{appid}
-  , min_mem{min_mem}
+  , min_mem_pct{min_mem_pct}
   , target_mem{target_mem}
+  , min_mem{size_t(target_mem * (min_mem_pct / 100.))}
   , credit_bytes{}
   , bytes_in_use{}
   , accesses{}
@@ -65,11 +66,11 @@ lsc_multi::lsc_multi(stats stat, subpolicy eviction_policy)
 
 lsc_multi::~lsc_multi() {}
 
-void lsc_multi::add_app(size_t appid, size_t min_memory, size_t target_memory)
+void lsc_multi::add_app(size_t appid, size_t min_mem_pct, size_t target_memory)
 {
   assert(head->filled_bytes == 0);
   assert(apps.find(appid) == apps.end());
-  apps.emplace(appid, application{appid, min_memory, target_memory});
+  apps.emplace(appid, application{appid, min_mem_pct, target_memory});
 }
 
 void lsc_multi::dump_app_stats(double time) {
@@ -84,7 +85,7 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
 
   assert(apps.find(r->appid) != apps.end());
 
-  if (!warmup && ((last_dump == 0.) || (r->time - last_dump > 1000.))) {
+  if (!warmup && ((last_dump == 0.) || (r->time - last_dump > 3600.))) {
     if (last_dump == 0.)
       application::dump_stats_header();
     dump_app_stats(r->time);

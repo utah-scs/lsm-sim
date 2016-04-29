@@ -67,6 +67,7 @@ double                gfactor = 1.25;                   // def slab growth fact
 bool                  memcachier_classes = false;
 size_t                partitions = 2;
 size_t                segment_size = 8 * 1024 * 1024;
+size_t                min_mem_pct = 33;
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -101,7 +102,9 @@ const int orig_alloc[15] = {
   3932160, 11665408, 34340864, 262144, 0 , 0
 };
 
-std::unordered_map<size_t, size_t> memcachier_app_size = { {2, 118577408}
+std::unordered_map<size_t, size_t> memcachier_app_size = { {1, 701423104}
+                                                         , {2, 118577408}
+                                                         , {3, 19450368}
                                                          , {5, 35743872}
                                                          , {6, 7108608}
                                                          , {7, 77842880}
@@ -148,7 +151,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::string sets;
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -189,6 +192,9 @@ int main(int argc, char *argv[]) {
           std::cerr << "Invalid subpolicy specified" << std::endl;
           exit(EXIT_FAILURE);
         }            
+        break;
+      case 'N':
+        min_mem_pct = atol(optarg);
         break;
       case 's':
         global_mem = atol(optarg);
@@ -290,11 +296,8 @@ int main(int argc, char *argv[]) {
         policy.reset(multi);
 
         for (size_t appid : apps) {
-          multi->add_app(
-              appid,
-              //0,
-              memcachier_app_size[appid] / 3,
-              memcachier_app_size[appid]);
+          assert(memcachier_app_size[appid] > 0);
+          multi->add_app(appid, min_mem_pct, memcachier_app_size[appid]);
         }
       }
 
@@ -310,11 +313,8 @@ int main(int argc, char *argv[]) {
       policy.reset(slmulti);
 
       for (size_t appid : apps) {
-        slmulti->add_app(
-            appid,
-            //0,
-            memcachier_app_size[appid] / 3,
-            memcachier_app_size[appid]);
+        assert(memcachier_app_size[appid] > 0);
+        slmulti->add_app(appid, min_mem_pct, memcachier_app_size[appid]);
       }
 
       break;

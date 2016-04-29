@@ -50,6 +50,7 @@ class slab_multi : public policy {
                     << "credit_bytes "
                     << "share "
                     << "min_mem "
+                    << "min_mem_pct "
                     << "bytes_in_use "
                     << "need "
                     << "hits "
@@ -71,6 +72,7 @@ class slab_multi : public policy {
                     << credit_bytes << " "
                     << target_mem + credit_bytes << " "
                     << min_mem << " "
+                    << min_mem_pct << " "
                     << bytes_in_use << " "
                     << need() << " "
                     << hits << " "
@@ -89,9 +91,10 @@ class slab_multi : public policy {
         }
 
         const size_t appid;
+        const size_t min_mem_pct;
+        const size_t target_mem;
         const size_t min_mem;
 
-        const size_t target_mem;
         ssize_t credit_bytes;
 
         size_t bytes_in_use;
@@ -108,7 +111,7 @@ class slab_multi : public policy {
     slab_multi(stats stat);
    ~slab_multi();
 
-    void add_app(size_t appid, size_t min_memory, size_t target_memory);
+    void add_app(size_t appid, size_t min_mem_pct, size_t target_memory);
     void dump_app_stats(double time);
 
     size_t proc(const request *r, bool warmup); 

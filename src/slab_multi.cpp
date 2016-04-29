@@ -8,11 +8,12 @@
 
 slab_multi::application::application(
     size_t appid,
-    size_t min_mem,
+    size_t min_mem_pct,
     size_t target_mem)
   : appid{appid}
-  , min_mem{min_mem}
+  , min_mem_pct{min_mem_pct}
   , target_mem{target_mem}
+  , min_mem{size_t(target_mem * (min_mem_pct / 100.))}
   , credit_bytes{}
   , bytes_in_use{}
   , accesses{}
@@ -53,10 +54,10 @@ slab_multi::slab_multi(stats stat)
 slab_multi::~slab_multi() {
 }
 
-void slab_multi::add_app(size_t appid, size_t min_memory, size_t target_memory)
+void slab_multi::add_app(size_t appid, size_t min_mem_pct, size_t target_memory)
 {
   assert(apps.find(appid) == apps.end());
-  apps.emplace(appid, application{appid, min_memory, target_memory});
+  apps.emplace(appid, application{appid, min_mem_pct, target_memory});
 }
 
 void slab_multi::dump_app_stats(double time) {
@@ -89,7 +90,7 @@ void slab_multi::dump_app_stats(double time) {
 size_t slab_multi::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
-  if (!warmup && ((last_dump == 0.) || (r->time - last_dump > 1000.))) {
+  if (!warmup && ((last_dump == 0.) || (r->time - last_dump > 3600.))) {
     if (last_dump == 0.)
       application::dump_stats_header();
     dump_app_stats(r->time);
@@ -144,7 +145,7 @@ size_t slab_multi::proc(const request *r, bool warmup) {
 
   // If the LRU has used all of its allocated space up, try to expand it.
   while (mem_in_use < stat.global_mem &&
-         slab_class.would_cause_eviction(r))
+         slab_class.would_cause_eviction(&copy))
   {
       slab_class.expand(SLABSIZE);
       mem_in_use += SLABSIZE;
