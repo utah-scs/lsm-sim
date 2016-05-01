@@ -52,12 +52,16 @@ enum pol_type {
   , MULTISLAB };
 
 // globals
-std::set<uint32_t>    apps{};                           // apps to consider
+std::set<uint32_t>    apps{};                        // apps to consider
+std::unordered_map<uint32_t, uint32_t> app_steal_sizes{}; // how much each app
+                                                        // steals per shadow q
+                                                        // hit
 bool                  all_apps = true;                  // run all by default 
 bool                  roundup  = false;                 // no rounding default
 float                 lsm_util = 1.0;                   // default util factor
 std::string           trace    = "data/m.cap.out";      // default filepath
 std::string           app_str;                          // for logging apps
+std::string           app_steal_sizes_str;
 double                hit_start_time = 86400;           // default time 
 size_t                global_mem = 0;
 pol_type              policy_type;                      // policy type
@@ -68,6 +72,7 @@ bool                  memcachier_classes = false;
 size_t                partitions = 2;
 size_t                segment_size = 8 * 1024 * 1024;
 size_t                min_mem_pct = 33;
+const size_t          default_steal_size = 65536;
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -150,8 +155,8 @@ int main(int argc, char *argv[]) {
 
   // parse cmd args
   int c;
-  std::string sets;
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:")) != -1) {
+  std::vector<int32_t> ordered_apps{};
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -209,8 +214,10 @@ int main(int argc, char *argv[]) {
         {
           string_vec v;
           csv_tokenize(std::string(optarg), &v);
-          for ( const auto& e : v) {
-            apps.insert(stoi(e));
+          for (const auto& e : v) {
+            int i = stoi(e);
+            apps.insert(i);
+            ordered_apps.push_back(i);
             app_str += e;
             app_str += ",";
           }
@@ -240,8 +247,22 @@ int main(int argc, char *argv[]) {
       case 'P':
         partitions = atoi(optarg); 
         break;
+      case 'W':
+        {
+          string_vec v{};
+          csv_tokenize(optarg, &v);
+          int i = 0;
+          for (const auto& e : v) {
+            app_steal_sizes.insert(std::make_pair(ordered_apps.at(i++), stoi(e)));
+            app_steal_sizes_str += e;
+            app_steal_sizes_str += ",";
+          }
+          break;
+        }
     }
   }
+
+  assert(apps.size() == app_steal_sizes.size());
 
   //assert(apps.size() == 1);
 
@@ -297,7 +318,15 @@ int main(int argc, char *argv[]) {
 
         for (size_t appid : apps) {
           assert(memcachier_app_size[appid] > 0);
-          multi->add_app(appid, min_mem_pct, memcachier_app_size[appid]);
+          uint32_t app_steal_size = 65536;
+          auto it = app_steal_sizes.find(appid);
+          if (it != app_steal_sizes.end()) {
+            app_steal_size = it->second;
+          }
+          multi->add_app(appid,
+                         min_mem_pct,
+                         memcachier_app_size[appid],
+                         app_steal_size);
         }
       }
 
@@ -327,6 +356,7 @@ int main(int argc, char *argv[]) {
 
   // List input parameters
   std::cerr << "performing trace analysis on apps: " << app_str << std::endl
+            << "with steal weights of: " << app_steal_sizes_str << std::endl
             << "policy: " << policy_names[policy_type] << std::endl
             << "using trace file: " << trace << std::endl
             << "rounding: " << (roundup ? "on" : "off") << std::endl
@@ -378,8 +408,13 @@ int main(int argc, char *argv[]) {
 
     // Only process requests for specified app, of type GET,
     // and values of size > 0, after time 'hit_start_time'.
-    if ((r.type != request::GET) || apps.count(r.appid) == 0 || (r.val_sz <= 0))
+    if ((r.type != request::GET) ||
+        std::find(std::begin(apps),
+                  std::end(apps), r.appid) == std::end(apps) ||
+        (r.val_sz <= 0))
+    {
       continue;
+    }
 
     policy->proc(&r, r.time < hit_start_time);
 

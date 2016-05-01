@@ -9,11 +9,13 @@
 lsc_multi::application::application(
     size_t appid,
     size_t min_mem_pct,
-    size_t target_mem)
+    size_t target_mem,
+    size_t steal_size)
   : appid{appid}
   , min_mem_pct{min_mem_pct}
   , target_mem{target_mem}
   , min_mem{size_t(target_mem * (min_mem_pct / 100.))}
+  , steal_size{steal_size}
   , credit_bytes{}
   , bytes_in_use{}
   , accesses{}
@@ -66,11 +68,14 @@ lsc_multi::lsc_multi(stats stat, subpolicy eviction_policy)
 
 lsc_multi::~lsc_multi() {}
 
-void lsc_multi::add_app(size_t appid, size_t min_mem_pct, size_t target_memory)
+void lsc_multi::add_app(size_t appid,
+                        size_t min_mem_pct,
+                        size_t target_memory,
+                        size_t steal_size)
 {
   assert(head->filled_bytes == 0);
   assert(apps.find(appid) == apps.end());
-  apps.emplace(appid, application{appid, min_mem_pct, target_memory});
+  apps.emplace(appid, application{appid, min_mem_pct, target_memory, steal_size});
 }
 
 void lsc_multi::dump_app_stats(double time) {
@@ -165,7 +170,8 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
   if (app.would_hit(r)) {
     ++app.shadow_q_hits;
     // Hit in shadow Q! We get to steal!
-    const size_t steal_size = eviction_policy == subpolicy::NORMAL ? 65536 : 0;
+    const size_t steal_size =
+      eviction_policy == subpolicy::NORMAL ? app.steal_size : 0;
     for (int i = 0; i < 10; ++i) {
       size_t victim = appids.at(rand() % appids.size());
       auto it = apps.find(victim);

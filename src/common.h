@@ -44,8 +44,8 @@ struct stats {
   size_t epoch_len;
   size_t period_len;
 
-  stats(std::string policy, 
-        std::set<uint32_t> apps, 
+  stats(const std::string& policy, 
+        const std::set<uint32_t>& apps, 
         size_t global_mem)
     : policy{policy}
     , apps{apps}

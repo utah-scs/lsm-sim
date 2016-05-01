@@ -61,10 +61,9 @@ rm osdi-*.data
   -S $((1024 * 1024)) \
   -f ./data/m.cap.out \
       2> err-osdi-multislab-greedy.log \
-      > t &
+      > temp-multislab-greedy.data &
 pids="$pids $!"
 wait_too_many
-sed 's/multislab/slab-greedy/g' < t > osdi-multislab-greedy.data
 
 for subpolicy in normal greedy static; do
   ./lsm-sim \
@@ -89,13 +88,26 @@ for app in $apps; do
     -S $((1024 * 1024)) \
     -f ./data/app${app} \
         2> err-osdi-multislab-static-app$app.log \
-        > t &
+        > temp-multislab-static-app$app.data &
   pids="$pids $!"
   wait_too_many
-  sed 's/multislab/slab-static/g' < t > osdi-multislab-static-app$app.data
 done 
 
 wait $pids
 
+sed 's/multislab/slab-greedy/g' \
+  < temp-multislab-greedy.data \
+  > osdi-multislab-greedy.data
+rm temp-multislab-greedy.data
+
+for app in $apps; do
+  sed 's/multislab/slab-static/g' \
+    < temp-multislab-static-app$app.data \
+    > osdi-multislab-static-app$app.data
+  rm temp-multislab-static-app$app.data \
+done 
+
 cat osdi-*.data > t
-awk < t '/^time/ { if (head == 0) { print $0; head = 1; }; next; } { print $0; }' > osdi.data
+awk '/^time/ { if (head == 0) { print $0; head = 1; }; next; } { print $0; }' \
+  < t \
+  > osdi.data

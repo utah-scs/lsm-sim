@@ -64,7 +64,8 @@ class lsc_multi : public policy {
       public:
         application(size_t appid,
                     size_t min_mem_pct,
-                    size_t target_mem);
+                    size_t target_mem,
+                    size_t steal_size);
         ~application();
 
         size_t bytes_limit() const {
@@ -112,6 +113,7 @@ class lsc_multi : public policy {
                     << "share "
                     << "min_mem "
                     << "min_mem_pct "
+                    << "steal_size "
                     << "bytes_in_use "
                     << "need "
                     << "hits "
@@ -138,6 +140,7 @@ class lsc_multi : public policy {
                     << target_mem + credit_bytes << " "
                     << min_mem << " "
                     << min_mem_pct << " "
+                    << steal_size << " "
                     << bytes_in_use << " "
                     << need() << " "
                     << hits << " "
@@ -159,6 +162,7 @@ class lsc_multi : public policy {
         const size_t min_mem_pct;
         const size_t target_mem;
         const size_t min_mem;
+        const size_t steal_size;
 
         ssize_t credit_bytes;
 
@@ -182,7 +186,10 @@ class lsc_multi : public policy {
     lsc_multi(stats sts, subpolicy eviction_policy);
     ~lsc_multi();
 
-    void add_app(size_t appid, size_t min_memory_pct, size_t target_memory);
+    void add_app(size_t appid,
+                 size_t min_memory_pct,
+                 size_t target_memory,
+                 size_t steal_size);
 
     size_t proc(const request *r, bool warmup);
     size_t get_bytes_cached() const;
