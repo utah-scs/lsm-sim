@@ -36,7 +36,10 @@ lsc_multi::application::~application() {}
 
 lsc_multi::lsc_multi(stats stat, subpolicy eviction_policy)
   : policy{stat}
+  , last_idle_check{0.}
   , last_dump{0.}
+  , use_tax{}
+  , tax_rate{}
   , eviction_policy{eviction_policy}
   , cleaner{eviction_policy == subpolicy::GREEDY ? cleaning_policy::RANDOM
                                                  : cleaning_policy::LOW_NEED}
@@ -85,16 +88,72 @@ void lsc_multi::dump_app_stats(double time) {
   }
 }
 
+void lsc_multi::compute_idle_mem(double time) {
+  std::unordered_map<int32_t, size_t> per_app_in_use{};
+  std::unordered_map<int32_t, size_t> per_app_idle{};
+  for (auto& segment : segments) {
+    if (!segment)
+      continue;
+    for (item& item : segment->queue) {
+      if (time - item.req.time > idle_mem_secs)
+        per_app_idle[item.req.appid] += item.req.size();
+      per_app_in_use[item.req.appid] += item.req.size();
+    }
+  }
+
+  //std::cout << time << std::endl;
+  for (const auto& pr : per_app_in_use) {
+    const int32_t appid = pr.first;
+    //const size_t total = pr.second;
+    const size_t idle = per_app_idle[appid];
+    auto it = apps.find(appid);
+    assert(it != apps.end());
+    application& app = it->second;
+
+    const double active_fraction = 1 - (double(idle) / app.bytes_in_use);
+    const double tax = (1 - active_fraction * tax_rate) / (1 - tax_rate);
+
+    const ssize_t new_target = app.min_mem / tax;
+
+    //const size_t old_target = app.target_mem + app.credit_bytes;
+
+    app.credit_bytes = (new_target - app.target_mem);
+
+    /*
+    std::cout << "app " << pr.first
+              << " idle " << idle << "/" << total
+              << " active_fraction " << active_fraction
+              << " new_share " << new_target
+              << " (" << app.target_mem + app.credit_bytes << ")"
+              << " old_share " << old_target
+              << std::endl;
+    */
+  }
+  //std::cout << std::endl;
+}
+
 size_t lsc_multi::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
   assert(apps.find(r->appid) != apps.end());
 
+  if (!warmup && use_tax &&
+      ((last_idle_check == 0.) ||
+      (r->time - last_idle_check > idle_mem_secs)))
+  {
+    compute_idle_mem(r->time);
+    if (last_idle_check == 0.)
+      last_idle_check = r->time;
+    last_idle_check += idle_mem_secs;
+  }
+
   if (!warmup && ((last_dump == 0.) || (r->time - last_dump > 3600.))) {
     if (last_dump == 0.)
       application::dump_stats_header();
     dump_app_stats(r->time);
-    last_dump = r->time;
+    if (last_dump == 0.)
+      last_dump = r->time;
+    last_dump += 3600.0;
   }
 
   if (stat.apps.empty())
@@ -170,8 +229,9 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
   if (app.would_hit(r)) {
     ++app.shadow_q_hits;
     // Hit in shadow Q! We get to steal!
-    const size_t steal_size =
-      eviction_policy == subpolicy::NORMAL ? app.steal_size : 0;
+    size_t steal_size = 0;
+    if (!use_tax && eviction_policy == subpolicy::NORMAL)
+        steal_size = app.steal_size ;
     for (int i = 0; i < 10; ++i) {
       size_t victim = appids.at(rand() % appids.size());
       auto it = apps.find(victim);

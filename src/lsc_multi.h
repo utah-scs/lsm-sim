@@ -16,6 +16,8 @@ class lsc_multi : public policy {
     enum class cleaning_policy { RANDOM, RUMBLE, ROUND_ROBIN, OLDEST_ITEM, LOW_NEED };
     enum class subpolicy { NORMAL, GREEDY, STATIC };
 
+    static constexpr size_t idle_mem_secs = 5 * 60 * 60;
+
   private:
     class segment;
 
@@ -191,6 +193,12 @@ class lsc_multi : public policy {
                  size_t target_memory,
                  size_t steal_size);
 
+    void set_tax(double tax_rate)
+    {
+      use_tax = true;
+      this->tax_rate = tax_rate;
+    }
+
     size_t proc(const request *r, bool warmup);
     size_t get_bytes_cached() const;
    
@@ -220,7 +228,13 @@ class lsc_multi : public policy {
 
     void dump_app_stats(double time);
 
+    void compute_idle_mem(double time);
+
+    double last_idle_check;
     double last_dump;
+
+    bool use_tax;
+    double tax_rate;
 
     subpolicy eviction_policy;
     cleaning_policy cleaner;

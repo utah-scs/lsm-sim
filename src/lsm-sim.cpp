@@ -71,8 +71,10 @@ double                gfactor = 1.25;                   // def slab growth fact
 bool                  memcachier_classes = false;
 size_t                partitions = 2;
 size_t                segment_size = 8 * 1024 * 1024;
-size_t                min_mem_pct = 33;
+size_t                min_mem_pct = 70;
 const size_t          default_steal_size = 65536;
+bool                  use_tax = false;
+double                tax_rate = 0.05;
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -156,7 +158,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -259,10 +261,14 @@ int main(int argc, char *argv[]) {
           }
           break;
         }
+      case 'T':
+        use_tax = true;
+        tax_rate = atol(optarg) / 100.;
+        break;
     }
   }
 
-  assert(apps.size() == app_steal_sizes.size());
+  assert(apps.size() >= app_steal_sizes.size());
 
   //assert(apps.size() == 1);
 
@@ -328,6 +334,10 @@ int main(int argc, char *argv[]) {
                          memcachier_app_size[appid],
                          app_steal_size);
         }
+
+        if (use_tax) {
+          multi->set_tax(tax_rate);
+        }
       }
 
       break;
@@ -355,15 +365,17 @@ int main(int argc, char *argv[]) {
   }
 
   // List input parameters
-  std::cerr << "performing trace analysis on apps: " << app_str << std::endl
-            << "with steal weights of: " << app_steal_sizes_str << std::endl
-            << "policy: " << policy_names[policy_type] << std::endl
-            << "using trace file: " << trace << std::endl
-            << "rounding: " << (roundup ? "on" : "off") << std::endl
-            << "utilization rate: " << lsm_util << std::endl
+  std::cerr << "performing trace analysis on apps " << app_str << std::endl
+            << "with steal weights of " << app_steal_sizes_str << std::endl
+            << "policy " << policy_names[policy_type] << std::endl
+            << "using trace file " << trace << std::endl
+            << "rounding " << (roundup ? "on" : "off") << std::endl
+            << "utilization rate " << lsm_util << std::endl
             << "start counting hits at t = " << hit_start_time << std::endl
-            << "request limit: " << request_limit << std::endl
-            << "global mem: " << global_mem << std::endl;
+            << "request limit " << request_limit << std::endl
+            << "global mem " << global_mem << std::endl
+            << "use tax " << use_tax << std::endl
+            << "tax rate " << tax_rate << std::endl;
   if (policy_type == SHADOWSLAB) {
     if (memcachier_classes)
       std::cerr << "slab growth factor: memcachier" << std::endl;
