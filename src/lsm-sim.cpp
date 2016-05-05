@@ -71,7 +71,7 @@ double                gfactor = 1.25;                   // def slab growth fact
 bool                  memcachier_classes = false;
 size_t                partitions = 2;
 size_t                segment_size = 8 * 1024 * 1024;
-size_t                min_mem_pct = 70;
+size_t                min_mem_pct = 25;
 const size_t          default_steal_size = 65536;
 bool                  use_tax = false;
 double                tax_rate = 0.05;
@@ -80,13 +80,7 @@ double                tax_rate = 0.05;
 // Helpful for limiting runtime when playing around.
 int request_limit = 0;
 
-
-  
-#ifdef DEBUG
-  bool debug = true;
-#else
-  bool debug = false;
-#endif
+bool debug = false;
 
 const std::string     usage  = "-f    specify file path\n"
                                "-a    specify app to eval\n"
