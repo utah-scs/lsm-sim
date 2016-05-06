@@ -1,6 +1,7 @@
 #ifndef POLICY_H
 #define POLICY_H
 
+#include <cassert>
 #include <string>
 #include "request.h"
 #include "common.h"
@@ -41,8 +42,12 @@ class policy {
     stats* get_stats() { return &stat; }
 
     void dump_stats(void) {
+      assert(stat.apps.size() == 1);
+      uint32_t appid = 0;
+      for (const auto& app : stat.apps)
+        appid = app;
       std::string filename{stat.policy
-                          + "-app" //+ std::to_string(stat.appid)
+                          + "-app" + std::to_string(appid)
                           + "-global_mem" + std::to_string(stat.global_mem)};
                              
       // Specific filename additions. 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #apps="3 19 18 20 6 5 8 59 227 29 10 94 11 23 2 7 53 13 31"
-apps="19 18 20 6 8 59 227 29 10 94 11 23 2 7 53 13 31 5"
+apps="1 3 18 19 20 6 8 59 227 29 10 94 11 23 2 7 53 13 31 5"
 #apps="2 10 19 20 29 31 94"
 #apps="18 6 8 59 227 11 23 7 53 13 5"
 #apps="2 20 31"
@@ -11,19 +11,22 @@ apps="19 18 20 6 8 59 227 29 10 94 11 23 2 7 53 13 31 5"
 
 #mbs="10 20 30 40 50 60 70 80 90 100 200 300 400 500 600 700 800 900 1000 1100 1200"
 #mbs="10 20 30 40 50 60 70 80 90 100 999999999"
-mbs="999999999 100 50 10 70 80 60 40 30 20 200 1000 400 600 300 700 800 900"
+#mbs="999999999 100 50 10 70 80 60 40 30 20 200 1000 400 600 300 700 800 900"
+mbs="999999999"
 
 segment_size=$((1 * 1024 * 1024))
 
-#rm lsm*.data
-#rm lsm*.log
-#rm lru*.data
-#rm lru*.log
-#rm slab*.data
-#rm slab*.log
+rm lsm*.data
+rm lsm*.log
+rm lru*.data
+rm lru*.log
+rm slab*.data
+rm slab*.log
 
 declare -A memcachier_app_size
+memcachier_app_size[1]=701423104
 memcachier_app_size[2]=118577408
+memcachier_app_size[3]=19450368
 memcachier_app_size[5]=35743872
 memcachier_app_size[6]=7108608
 memcachier_app_size[7]=77842880
@@ -70,45 +73,45 @@ for mbnum in $mbs; do
     fi
 
     echo Running LSM on app $app with cache size $mb MB
-    ../lsm-sim \
+    ./lsm-sim \
       -a $app \
       -p lsm \
       -s $bytes \
       -S $segment_size \
       -v \
-      -f ../data/app${app} > lsm-app${app}-size${mb}MB.log 2>&1 &
+      -f ./data/app${app} > lsm-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
     wait_too_many
 
     echo Running LRU on app $app with cache size $mb MB
-    ../lsm-sim \
+    ./lsm-sim \
       -a $app \
       -p lru \
       -s $bytes \
       -v \
-      -f ../data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
+      -f ./data/app${app} > lru-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
     wait_too_many
 
     echo Running SLAB 2.0 on app $app with cache size $mb MB
-    ../lsm-sim \
+    ./lsm-sim \
       -a $app \
       -p slab \
       -M \
       -s $bytes \
       -v \
-      -f ../data/app${app} > slab-app${app}-size${mb}MB.log 2>&1 &
+      -f ./data/app${app} > slab-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
     wait_too_many
 
     echo Running SLAB 1.25 on app $app with cache size $mb MB
-    ../lsm-sim \
+    ./lsm-sim \
       -a $app \
       -p slab \
       -g 1.25 \
       -s $bytes \
       -v \
-      -f ../data/app${app} > slab-app${app}-size${mb}MB.log 2>&1 &
+      -f ./data/app${app} > slab-app${app}-size${mb}MB.log 2>&1 &
     pids="$pids $!"
     wait_too_many
   done

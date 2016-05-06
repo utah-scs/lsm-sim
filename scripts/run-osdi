@@ -1,7 +1,7 @@
 #!/bin/bash
 
-apps="5 19 20"
-#apps="1 3 19 18 20"
+#apps="5 19 20"
+apps="1 3 18 19 20"
 
 declare -A memcachier_app_size
 memcachier_app_size[1]=701423104

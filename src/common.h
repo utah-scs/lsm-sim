@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iomanip>
 #include <set>
+#include <cassert>
 
 #ifndef COMMON_H
 #define COMMON_H
@@ -75,6 +76,10 @@ struct stats {
   double get_utilization() { return double(bytes_cached) / global_mem; }
 
   void dump(std::ofstream& out) const {
+      assert(apps.size() == 1);
+      uint32_t appid = 0;
+      for (const auto& app : apps)
+        appid = app;
       out << "app "
              "policy "
              "global_mem "
@@ -91,7 +96,7 @@ struct stats {
              "cleaned_generated_segs "
              "cleaned_ext_frag_bytes "
           << std::endl;
-      out << "" << " "
+      out << appid << " "
           << policy << " "
           << global_mem << " "
           << segment_size << " "

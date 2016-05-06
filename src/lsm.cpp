@@ -396,7 +396,6 @@ void lsm::clean()
 
     // Check to see if there is room for the item in the dst.
     if (dst->filled_bytes + item->req.size() > stat.segment_size) {
-      std::cerr << "Couldn't put in item of size " << item->req.size() << " bytes" << std::endl;
       stat.cleaned_ext_frag_bytes += (stat.segment_size - dst->filled_bytes);
       ++stat.cleaned_generated_segs;
 
