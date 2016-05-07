@@ -75,6 +75,8 @@ size_t                min_mem_pct = 25;
 const size_t          default_steal_size = 65536;
 bool                  use_tax = false;
 double                tax_rate = 0.05;
+double                priv_mem_percentage =0.25; 
+bool                  use_percentage = false;           // specify priv mem %
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -95,7 +97,8 @@ const std::string     usage  = "-f    specify file path\n"
                                "-M    use memcachier slab classes\n"
                                "-P    number of partitions for partslab\n"
                                "-S    segment size in bytes for lsm\n"
-                               "-E    eviction subpolicy (for multi)\n";
+                               "-E    eviction subpolicy (for multi)\n"
+                               "-m    private mem percentage of target mem";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -152,7 +155,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:m:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -259,6 +262,10 @@ int main(int argc, char *argv[]) {
         use_tax = true;
         tax_rate = atol(optarg) / 100.;
         break;
+      case 'm':
+        priv_mem_percentage = atof(optarg);
+        use_percentage = true;
+        break;
     }
   }
 
@@ -322,9 +329,12 @@ int main(int argc, char *argv[]) {
           auto it = app_steal_sizes.find(appid);
           if (it != app_steal_sizes.end()) {
             app_steal_size = it->second;
-          }
+          } 
+          size_t private_mem = use_percentage ? 
+            (size_t)(memcachier_app_size[appid] * priv_mem_percentage) :
+            min_mem_pct;         
           multi->add_app(appid,
-                         min_mem_pct,
+                         private_mem ,
                          memcachier_app_size[appid],
                          app_steal_size);
         }
