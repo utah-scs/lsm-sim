@@ -1,0 +1,73 @@
+#!/bin/bash
+
+apps="5 19 20"
+#apps="1 3 19 18 20"
+
+declare -A memcachier_app_size
+memcachier_app_size[1]=701423104
+memcachier_app_size[2]=118577408
+memcachier_app_size[3]=19450368
+memcachier_app_size[5]=35743872
+memcachier_app_size[6]=7108608
+memcachier_app_size[7]=77842880
+memcachier_app_size[8]=10485760
+memcachier_app_size[10]=684898304
+memcachier_app_size[11]=7829952
+memcachier_app_size[13]=36647040
+memcachier_app_size[19]=51209600
+memcachier_app_size[18]=6313216
+memcachier_app_size[20]=70953344
+memcachier_app_size[23]=4542897472
+memcachier_app_size[29]=187378624
+memcachier_app_size[31]=1409535488
+memcachier_app_size[59]=1713664
+memcachier_app_size[94]=23238784
+memcachier_app_size[227]=20237184
+memcachier_app_size[53]=11044096
+
+total_size=0
+for app in $apps; do
+  bytes=${memcachier_app_size[$app]}
+  total_size=$(($total_size + $bytes))
+done
+
+app_lst=$(echo $apps | sed "s/ /,/g")
+
+finish() {
+  pkill lsm-sim
+}
+trap finish EXIT
+
+pids=""
+maxprocs=8
+
+wait_too_many() {
+  cnt=( $pids )
+  cnt="${#cnt[@]}"
+  if [[ "$cnt" == "$maxprocs" ]]; then
+    wait $pids
+    pids=""
+  fi
+}
+
+rm tax-*.data
+
+for tax in 50; do
+  ./lsm-sim \
+    -a $app_lst \
+    -p multi \
+    -E normal \
+    -s $total_size \
+    -S $((1024 * 1024)) \
+    -T $tax \
+    -f ./data/m.cap.out \
+        2> err-tax-multi-${tax}pct.log \
+        > tax-multi-${tax}pct.data &
+  pids="$pids $!"
+  wait_too_many
+done 
+
+wait $pids
+
+cat tax-*.data > t
+awk < t '/^time/ { if (head == 0) { print $0; head = 1; }; next; } { print $0; }' > tax.data 
