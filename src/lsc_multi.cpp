@@ -478,14 +478,42 @@ auto lsc_multi::choose_cleaning_sources_low_need() -> std::vector<segment*>
 
   std::sort(candidates.begin(), candidates.end());
 
+  const size_t to_get_low_need = stat.cleaning_width / 2;
+
   std::vector<segment*> r{};
   auto rit = candidates.rbegin();
-  for (size_t i = 0; i < stat.cleaning_width; ++i) {
+  for (size_t i = 0; i < to_get_low_need; ++i) {
     if (rit == candidates.rend())
       break;
     r.emplace_back(rit->second);
     ++rit;
   }
+
+  for (size_t i = to_get_low_need; i < stat.cleaning_width; ++i) {
+    for (size_t j = 0; j < 1000000; ++j) {
+      int rd = rand() % segments.size();
+      auto& segment = segments.at(rd);
+
+      // Don't pick free segments.
+      if (!segment)
+        continue;
+
+      // Don't pick the head segment.
+      if (&segment.value() == head)
+        continue;
+
+      // Don't pick any segment we've already picked!
+      bool already_picked = false;
+      for (auto& already_in : r)
+        already_picked |= (already_in == &segment.value());
+      if (already_picked)
+        continue;
+
+      r.emplace_back(&segment.value());
+      break;
+    }
+  }
+
   assert(r.size() == stat.cleaning_width);
 
   return r;

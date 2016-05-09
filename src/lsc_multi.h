@@ -208,6 +208,8 @@ class lsc_multi : public policy {
 
     void dump_util(const std::string& filename);
 
+    virtual void dump_stats(void) {}
+
   private:
 
     void rollover(double timestamp);

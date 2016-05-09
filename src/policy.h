@@ -41,7 +41,7 @@ class policy {
 
     stats* get_stats() { return &stat; }
 
-    void dump_stats(void) {
+    virtual void dump_stats(void) {
       assert(stat.apps.size() == 1);
       uint32_t appid = 0;
       for (const auto& app : stat.apps)
