@@ -96,12 +96,13 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 			newItem.globalLruIt = globalLru.begin();
 			allObjects[newItem.kId] = newItem;
 			lastCreditUpdate = r->time;
+			dramSize += newItem.size;
 			return PROC_MISS;
 		}
 		uint32_t mfuKid = dram.back().first;
 		FlashCache::Item& mfuItem = allObjects[mfuKid];	
 		assert(mfuItem.size > 0);	
-		if (credits < (unsigned long long) mfuItem.size) {
+		if (credits < (double) mfuItem.size) {
 			while (newItem.size + dramSize > DRAM_SIZE) {
 				uint32_t lruKid = dramLru.back();
 				FlashCache::Item& lruItem = allObjects[lruKid];
@@ -147,7 +148,7 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 
 void FlashCache::updateCredits(const double& currTime) {
 	double elapsed_secs = currTime - lastCreditUpdate;
-	credits += ((int)floor(elapsed_secs)) * FLASH_RATE;
+	credits += elapsed_secs * FLASH_RATE;
 }
 
 void FlashCache::updateDramFlashiness(const double& currTime) {

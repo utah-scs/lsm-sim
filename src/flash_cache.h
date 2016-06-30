@@ -45,9 +45,9 @@ private:
 	/* 
 	* One can move objects from the DRAM to the flash only if he has enough
 	* credits. Number of current credits should be higher then the object 
-	* size. Each second (FLASH_RATE * sec) are added. 
+	* size. Each delta T (FLASH_RATE * delta T) are added. 
 	*/
-	unsigned long long credits;
+	double credits;
 	
 	/*
 	* The last time the credits where updates
