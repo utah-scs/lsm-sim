@@ -26,19 +26,21 @@
 #include "lru.h"
 #include "slab.h"
 #include "mc.h"
+#include "flash_cache.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[9] = { "shadowlru"
+const char* policy_names[10] = { "shadowlru"
                               , "fifo"
                               , "lru"
-															, "slab"
+			      , "slab"
                               , "shadowslab"
                               , "partslab"
                               , "lsm"
                               , "multi"
                               , "multislab"
+			      , "flashcache"
                               };
 enum pol_type { 
     SHADOWLRU = 0
@@ -49,7 +51,8 @@ enum pol_type {
   , PARTSLAB
   , LSM
   , MULTI
-  , MULTISLAB };
+  , MULTISLAB
+  , FLASHCACHE };
 
 // globals
 std::set<uint32_t>    apps{};                        // apps to consider
@@ -180,6 +183,8 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(7);
         else if (std::string(optarg) == "multislab")
           policy_type = pol_type(8);
+	else if (std::string(optarg) == "flashcache")
+	  policy_type = pol_type(9);
         else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -290,6 +295,9 @@ int main(int argc, char *argv[]) {
     case LRU : 
       policy.reset(new lru(sts));
       break;
+    case FLASHCACHE :
+	policy.reset(new FlashCache(sts));
+	break;
     case SLAB :
       if (memcachier_classes) {
         sts.gfactor = 2.0;
@@ -359,7 +367,6 @@ int main(int argc, char *argv[]) {
         assert(memcachier_app_size[appid] > 0);
         slmulti->add_app(appid, min_mem_pct, memcachier_app_size[appid]);
       }
-
       break;
   }
 

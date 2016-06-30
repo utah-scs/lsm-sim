@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <iostream>
-#include <ctime>
 #include <unordered_map>
 #include <list>
 #include <cassert>
@@ -53,14 +52,14 @@ private:
 	/*
 	* The last time the credits where updates
 	*/
-	clock_t lastCreditUpdate;
+	double lastCreditUpdate;
 	
 	unsigned long long dramSize;
 	unsigned long long flashSize;
 
-	void updateCredits(const clock_t& currTime);
-	void updateDramFlashiness(const clock_t& currTime);
-	double hitCredit(const clock_t& currTime) const;
+	void updateCredits(const double& currTime);
+	void updateDramFlashiness(const double& currTime);
+	double hitCredit(const double& currTime) const;
 	void dramAdd(const std::pair<uint32_t, double>& p, 
 			dramIt beginPlace,
 			Item& item);

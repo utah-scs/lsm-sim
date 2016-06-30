@@ -10,7 +10,7 @@ FlashCache::FlashCache(stats stat) :
 	globalLru(),
 	allObjects(),
 	credits(0),
-	lastCreditUpdate(clock()),
+	lastCreditUpdate(0),
 	dramSize(0),
 	flashSize(0)
 {
@@ -25,7 +25,7 @@ size_t FlashCache::get_bytes_cached() const {
 size_t FlashCache::proc(const request* r, bool warmup) {
 	if (!warmup) {stat.accesses++;}
 	
-	clock_t currTime = clock();
+	double currTime = r->time;
 	updateCredits(currTime);
 	updateDramFlashiness(currTime);
 	
@@ -39,7 +39,7 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 		*/
 		FlashCache::Item& item = searchRKId->second;
 		if (r->size() == item.size) {
-			stat.hits++;
+			if (!warmup) {stat.hits++;}
 			globalLru.erase(item.globalLruIt);
 			globalLru.emplace_front(item.kId);
 			item.globalLruIt = globalLru.begin();
@@ -53,6 +53,7 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 				dramAdd(p, tmp, item);
 				dram.erase(tmp);		
 			}
+			lastCreditUpdate = r->time;
 			return 1;
 		} else {
 			globalLru.erase(item.globalLruIt);
@@ -89,9 +90,12 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 		if (newItem.size + dramSize <= DRAM_SIZE) {
 			std::pair<uint32_t, double> p(newItem.kId, INITIAL_CREDIT);
 			dramAdd(p, dram.begin(), newItem);		
+			dramLru.emplace_front(newItem.kId);
+			newItem.dramLruIt = dramLru.begin();
 			globalLru.emplace_front(newItem.kId);
-			newItem.dramLruIt = globalLru.begin();
+			newItem.globalLruIt = globalLru.begin();
 			allObjects[newItem.kId] = newItem;
+			lastCreditUpdate = r->time;
 			return PROC_MISS;
 		}
 		uint32_t mfuKid = dram.back().first;
@@ -141,15 +145,13 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 	return PROC_MISS;
 }
 
-void FlashCache::updateCredits(const clock_t& currTime) {
-	double elapsed_secs = 
-		double(currTime - lastCreditUpdate) / CLOCKS_PER_SEC;
+void FlashCache::updateCredits(const double& currTime) {
+	double elapsed_secs = currTime - lastCreditUpdate;
 	credits += ((int)floor(elapsed_secs)) * FLASH_RATE;
 }
 
-void FlashCache::updateDramFlashiness(const clock_t& currTime) {
-	double elapsed_secs =
-                double(currTime - lastCreditUpdate) / CLOCKS_PER_SEC;
+void FlashCache::updateDramFlashiness(const double& currTime) {
+	double elapsed_secs = currTime - lastCreditUpdate;
         double mul = exp(-elapsed_secs);
 
         for(dramIt it = dram.begin(); it != dram.end(); it++) {
@@ -157,9 +159,8 @@ void FlashCache::updateDramFlashiness(const clock_t& currTime) {
 	}
 }
 
-double FlashCache::hitCredit(const clock_t& currTime) const{
-	double elapsed_secs = 
-		double(currTime - lastCreditUpdate) / CLOCKS_PER_SEC;
+double FlashCache::hitCredit(const double& currTime) const{
+	double elapsed_secs = currTime - lastCreditUpdate;
 	double mul = exp(-elapsed_secs);
 	assert(elapsed_secs != 0);
 	return ((1 - mul) * (1/elapsed_secs));
