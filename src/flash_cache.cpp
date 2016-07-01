@@ -32,8 +32,10 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 	auto searchRKId = allObjects.find(r->kid);
 	if (searchRKId != allObjects.end()) {
 		/*
-		* The object exists in flashCache system. One needs to update the
-		* hitrate and its place in the globalLru.
+		* The object exists in flashCache system. If the sizes of the 
+		* current request and previous request differ then the previous
+		* request is removed from the flashcache system. Otherwise, one 
+		* needs to update the hitrate and its place in the globalLru.
 		* If it is in the cache, one needs as well to update the 
 		* 'flashiness' value and its place in the dram MFU and dram LRU 
 		*/
@@ -74,16 +76,15 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 	}
 	/*
 	* The request doesn't exist in the system. We always insert new requests
-	* in the DRAM. 
+	* to the DRAM. 
 	* 2. While (object not inserted to the DRAM)
 	*	2.1  if (item.size() + dramSize <= DRAM_SIZE) -
 	*		insert item to the dram and return	
-	*	2.2 if (not enough credits) - remove the least recently used items
-	*		until there is a place in the dram. back to 2
+	*	2.2 if (not enough credits) - remove the least recently used item
+	*		in the dram until there is a place. return to 2
 	* 	2.3 if (possible to move from DRAM to flash) - 
 	*		move items from DRAM to flash. back to 2.
-	* 	2.2. if (item.size() + dramSize <= DRAM_SIZE) - insert element
-	*	2.4 remove from global lru
+	*	2.4 remove from global lru. back to 2
 	*/
 	FlashCache::Item newItem;
 	newItem.kId = r->kid;
