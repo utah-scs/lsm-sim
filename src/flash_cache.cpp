@@ -49,13 +49,14 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 				dramLru.emplace_front(item.kId);
 				item.dramLruIt = dramLru.begin(); 
 				std::pair<uint32_t, double> p = *(item.dramLocation);
-				p.second += hitCredit(currTime);
+				p.second += hitCredit(currTime, item);
 				dramIt tmp = item.dramLocation;
 				dramAdd(p, tmp, item);
 				dram.erase(tmp);		
 			} else {
 				if (!warmup) {stat.hits_flash++;}
 			}
+			item.last_accessed = currTime;
 			lastCreditUpdate = r->time;
 			return 1;
 		} else {
@@ -88,6 +89,7 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 	newItem.kId = r->kid;
 	newItem.size = r->size();
 	newItem.isInDram = true;
+	newItem.last_accessed = r->time;
 	assert(((unsigned int) newItem.size) < DRAM_SIZE);
 	while (true) {
 		if (newItem.size + dramSize <= DRAM_SIZE) {
@@ -165,10 +167,11 @@ void FlashCache::updateDramFlashiness(const double& currTime) {
 	}
 }
 
-double FlashCache::hitCredit(const double& currTime) const{
-	double elapsed_secs = currTime - lastCreditUpdate;
-	double mul = exp(-elapsed_secs);
+double FlashCache::hitCredit(const double& currTime, const Item& item) const{
+	double elapsed_secs = currTime - item.last_accessed;
+	if ( elapsed_secs == 0) { std::cout << currTime << std::endl; }
 	assert(elapsed_secs != 0);
+	double mul = exp(-elapsed_secs);
 	return ((1 - mul) * (1/elapsed_secs));
 }
 

@@ -26,14 +26,15 @@ private:
 	struct Item {
 		uint32_t kId;
 		int32_t size;
+		double last_accessed;
 		bool isInDram;
 		dramIt dramLocation;
 		keyIt dramLruIt;
 		keyIt flashIt;
 		keyIt globalLruIt;
 	
-		Item() : kId(0), size(0), isInDram(true), dramLocation(),
-			dramLruIt(), flashIt(), globalLruIt(){}
+		Item() : kId(0), size(0), last_accessed(0), isInDram(true), 
+			dramLocation(),dramLruIt(), flashIt(), globalLruIt(){}
 	};
 
 	std::list< std::pair<uint32_t, double> > dram;
@@ -59,7 +60,7 @@ private:
 
 	void updateCredits(const double& currTime);
 	void updateDramFlashiness(const double& currTime);
-	double hitCredit(const double& currTime) const;
+	double hitCredit(const double& currTime, const Item& item) const;
 	void dramAdd(const std::pair<uint32_t, double>& p, 
 			dramIt beginPlace,
 			Item& item);
