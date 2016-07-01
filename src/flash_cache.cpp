@@ -44,6 +44,7 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 			globalLru.emplace_front(item.kId);
 			item.globalLruIt = globalLru.begin();
 			if (item.isInDram) {
+				if (!warmup) {stat.hits_dram++;}
 				dramLru.erase(item.dramLruIt);
 				dramLru.emplace_front(item.kId);
 				item.dramLruIt = dramLru.begin(); 
@@ -52,6 +53,8 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 				dramIt tmp = item.dramLocation;
 				dramAdd(p, tmp, item);
 				dram.erase(tmp);		
+			} else {
+				if (!warmup) {stat.hits_flash++;}
 			}
 			lastCreditUpdate = r->time;
 			return 1;
@@ -103,6 +106,7 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 		FlashCache::Item& mfuItem = allObjects[mfuKid];	
 		assert(mfuItem.size > 0);	
 		if (credits < (double) mfuItem.size) {
+			if (!warmup) {stat.credit_limit++;}
 			while (newItem.size + dramSize > DRAM_SIZE) {
 				uint32_t lruKid = dramLru.back();
 				FlashCache::Item& lruItem = allObjects[lruKid];
@@ -126,6 +130,7 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 				credits -= mfuItem.size;
 				dramSize -= mfuItem.size;
 				flashSize += mfuItem.size;
+				if (!warmup) {stat.writes_flash++;}
 			}
 			else {
 				uint32_t globalLruKid = globalLru.back();

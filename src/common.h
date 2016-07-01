@@ -44,6 +44,10 @@ struct stats {
   size_t target_mem;
   size_t epoch_len;
   size_t period_len;
+  size_t hits_dram;
+  size_t hits_flash;
+  size_t writes_flash;
+  size_t credit_limit;
 
   stats(const std::string& policy, 
         const std::set<uint32_t>& apps, 
@@ -70,6 +74,10 @@ struct stats {
     , target_mem{}
     , epoch_len{}
     , period_len{}
+    , hits_dram{}
+    , hits_flash{}
+    , writes_flash{}
+    , credit_limit{}
   {}
 
   double get_hit_rate() { return double(hits) / accesses; }
@@ -95,6 +103,10 @@ struct stats {
              "cleaned_items " 
              "cleaned_generated_segs "
              "cleaned_ext_frag_bytes "
+	     "hits_dram "
+	     "hits_flash "
+	     "writes_flash "
+	     "credit_limit "
           << std::endl;
       out << appid << " "
           << policy << " "
@@ -112,6 +124,10 @@ struct stats {
           << cleaned_items << " "
           << cleaned_generated_segs << " "
           << cleaned_ext_frag_bytes << " "
+	  << hits_dram << " "
+	  << hits_flash << " "
+	  << writes_flash << " "
+	  << credit_limit << " "
           << std::endl;
   }
   

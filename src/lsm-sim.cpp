@@ -278,6 +278,10 @@ int main(int argc, char *argv[]) {
 
   //assert(apps.size() == 1);
 
+  if (policy_type == FLASHCACHE) {
+	global_mem = DRAM_SIZE + FLASH_SIZE;
+  }
+
   // build a stats struct with basic info relevant to every policy.
   stats sts{policy_names[policy_type], apps, global_mem};
 
