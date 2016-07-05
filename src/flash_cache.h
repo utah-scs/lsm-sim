@@ -12,8 +12,8 @@
 * These parameters define how many bytes the DRAM
 * and flash can hold. These parametrs can be changed
 */
-const unsigned long long DRAM_SIZE = 51209600;
-const unsigned long long FLASH_SIZE = 0; //3928390848;
+extern unsigned long long DRAM_SIZE;
+extern unsigned long long FLASH_SIZE;
 const unsigned long long FLASH_RATE = 1024 * 1024;
 const unsigned int INITIAL_CREDIT = 1;
 const unsigned int K = 1;

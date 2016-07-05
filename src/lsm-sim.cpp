@@ -28,6 +28,7 @@
 #include "mc.h"
 #include "flash_cache.h"
 
+
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
@@ -158,7 +159,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:m:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:m:F:D:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -271,6 +272,12 @@ int main(int argc, char *argv[]) {
         priv_mem_percentage = atof(optarg);
         use_percentage = true;
         break;
+      case 'F':
+	FLASH_SIZE = atoi(optarg);
+	break;
+      case 'D':
+	DRAM_SIZE = atoi(optarg);
+	break;
     }
   }
 
@@ -421,7 +428,7 @@ int main(int argc, char *argv[]) {
         ch::duration_cast<ch::nanoseconds>(now - last_progress).count() / 1e9;
       if (seconds > 1.0) {
         stats* stats = policy->get_stats();
-        std::cerr << "Progress: " << r.time << " "
+        std::cerr << "Progress: " << std::setprecision(10) << r.time << " "
                   << "Rate: " << bytes / (1 << 20) / seconds << " MB/s "
                   << "Hit Rate: " << stats->get_hit_rate() * 100 << "% "
                   << "Evicted Items: " << stats->evicted_items << " "

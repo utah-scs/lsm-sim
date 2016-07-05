@@ -3,6 +3,9 @@
 #include <fstream>
 #include "flash_cache.h"
 
+unsigned long long DRAM_SIZE = 51209600;
+unsigned long long FLASH_SIZE = 0;
+
 FlashCache::FlashCache(stats stat) : 
 	policy(stat),
 	dram(),
