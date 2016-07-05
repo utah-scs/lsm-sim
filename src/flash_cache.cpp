@@ -1,5 +1,6 @@
 #include <iostream>
 #include <math.h>
+#include <fstream>
 #include "flash_cache.h"
 
 FlashCache::FlashCache(stats stat) : 
@@ -192,5 +193,28 @@ void FlashCache::dramAdd(const std::pair<uint32_t, double>& p,
 	assert(dram.size() > 0);
 	tmp--;
 	item.dramLocation = tmp;
+}
+
+void FlashCache::dump_stats(void) {
+	assert(stat.apps.size() == 1);
+	uint32_t appId = 0;
+	for(const auto& app : stat.apps) {appId = app;}
+	std::string filename{stat.policy
+			+ "-app" + std::to_string(appId)
+			+ "-flash_mem" + std::to_string(FLASH_SIZE)
+			+ "-dram_mem" + std::to_string(DRAM_SIZE)};
+	std::ofstream out{filename};
+	out << "dram size " << DRAM_SIZE << std::endl;
+	out << "flash size " << FLASH_SIZE << std::endl;
+	out << "initial credit " << INITIAL_CREDIT << std::endl;
+	out << "#credits per sec " << FLASH_RATE << std::endl;
+	out << "K " << K << std::endl;
+	out << "#accesses "  << stat.accesses << std::endl;
+	out << "#global hits " << stat.hits << std::endl;
+	out << "#dram hits " << stat.hits_dram << std::endl;
+	out << "#flash hits " << stat.hits_flash << std::endl;
+	out << "hit rate " << double(stat.hits) / stat.accesses << std::endl;
+	out << "#writes to flash " << stat.writes_flash << std::endl;
+	out << "credit limit " << stat.credit_limit << std::endl; 
 }
 
