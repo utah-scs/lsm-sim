@@ -4,7 +4,7 @@
 #include "flash_cache.h"
 
 unsigned long long DRAM_SIZE = 51209600;
-unsigned long long FLASH_SIZE = 0;
+unsigned long long FLASH_SIZE = 51209600;
 
 FlashCache::FlashCache(stats stat) : 
 	policy(stat),
@@ -137,7 +137,10 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 				credits -= mfuItem.size;
 				dramSize -= mfuItem.size;
 				flashSize += mfuItem.size;
-				if (!warmup) {stat.writes_flash++;}
+				if (!warmup) {
+					stat.writes_flash++;
+					stat.flash_bytes_written += mfuItem.size;
+				}
 			}
 			else {
 				uint32_t globalLruKid = globalLru.back();
@@ -220,5 +223,6 @@ void FlashCache::dump_stats(void) {
 	out << "hit rate " << double(stat.hits) / stat.accesses << std::endl;
 	out << "#writes to flash " << stat.writes_flash << std::endl;
 	out << "credit limit " << stat.credit_limit << std::endl; 
+	out << "#bytes written to flash " << stat.flash_bytes_written << std::endl;
 }
 

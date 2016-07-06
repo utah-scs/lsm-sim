@@ -48,6 +48,8 @@ struct stats {
   size_t hits_flash;
   size_t writes_flash;
   size_t credit_limit;
+  size_t flash_bytes_written;
+
 
   stats(const std::string& policy, 
         const std::set<uint32_t>& apps, 
@@ -78,6 +80,7 @@ struct stats {
     , hits_flash{}
     , writes_flash{}
     , credit_limit{}
+    , flash_bytes_written{}
   {}
 
   double get_hit_rate() { return double(hits) / accesses; }
@@ -107,6 +110,7 @@ struct stats {
 	     "hits_flash "
 	     "writes_flash "
 	     "credit_limit "
+	     "flash_bytes_written "
           << std::endl;
       out << appid << " "
           << policy << " "
@@ -128,7 +132,8 @@ struct stats {
 	  << hits_flash << " "
 	  << writes_flash << " "
 	  << credit_limit << " "
-          << std::endl;
+          << flash_bytes_written << " "
+	  << std::endl;
   }
   
 };
