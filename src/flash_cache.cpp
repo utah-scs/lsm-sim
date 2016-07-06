@@ -95,7 +95,7 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 	newItem.size = r->size();
 	newItem.isInDram = true;
 	newItem.last_accessed = r->time;
-	assert(((unsigned int) newItem.size) < DRAM_SIZE);
+	assert(((unsigned int) newItem.size) <= DRAM_SIZE);
 	while (true) {
 		if (newItem.size + dramSize <= DRAM_SIZE) {
 			std::pair<uint32_t, double> p(newItem.kId, INITIAL_CREDIT);
@@ -154,7 +154,8 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 				allObjects.erase(globalLruKid);
 			}	
 		}
-	}	
+	}
+	assert(false);	
 	return PROC_MISS;
 }
 
