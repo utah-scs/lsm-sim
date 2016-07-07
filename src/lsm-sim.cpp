@@ -27,12 +27,12 @@
 #include "slab.h"
 #include "mc.h"
 #include "flash_cache.h"
-
+#include "victim_cache.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[10] = { "shadowlru"
+const char* policy_names[11] = { "shadowlru"
                               , "fifo"
                               , "lru"
 			      , "slab"
@@ -42,6 +42,7 @@ const char* policy_names[10] = { "shadowlru"
                               , "multi"
                               , "multislab"
 			      , "flashcache"
+			      , "victimcache"
                               };
 enum pol_type { 
     SHADOWLRU = 0
@@ -53,7 +54,8 @@ enum pol_type {
   , LSM
   , MULTI
   , MULTISLAB
-  , FLASHCACHE };
+  , FLASHCACHE
+  , VICTIMCACHE };
 
 // globals
 std::set<uint32_t>    apps{};                        // apps to consider
@@ -102,7 +104,9 @@ const std::string     usage  = "-f    specify file path\n"
                                "-P    number of partitions for partslab\n"
                                "-S    segment size in bytes for lsm\n"
                                "-E    eviction subpolicy (for multi)\n"
-                               "-m    private mem percentage of target mem";
+                               "-m    private mem percentage of target mem\n"
+			       "-D    dram size in flashcache and victimcache policies\n"
+			       "-F    flash size in flashcache and victimcache policied";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -186,7 +190,9 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(8);
 	else if (std::string(optarg) == "flashcache")
 	  policy_type = pol_type(9);
-        else {
+        else if (std::string(optarg) == "victimcache")
+	  policy_type = pol_type(10);
+	else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
         }            
@@ -285,7 +291,7 @@ int main(int argc, char *argv[]) {
 
   //assert(apps.size() == 1);
 
-  if (policy_type == FLASHCACHE) {
+  if (policy_type == FLASHCACHE || policy_type == VICTIMCACHE) {
 	global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 
@@ -308,6 +314,9 @@ int main(int argc, char *argv[]) {
       break;
     case FLASHCACHE :
 	policy.reset(new FlashCache(sts));
+	break;
+    case VICTIMCACHE :
+	policy.reset(new VictimCache(sts));
 	break;
     case SLAB :
       if (memcachier_classes) {

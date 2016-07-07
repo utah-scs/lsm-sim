@@ -1,0 +1,21 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p victimcache -F 15 -D 15 -f ./test1
+
+In this test we want to check that 30 bytes are written to the flash.
+
+1. DRAM: empty FLASH: empty
+2. DRAM: 100 FLASH: empty
+3. DRAM: 101 FLASH: 100
+4. DRAM: 102 FLASH: 101
+
+result:
+
+dram size 15
+flash size 15
+#accesses 3
+#global hits 0
+#dram hits 0
+#flash hits 0
+#writes to flash 2
+#bytes written to flash 30

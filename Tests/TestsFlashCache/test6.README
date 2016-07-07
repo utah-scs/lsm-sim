@@ -1,6 +1,6 @@
 run this test:
 
-../lsm-sim -a 1 -w 0 -p flashcache -F 524290 -D 524290 -f ./test6
+../../lsm-sim -a 1 -w 0 -p flashcache -F 524290 -D 524290 -f ./test6
 
 In this test there is enough space in the flash, however, there is not 
 enough credit; hence, we should evict from the DRAM.

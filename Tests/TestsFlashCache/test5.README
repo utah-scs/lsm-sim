@@ -1,6 +1,6 @@
 run this test:
 
-../lsm-sim -a 1 -w 0 -p flashcache -F 15 -D 15 -f ./test5
+../../lsm-sim -a 1 -w 0 -p flashcache -F 15 -D 15 -f ./test5
 
 result:
 

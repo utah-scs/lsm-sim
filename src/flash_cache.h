@@ -64,6 +64,7 @@ private:
 	void dramAdd(const std::pair<uint32_t, double>& p, 
 			dramIt beginPlace,
 			Item& item);
+	friend class VictimCache;
 public:
 	FlashCache(stats stat);
 	~FlashCache();
