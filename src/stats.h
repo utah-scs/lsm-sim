@@ -91,19 +91,19 @@ struct stats {
   /// Only for partslab; number of hash partitions to split the slabs across.
   size_t partitions;
 
-  /// For flash_cache; number of #hits that hit from an item in DRAM.
+  /// For flash_cache + victim_cache; number of #hits that hit from an item in DRAM.
   size_t hits_dram;
 
-  /// For flash_cache; number of #hits that hit from an item in Flash.
+  /// For flash_cache + victim_cache; number of #hits that hit from an item in Flash.
   size_t hits_flash;
 
-  /// For flash_cache; total number of items ever written to Flash.
+  /// For flash_cache + victim_cache; total number of items ever written to Flash.
   size_t writes_flash;
 
   /// For flash_cache; used to pace evictions to flash.
   size_t credit_limit;
 
-  /// For flash_cache; total size of all bytes ever written to Flash. 
+  /// For flash_cache + victim_cache; total size of all bytes ever written to Flash. 
   size_t flash_bytes_written;
 
 
