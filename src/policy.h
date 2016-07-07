@@ -3,8 +3,10 @@
 
 #include <cassert>
 #include <string>
-#include "request.h"
+
 #include "common.h"
+#include "request.h"
+#include "stats.h"
 
 // abstract base class for plug-and-play policies
 class policy {
