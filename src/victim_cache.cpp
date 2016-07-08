@@ -98,6 +98,7 @@ void VictimCache::dump_stats(void) {
 	out << "#global hits " << stat.hits << std::endl;
 	out << "#dram hits " << stat.hits_dram << std::endl;
 	out << "#flash hits " << stat.hits_flash << std::endl;
+	out << "hit rate " << double(stat.hits) / stat.accesses << std::endl;
 	out << "#writes to flash " << stat.writes_flash << std::endl;
 	out << "#bytes written to flash " << stat.flash_bytes_written << std::endl;
 }
