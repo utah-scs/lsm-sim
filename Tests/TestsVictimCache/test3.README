@@ -1,0 +1,17 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p victimcache -F 15 -D 15 -f ./test3
+
+In this trace we want to check that from the second in the trace, there
+is always a write to the flash
+
+result:
+
+dram size 15
+flash size 15
+#accesses 4
+#global hits 2
+#dram hits 0
+#flash hits 2
+#writes to flash 3
+#bytes written to flash 45
