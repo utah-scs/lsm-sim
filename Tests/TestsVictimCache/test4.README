@@ -1,0 +1,17 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p victimcache -F 30 -D 30 -f ./test4
+
+In this test we check that if two items have same keys but different sizes -
+there is no hit.
+
+result:
+
+dram size 30
+flash size 30
+#accesses 3
+#global hits 0
+#dram hits 0
+#flash hits 0
+#writes to flash 0
+#bytes written to flash 0

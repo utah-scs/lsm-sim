@@ -1,0 +1,15 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p victimcache -F 20 -D 30 -f ./test5
+
+result:
+
+dram size 30
+flash size 20
+#accesses 6
+#global hits 1
+#dram hits 0
+#flash hits 1
+#writes to flash 3
+#bytes written to flash 47
+
