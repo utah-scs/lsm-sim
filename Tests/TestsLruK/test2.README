@@ -1,0 +1,16 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p lruk -K 2 -L 15 -f ./test2
+
+result:
+
+K_LRU (number of queues) 2
+queue size 15
+#accesses 2
+#global hits 0
+hit rate 0
+queue 0 hits: 0
+queue 0 hit rate: 0
+queue 1 hits: 0
+queue 1 hit rate: 0
+

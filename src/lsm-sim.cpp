@@ -28,11 +28,12 @@
 #include "mc.h"
 #include "flash_cache.h"
 #include "victim_cache.h"
+#include "lruk.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[11] = { "shadowlru"
+const char* policy_names[12] = { "shadowlru"
                               , "fifo"
                               , "lru"
 			      , "slab"
@@ -43,7 +44,9 @@ const char* policy_names[11] = { "shadowlru"
                               , "multislab"
 			      , "flashcache"
 			      , "victimcache"
-                              };
+                              , "lruk"
+			      };
+
 enum pol_type { 
     SHADOWLRU = 0
   , FIFO
@@ -55,7 +58,9 @@ enum pol_type {
   , MULTI
   , MULTISLAB
   , FLASHCACHE
-  , VICTIMCACHE };
+  , VICTIMCACHE 
+  , LRUK
+};
 
 // globals
 std::set<uint32_t>    apps{};                        // apps to consider
@@ -106,7 +111,9 @@ const std::string     usage  = "-f    specify file path\n"
                                "-E    eviction subpolicy (for multi)\n"
                                "-m    private mem percentage of target mem\n"
 			       "-D    dram size in flashcache and victimcache policies\n"
-			       "-F    flash size in flashcache and victimcache policied";
+			       "-F    flash size in flashcache and victimcache policies\n"
+			       "-K    number of queues in lruk policy\n"
+			       "-L    queue size in lruk policy";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -163,7 +170,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:m:F:D:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:m:F:D:L:K:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -192,6 +199,8 @@ int main(int argc, char *argv[]) {
 	  policy_type = pol_type(9);
         else if (std::string(optarg) == "victimcache")
 	  policy_type = pol_type(10);
+	else if (std::string(optarg) == "lruk")
+	  policy_type = pol_type(11);
 	else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -284,6 +293,12 @@ int main(int argc, char *argv[]) {
       case 'D':
 	DRAM_SIZE = atoi(optarg);
 	break;
+      case 'K':
+	K_LRU = atoi(optarg);
+	break;
+      case 'L':
+	KLRU_QUEUE_SIZE = atoi(optarg);
+	break;	
     }
   }
 
@@ -317,6 +332,9 @@ int main(int argc, char *argv[]) {
 	break;
     case VICTIMCACHE :
 	policy.reset(new VictimCache(sts));
+	break;
+    case LRUK :
+	policy.reset(new Lruk(sts));
 	break;
     case SLAB :
       if (memcachier_classes) {

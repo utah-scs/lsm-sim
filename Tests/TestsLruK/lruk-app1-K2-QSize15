@@ -1,0 +1,9 @@
+K_LRU (number of queues) 2
+queue size 15
+#accesses 7
+#global hits 4
+hit rate 0.571429
+queue 0 hits: 4
+queue 0 hit rate: 0.571429
+queue 1 hits: 0
+queue 1 hit rate: 0
