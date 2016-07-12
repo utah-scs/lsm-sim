@@ -16,7 +16,7 @@ extern unsigned long long DRAM_SIZE;
 extern unsigned long long FLASH_SIZE;
 const unsigned long long FLASH_RATE = 1024 * 1024;
 const unsigned int INITIAL_CREDIT = 1;
-const unsigned int K = 1;
+extern double K;
 
 class FlashCache : public policy {
 private:

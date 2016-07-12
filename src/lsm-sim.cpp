@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:m:F:D:L:K:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:m:F:D:L:K:k:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -298,6 +298,9 @@ int main(int argc, char *argv[]) {
 	break;
       case 'L':
 	KLRU_QUEUE_SIZE = atoi(optarg);
+	break;	
+      case 'k':
+	K = atof(optarg);
 	break;	
     }
   }
