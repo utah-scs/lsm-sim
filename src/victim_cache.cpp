@@ -30,13 +30,14 @@ size_t VictimCache::proc(const request* r, bool warmup) {
 			hitFlash = true;
 		}		
 		if ( r->size() == item.size) {
-			if (!warmup) {stat.hits++;}
-			if (hitFlash) {
-				stat.hits_flash++;
-			} else {
-				stat.hits_dram++;
+			if (!warmup) {
+				stat.hits++;
+				if (hitFlash) {
+					stat.hits_flash++;
+				} else {
+					stat.hits_dram++;
+				}
 			}
-
 			insertToDram(item, warmup);
 			return 1;
 		} else {
