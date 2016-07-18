@@ -28,24 +28,28 @@
 #include "mc.h"
 #include "flash_cache.h"
 #include "victim_cache.h"
+#include "ripq.h"
+#include "ripq_shield.h"
 #include "lruk.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[12] = { "shadowlru"
-                              , "fifo"
-                              , "lru"
-			      , "slab"
-                              , "shadowslab"
-                              , "partslab"
-                              , "lsm"
-                              , "multi"
-                              , "multislab"
-			      , "flashcache"
-			      , "victimcache"
-                              , "lruk"
-			      };
+const char* policy_names[14] = { "shadowlru"
+                               , "fifo"
+                               , "lru"
+                               , "slab"
+                               , "shadowslab"
+                               , "partslab"
+                               , "lsm"
+                               , "multi"
+                               , "multislab"
+      			       , "flashcache"
+			       , "victimcache"
+                               , "lruk"
+                               , "ripq"
+                               , "ripq_shield"
+                              };
 
 enum pol_type { 
     SHADOWLRU = 0
@@ -60,7 +64,9 @@ enum pol_type {
   , FLASHCACHE
   , VICTIMCACHE 
   , LRUK
-};
+  , RIPQ 
+  , RIPQ_SHIELD
+  };
 
 // globals
 std::set<uint32_t>    apps{};                        // apps to consider
@@ -82,12 +88,17 @@ double                gfactor = 1.25;                   // def slab growth fact
 bool                  memcachier_classes = false;
 size_t                partitions = 2;
 size_t                segment_size = 1 * 1024 * 1024;
+size_t                block_size = 1 * 1024 * 1024;
+size_t                num_dsections = 4;
 size_t                min_mem_pct = 25;
 const size_t          default_steal_size = 65536;
 bool                  use_tax = false;
 double                tax_rate = 0.05;
 double                priv_mem_percentage =0.25; 
 bool                  use_percentage = false;           // specify priv mem %
+size_t                flash_size = 0;
+size_t                num_sections = 0;
+size_t                dram_size = 0;            // amount of dram memory allocated for ripq_shield active_blocks
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -108,12 +119,15 @@ const std::string     usage  = "-f    specify file path\n"
                                "-M    use memcachier slab classes\n"
                                "-P    number of partitions for partslab\n"
                                "-S    segment size in bytes for lsm\n"
+                               "-B    block size in bytes for ripq\n"
                                "-E    eviction subpolicy (for multi)\n"
                                "-m    private mem percentage of target mem\n"
-			       "-D    dram size in flashcache and victimcache policies\n"
-			       "-F    flash size in flashcache and victimcache policies\n"
+			       "-D    dram size in flashcache, victimcache and ripq_shield policies\n"
+			       "-F    flash size in flashcache, victimcache, ripq and ripq_shield policies\n"
 			       "-K    number of queues in lruk policy\n"
-			       "-L    queue size in lruk policy";
+			       "-L    queue size in lruk policy\n"
+                               "-n    number of flash sections for ripq and ripq_shield\n" 
+                               "-d    number of dram sections for ripq_shield\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -170,7 +184,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:m:F:D:L:K:k:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:m:d:F:n:D:L:K:k:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -201,6 +215,11 @@ int main(int argc, char *argv[]) {
 	  policy_type = pol_type(10);
 	else if (std::string(optarg) == "lruk")
 	  policy_type = pol_type(11);
+        else if (std::string(optarg) == "ripq")
+          policy_type = pol_type(12);
+        else if (std::string(optarg) == "ripq_shield")
+          policy_type = pol_type(13);
+
 	else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -226,6 +245,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'S':
         segment_size = atol(optarg);
+        break;
+      case 'B':
+        block_size = atol(optarg);
         break;
       case 'l':
         request_limit = atoi(optarg); 
@@ -288,10 +310,10 @@ int main(int argc, char *argv[]) {
         use_percentage = true;
         break;
       case 'F':
-	FLASH_SIZE = atoi(optarg);
+	FLASH_SIZE = flash_size = atoi(optarg);
 	break;
       case 'D':
-	DRAM_SIZE = atoi(optarg);
+	DRAM_SIZE = dram_size = atoi(optarg);
 	break;
       case 'K':
 	K_LRU = atoi(optarg);
@@ -299,6 +321,12 @@ int main(int argc, char *argv[]) {
       case 'L':
 	KLRU_QUEUE_SIZE = atoi(optarg);
 	break;	
+      case 'n':
+        num_sections =  atol(optarg);
+        break;
+      case 'd':
+        num_dsections = atol(optarg);
+        break;
       case 'k':
 	K = atof(optarg);
 	break;	
@@ -309,7 +337,7 @@ int main(int argc, char *argv[]) {
 
   //assert(apps.size() == 1);
 
-  if (policy_type == FLASHCACHE || policy_type == VICTIMCACHE) {
+  if (policy_type == FLASHCACHE || policy_type == VICTIMCACHE || policy_type == RIPQ || policy_type == RIPQ_SHIELD) {
 	global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 
@@ -395,6 +423,7 @@ int main(int argc, char *argv[]) {
 
       break;
     case MULTISLAB:
+    {
       if (memcachier_classes) {
         sts.gfactor = 2.0;
       } else {
@@ -408,6 +437,21 @@ int main(int argc, char *argv[]) {
         assert(memcachier_app_size[appid] > 0);
         slmulti->add_app(appid, min_mem_pct, memcachier_app_size[appid]);
       }
+      break;
+    }
+    case RIPQ:
+      sts.block_size = block_size;
+      sts.flash_size = flash_size;
+      sts.num_sections = num_sections;
+      policy.reset(new ripq(sts, block_size, num_sections, flash_size));
+      break;
+    case RIPQ_SHIELD:
+      sts.block_size = block_size;
+      sts.flash_size = flash_size;
+      sts.dram_size = dram_size;
+      sts.num_sections = num_sections;
+      sts.num_dsections = num_dsections;
+      policy.reset(new ripq_shield(sts, block_size, num_sections, dram_size, num_dsections, flash_size));
       break;
   }
 

@@ -56,6 +56,15 @@ struct stats {
    */
   size_t segment_size;
 
+  // For ripq and ripq_shield, size of blocks (items in flash are accomodated in blocks)
+  size_t block_size;
+
+  // For ripq and ripq_shield, number of sections in flash
+  int num_sections;
+
+  // For ripq and ripq_shield, number of sections (i.e. queues) in dram
+  int num_dsections;
+
   /**
    * For lsm and lsc_multi, number of segments to clean in a single pass.
    * Each pass cleans #cleaning_width segments down into #cleaning_width - 1
@@ -91,10 +100,10 @@ struct stats {
   /// Only for partslab; number of hash partitions to split the slabs across.
   size_t partitions;
 
-  /// For flash_cache + victim_cache; number of #hits that hit from an item in DRAM.
+  /// For flash_cache, victim_cache, ripq, ripq_shield; number of #hits that hit from an item in DRAM.
   size_t hits_dram;
 
-  /// For flash_cache + victim_cache; number of #hits that hit from an item in Flash.
+  /// For flash_cache, victim_cache, ripq, ripq_shield; number of #hits that hit from an item in Flash (including active blocks).
   size_t hits_flash;
 
   /// For flash_cache + victim_cache; total number of items ever written to Flash.
@@ -106,6 +115,11 @@ struct stats {
   /// For flash_cache + victim_cache; total size of all bytes ever written to Flash. 
   size_t flash_bytes_written;
 
+  /// For ripq_shield, size of DRAM cache (excluding active blocks). 
+  size_t dram_size;
+
+  // For ripq and ripq_shield, size of Flash cache (excluding active blocks).
+  size_t flash_size;
 
   stats(const std::string& policy, 
         const std::set<uint32_t>& apps, 
@@ -120,6 +134,9 @@ struct stats {
     , evicted_bytes{}
     , evicted_items{}
     , segment_size{}
+    , block_size{}
+    , num_sections{}
+    , num_dsections{}
     , cleaning_width{}
     , cleaned_generated_segs{}
     , cleaned_ext_frag_bytes{}
@@ -131,6 +148,8 @@ struct stats {
     , writes_flash{}
     , credit_limit{}
     , flash_bytes_written{}
+    , dram_size{}
+    , flash_size{}
   {}
 
   /// Return the ratio of access that resulted in a cache hit.
@@ -148,6 +167,9 @@ struct stats {
              "policy "
              "global_mem "
              "segment_size "
+             "block_size "
+             "num_sections "
+             "num_dsections "
              "cleaning_width "
              "growth_factor "
              "hits accesses "
@@ -162,11 +184,16 @@ struct stats {
              "writes_flash "
              "credit_limit "
              "flash_bytes_written "
+             "dram_size "
+             "flash_size "
           << std::endl;
       out << appid << " "
           << policy << " "
           << global_mem << " "
           << segment_size << " "
+          << block_size << " "
+          << num_sections << " "
+          << num_dsections << " "
           << cleaning_width << " "
           << gfactor << " "
           << hits << " "
@@ -182,6 +209,8 @@ struct stats {
           << writes_flash << " "
           << credit_limit << " "
           << flash_bytes_written << " "
+          << dram_size << " "
+          << flash_size << " "
           << std::endl;
   }
   

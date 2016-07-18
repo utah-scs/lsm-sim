@@ -55,13 +55,23 @@ class policy {
       // Specific filename additions. 
       filename += stat.segment_size > 0 ? 
         "-segment_size" + std::to_string(stat.segment_size) : ""; 
+      filename += stat.block_size > 0 ?
+        "-block_size" + std::to_string(stat.block_size) : "";
       filename += stat.cleaning_width > 0 ?
         "-cleaning_width" + std::to_string(stat.cleaning_width) : "";
       filename += stat.gfactor > 0 ? 
         "-growth_factor" + to_string_with_precision(stat.gfactor) : "";
       filename += stat.partitions > 0 ?
         "-partitions" + std::to_string(stat.partitions) : "";  
-
+      filename += stat.dram_size > 0 ?
+        "-dram_size" + std::to_string(stat.dram_size) : "";
+      filename += stat.num_dsections > 0 ?
+        "-num_dsections" + std::to_string(stat.num_dsections) : "";
+      filename += stat.flash_size > 0 ?
+        "-flash_size" + std::to_string(stat.flash_size) : "";
+      filename += stat.num_sections > 0 ?
+        "-num_sections" + std::to_string(stat.num_sections) : "";
+     
       filename += ".data";
 
       std::ofstream out{filename};
