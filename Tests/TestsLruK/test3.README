@@ -11,5 +11,7 @@ queue size 15
 hit rate 0.571429
 queue 0 hits: 4
 queue 0 hit rate: 0.571429
+queue 0 bytes written: 46
 queue 1 hits: 0
 queue 1 hit rate: 0
+queue 1 bytes written: 27

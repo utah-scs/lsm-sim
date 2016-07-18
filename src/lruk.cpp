@@ -127,7 +127,7 @@ void Lruk::dump_stats(void) {
 	for (size_t i = 0 ; i < K_LRU; i++) {
 		out << "queue " << i << " hits: " << kLruHits[i] << std::endl;
 		out << "queue " << i << " hit rate: " << double(kLruHits[i]) / stat.accesses << std::endl;
-		out << "queue " << i << " bytes writtes: " << kLruNumWrites[i] << std::endl;
+		out << "queue " << i << " bytes written: " << kLruNumWrites[i] << std::endl;
 	}
 
 }

@@ -1,0 +1,20 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p lruk -K 3 -L 15 -f ./test5
+
+result:
+
+K_LRU (number of queues) 3
+queue size 15
+#accesses 8
+#global hits 5
+hit rate 0.625
+queue 0 hits: 3
+queue 0 hit rate: 0.375
+queue 0 bytes written: 27
+queue 1 hits: 2
+queue 1 hit rate: 0.25
+queue 1 bytes written: 38
+queue 2 hits: 0
+queue 2 hit rate: 0
+queue 2 bytes written: 19
