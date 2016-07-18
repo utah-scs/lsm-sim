@@ -65,17 +65,18 @@ size_t Lruk::proc(const request *r, bool warmup) {
 }
 
 void Lruk::insert(std::vector<uint32_t>& objects, 
-		unsigned int sum, 
-		int k, 
+		size_t sum, 
+		size_t k, 
 		bool updateWrites,
 		bool warmup) {
 
-	assert(0 <= k && k < (int) K_LRU);
+	assert(k < K_LRU);
 
 	std::vector<uint32_t> newObjects;
-	int newSum = 0;
+	size_t newSum = 0;
 	while (sum + kLruSizes[k] > KLRU_QUEUE_SIZE) {
 		assert(kLruSizes[k] > 0);
+		assert(kLru[k].size() > 0);
 		uint32_t elem = kLru[k].back();
 		kLru[k].pop_back();
 		Lruk::LKItem& item = allObjects[elem];

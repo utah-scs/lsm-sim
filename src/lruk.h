@@ -30,8 +30,8 @@ private:
 	std::vector<size_t> kLruNumWrites;
 
 	void insert(std::vector<uint32_t>& objects, 
-		unsigned int sum, 
-		int k, 
+		size_t sum, 
+		size_t k, 
 		bool updateWrites,
 		bool warmup);
 public:
