@@ -47,7 +47,7 @@ void ripq::add(const request *r, int section_id) {
     //We increase the writes stat by block_size, but write to flash only the real block size
     assert((uint32_t)r->size() < stat.block_size);
     if (!warmup)
-      stat.flash_writes += stat.block_size;
+      stat.flash_bytes_written += stat.block_size;
     target_section->seal_phy_block();
     target_section->seal_vir_block();
     balance(section_id);

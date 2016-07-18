@@ -67,7 +67,6 @@ enum pol_type {
   , RIPQ 
   , RIPQ_SHIELD
   };
-};
 
 // globals
 std::set<uint32_t>    apps{};                        // apps to consider
@@ -126,7 +125,7 @@ const std::string     usage  = "-f    specify file path\n"
 			       "-D    dram size in flashcache, victimcache and ripq_shield policies\n"
 			       "-F    flash size in flashcache, victimcache, ripq and ripq_shield policies\n"
 			       "-K    number of queues in lruk policy\n"
-			       "-L    queue size in lruk policy";
+			       "-L    queue size in lruk policy\n"
                                "-n    number of flash sections for ripq and ripq_shield\n" 
                                "-d    number of dram sections for ripq_shield\n";
 
@@ -338,7 +337,7 @@ int main(int argc, char *argv[]) {
 
   //assert(apps.size() == 1);
 
-  if (policy_type == FLASHCACHE || policy_type == VICTIMCACHE) {
+  if (policy_type == FLASHCACHE || policy_type == VICTIMCACHE || policy_type == RIPQ || policy_type == RIPQ_SHIELD) {
 	global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 

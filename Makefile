@@ -1,5 +1,5 @@
 CXX := g++-4.9
-CXXFLAGS := -std=c++14 -Wall -g -pedantic-errors -Werror -O3
+CXXFLAGS := -std=c++14 -Wall -g -pedantic-errors -Werror -O2
 CXXFLAGS += -Wno-unused-parameter -Wextra -Weffc++
 
 LDFLAGS :=

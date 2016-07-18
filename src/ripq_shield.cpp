@@ -180,7 +180,7 @@ size_t ripq_shield::proc(const request *r, bool warmup) {
           dram_add(r, item_it->ds->id - 1); //allocate to higer queue in dram
         }
         if (!warmup)
-          ++stat.dram_hits;
+          ++stat.hits_dram;
       } else {
         //HIT in FLASH
         //update virtual block
@@ -201,7 +201,7 @@ size_t ripq_shield::proc(const request *r, bool warmup) {
         }
 
         if (!warmup)
-          ++stat.flash_hits;
+          ++stat.hits_flash;
         assert(item_it->virtual_block->s->id <= item_it->physical_block->s->id);
       }
       return 1;
