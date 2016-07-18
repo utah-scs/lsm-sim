@@ -12,11 +12,12 @@
 * These parameters define how many bytes the DRAM
 * and flash can hold. These parametrs can be changed
 */
-extern unsigned long long DRAM_SIZE;
-extern unsigned long long FLASH_SIZE;
-const unsigned long long FLASH_RATE = 1024 * 1024;
-const unsigned int INITIAL_CREDIT = 1;
+extern size_t DRAM_SIZE;
+extern size_t FLASH_SIZE;
+const size_t FLASH_RATE = 1024 * 1024;
+const size_t INITIAL_CREDIT = 1;
 extern double K;
+extern size_t L_FC;
 
 class FlashCache : public policy {
 private:
@@ -55,8 +56,8 @@ private:
 	*/
 	double lastCreditUpdate;
 	
-	unsigned long long dramSize;
-	unsigned long long flashSize;
+	size_t dramSize;
+	size_t flashSize;
 
 	void updateCredits(const double& currTime);
 	void updateDramFlashiness(const double& currTime);

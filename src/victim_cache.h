@@ -17,8 +17,8 @@ private:
 	
 	std::unordered_map<uint32_t, FlashCache::Item> allObjects;	
 	
-	unsigned long long dramSize;
-	unsigned long long flashSize;
+	size_t dramSize;
+	size_t flashSize;
 
 	void insertToDram(FlashCache::Item& item, bool warmup);	
 public:

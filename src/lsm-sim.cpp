@@ -126,6 +126,7 @@ const std::string     usage  = "-f    specify file path\n"
 			       "-F    flash size in flashcache, victimcache, ripq and ripq_shield policies\n"
 			       "-K    number of queues in lruk policy\n"
 			       "-L    queue size in lruk policy\n"
+			       "-H    hit value in flashcache formula\n"
                                "-n    number of flash sections for ripq and ripq_shield\n" 
                                "-d    number of dram sections for ripq_shield\n";
 
@@ -310,16 +311,16 @@ int main(int argc, char *argv[]) {
         use_percentage = true;
         break;
       case 'F':
-	FLASH_SIZE = flash_size = atoi(optarg);
+	FLASH_SIZE = flash_size = atol(optarg);
 	break;
       case 'D':
-	DRAM_SIZE = dram_size = atoi(optarg);
+	DRAM_SIZE = dram_size = atol(optarg);
 	break;
       case 'K':
-	K_LRU = atoi(optarg);
+	K_LRU = atol(optarg);
 	break;
       case 'L':
-	KLRU_QUEUE_SIZE = atoi(optarg);
+	KLRU_QUEUE_SIZE = atol(optarg);
 	break;	
       case 'n':
         num_sections =  atol(optarg);
@@ -329,6 +330,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'k':
 	K = atof(optarg);
+	break;
+      case 'H':
+	L_FC = atol(optarg);
 	break;	
     }
   }

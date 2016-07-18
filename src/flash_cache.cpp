@@ -3,9 +3,11 @@
 #include <fstream>
 #include "flash_cache.h"
 
-unsigned long long DRAM_SIZE = 51209600;
-unsigned long long FLASH_SIZE = 51209600;
+size_t DRAM_SIZE = 51209600;
+size_t FLASH_SIZE = 51209600;
 double K = 1;
+size_t L_FC = 1;
+
 
 FlashCache::FlashCache(stats stat) : 
 	policy(stat),
@@ -179,10 +181,9 @@ void FlashCache::updateDramFlashiness(const double& currTime) {
 
 double FlashCache::hitCredit(const double& currTime, const Item& item) const{
 	double elapsed_secs = currTime - item.last_accessed;
-	if ( elapsed_secs == 0) { std::cout << currTime << std::endl; }
 	assert(elapsed_secs != 0);
 	double mul = exp(-elapsed_secs / K);
-	return ((1 - mul) * (1/elapsed_secs));
+	return ((1 - mul) * (L_FC / elapsed_secs));
 }
 
 void FlashCache::dramAdd(const std::pair<uint32_t, double>& p, 
@@ -228,8 +229,5 @@ void FlashCache::dump_stats(void) {
 	out << "#bytes written to flash " << stat.flash_bytes_written << std::endl;
 	out << std::endl << std::endl;
 	out << "key,rate" << std::endl;
-	for (dramIt it = dram.begin(); it != dram.end(); it++) {
-		out << it->first << "," << it->second << std::endl;
-	}		
 }
 
