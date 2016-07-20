@@ -8,6 +8,7 @@ size_t FLASH_SIZE = 51209600;
 double K = 1;
 size_t L_FC = 1;
 
+//#define COMPARE_TIME
 
 FlashCache::FlashCache(stats stat) : 
 	policy(stat),
@@ -19,7 +20,8 @@ FlashCache::FlashCache(stats stat) :
 	credits(0),
 	lastCreditUpdate(0),
 	dramSize(0),
-	flashSize(0)
+	flashSize(0),
+	counter(0)
 {
 }
 
@@ -31,10 +33,16 @@ size_t FlashCache::get_bytes_cached() const {
 
 size_t FlashCache::proc(const request* r, bool warmup) {
 	if (!warmup) {stat.accesses++;}
-	
+	counter++;
+
 	double currTime = r->time;
 	updateCredits(currTime);
+
+#ifdef COMPARE_TIME
 	updateDramFlashiness(currTime);
+#else
+	updateDramFlashiness();
+#endif	
 	
 	auto searchRKId = allObjects.find(r->kid);
 	if (searchRKId != allObjects.end()) {
@@ -58,13 +66,18 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 				dramLru.emplace_front(item.kId);
 				item.dramLruIt = dramLru.begin(); 
 				std::pair<uint32_t, double> p = *(item.dramLocation);
-				p.second += hitCredit(currTime, item);
+#ifdef COMPARE_TIME
+				p.second += hitCredit(item, currTime);
+#else
+				p.second += hitCredit(item);
+#endif
 				dramIt tmp = item.dramLocation;
 				dramAdd(p, tmp, item);
 				dram.erase(tmp);		
 			} else {
 				if (!warmup) {stat.hits_flash++;}
 			}
+			item.lastAccessInTrace = counter;
 			item.last_accessed = currTime;
 			lastCreditUpdate = r->time;
 			return 1;
@@ -98,6 +111,7 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 	newItem.size = r->size();
 	newItem.isInDram = true;
 	newItem.last_accessed = r->time;
+	newItem.lastAccessInTrace = counter;
 	assert(((unsigned int) newItem.size) <= DRAM_SIZE);
 	while (true) {
 		if (newItem.size + dramSize <= DRAM_SIZE) {
@@ -171,19 +185,33 @@ void FlashCache::updateCredits(const double& currTime) {
 }
 
 void FlashCache::updateDramFlashiness(const double& currTime) {
+	double mul;
+#ifdef COMPARE_TIME
+	assert(currTime >= 0);
 	double elapsed_secs = currTime - lastCreditUpdate;
-        double mul = exp(-elapsed_secs / K);
-
-        for(dramIt it = dram.begin(); it != dram.end(); it++) {
+        mul = exp(-elapsed_secs / K);
+#else
+	assert(currTime == -1);
+	mul = exp(-1 / K);
+#endif
+	for(dramIt it = dram.begin(); it != dram.end(); it++) {
                 it->second = it->second * mul;
 	}
 }
 
-double FlashCache::hitCredit(const double& currTime, const Item& item) const{
-	double elapsed_secs = currTime - item.last_accessed;
-	assert(elapsed_secs != 0);
-	double mul = exp(-elapsed_secs / K);
-	return ((1 - mul) * (L_FC / elapsed_secs));
+
+double FlashCache::hitCredit(const Item& item, const double& currTime) const{
+	double diff;
+#ifdef COMPARE_TIME
+	diff = currTime - item.last_accessed;
+#else
+	assert(currTime == -1);
+	assert(item.lastAccessInTrace < counter);
+	diff = counter - item.lastAccessInTrace;
+#endif
+	assert(diff != 0);
+	double mul = exp(-diff / K);
+	return ((1 - mul) * (L_FC / diff));
 }
 
 void FlashCache::dramAdd(const std::pair<uint32_t, double>& p, 
@@ -229,5 +257,8 @@ void FlashCache::dump_stats(void) {
 	out << "#bytes written to flash " << stat.flash_bytes_written << std::endl;
 	out << std::endl << std::endl;
 	out << "key,rate" << std::endl;
+	for (dramIt it = dram.begin(); it != dram.end(); it++) {
+		out << it->first << "," << it->second << std::endl;
+	}
 }
 
