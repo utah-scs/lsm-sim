@@ -7,8 +7,10 @@ size_t DRAM_SIZE = 51209600;
 size_t FLASH_SIZE = 51209600;
 double K = 1;
 size_t L_FC = 1;
+double P_FC = 0.3;
 
-//#define COMPARE_TIME
+// #define COMPARE_TIME
+// #define RELATIVE
 
 FlashCache::FlashCache(stats stat) : 
 	policy(stat),
@@ -115,8 +117,12 @@ size_t FlashCache::proc(const request* r, bool warmup) {
 	assert(((unsigned int) newItem.size) <= DRAM_SIZE);
 	while (true) {
 		if (newItem.size + dramSize <= DRAM_SIZE) {
+#ifdef RELATIVE
+			dramAddFirst(newItem);
+#else
 			std::pair<uint32_t, double> p(newItem.kId, INITIAL_CREDIT);
-			dramAdd(p, dram.begin(), newItem);		
+			dramAdd(p, dram.begin(), newItem);
+#endif
 			dramLru.emplace_front(newItem.kId);
 			newItem.dramLruIt = dramLru.begin();
 			globalLru.emplace_front(newItem.kId);
@@ -232,11 +238,45 @@ void FlashCache::dramAdd(const std::pair<uint32_t, double>& p,
 	item.dramLocation = tmp;
 }
 
+void FlashCache::dramAddFirst(Item& item) {
+	if (dram.size() == 0) {
+		std::pair<uint32_t, double> p(item.kId, INITIAL_CREDIT);
+		dram.emplace_front(p);
+		item.dramLocation = dram.begin();
+		return;
+	}
+	dramIt it = dram.begin();
+	std::advance(it, ceil(std::distance(dram.begin(),dram.end()) * P_FC ));
+	std::pair<uint32_t, double> p;
+	if (it == dram.end())  {
+		assert(dram.size() > 0);
+		it--;
+		p = std::make_pair(item.kId, it->second);
+		dram.emplace_back(p);
+		it++;
+		assert(it != dram.end());
+		item.dramLocation = it;
+		return;
+	}
+	p = std::make_pair(item.kId, it->second);
+	dram.insert(it, p);
+	it--;
+	item.dramLocation = it;
+}
+
 void FlashCache::dump_stats(void) {
 	assert(stat.apps.size() == 1);
 	uint32_t appId = 0;
 	for(const auto& app : stat.apps) {appId = app;}
 	std::string filename{stat.policy
+#ifdef RELATIVE
+			+ "-relative" + std::to_string(P_FC)
+#endif
+#ifdef COMPARE_TIME
+			+ "-time"
+#else
+			+ "-place"
+#endif
 			+ "-app" + std::to_string(appId)
 			+ "-flash_mem" + std::to_string(FLASH_SIZE)
 			+ "-dram_mem" + std::to_string(DRAM_SIZE)
@@ -246,6 +286,15 @@ void FlashCache::dump_stats(void) {
 	out << "flash size " << FLASH_SIZE << std::endl;
 	out << "initial credit " << INITIAL_CREDIT << std::endl;
 	out << "#credits per sec " << FLASH_RATE << std::endl;
+#ifdef COMPARE_TIME
+	out << "Time" << std::endl;
+#else
+	out << "Place" << std::endl;
+#endif
+
+#ifdef RELATIVE
+	out << "P_FC " << P_FC << std::endl;
+#endif
 	out << "K " << K << std::endl;
 	out << "#accesses "  << stat.accesses << std::endl;
 	out << "#global hits " << stat.hits << std::endl;

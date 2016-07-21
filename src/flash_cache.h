@@ -18,6 +18,7 @@ const size_t FLASH_RATE = 1024 * 1024;
 const size_t INITIAL_CREDIT = 1;
 extern double K;
 extern size_t L_FC;
+extern double P_FC;
 
 class FlashCache : public policy {
 private:
@@ -68,6 +69,7 @@ private:
 	void dramAdd(const std::pair<uint32_t, double>& p, 
 			dramIt beginPlace,
 			Item& item);
+	void dramAddFirst(Item& item);
 	friend class VictimCache;
 public:
 	FlashCache(stats stat);
