@@ -1,0 +1,24 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p clock -s 45 -f ./test2
+
+0.05,1,1,5,10,100,1
+0.1,1,1,5,10,101,1
+0.15,1,1,5,10,102,1
+0.2,1,1,5,10,100,1
+0.3,1,1,5,10,103,1
+0.35,1,1,5,10,102,1
+
+In this test the first 3 elements are inserted with a 0 value. In the forth line there
+is a hit, and the value matching kid = 100 is increased to 15. In the fifth line a new
+object arrives and there is an eviction from the Dram - the element which is evicted is 
+kid = 103 and therefore, there is no hit in the last line
+
+result:
+
+global_mem 45
+clock max value 15
+#accesses 6
+#global hits 1
+hit rate 0.166667
+noZeros 0

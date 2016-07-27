@@ -31,11 +31,13 @@
 #include "ripq.h"
 #include "ripq_shield.h"
 #include "lruk.h"
+#include "clock.h"
+
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[14] = { "shadowlru"
+const char* policy_names[15] = { "shadowlru"
                                , "fifo"
                                , "lru"
                                , "slab"
@@ -49,6 +51,7 @@ const char* policy_names[14] = { "shadowlru"
                                , "lruk"
                                , "ripq"
                                , "ripq_shield"
+			       , "clock"
                               };
 
 enum pol_type { 
@@ -66,6 +69,7 @@ enum pol_type {
   , LRUK
   , RIPQ 
   , RIPQ_SHIELD
+  , CLOCK
   };
 
 // globals
@@ -185,7 +189,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:m:d:F:n:D:L:K:k:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:m:d:F:n:D:L:K:k:C:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -220,7 +224,8 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(12);
         else if (std::string(optarg) == "ripq_shield")
           policy_type = pol_type(13);
-
+	else if (std::string(optarg) == "clock")
+	  policy_type = pol_type(14);
 	else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -333,6 +338,9 @@ int main(int argc, char *argv[]) {
 	break;
       case 'H':
 	L_FC = atol(optarg);
+	break;
+      case 'C':
+	CLOCK_MAX_VALUE = atol(optarg);
 	break;	
     }
   }
@@ -370,6 +378,9 @@ int main(int argc, char *argv[]) {
 	break;
     case LRUK :
 	policy.reset(new Lruk(sts));
+	break;
+    case CLOCK :
+	policy.reset(new Clock(sts));
 	break;
     case SLAB :
       if (memcachier_classes) {

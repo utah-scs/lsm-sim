@@ -1,0 +1,23 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p clock -s 45 -f ./test3
+
+0.05,1,1,5,10,100,1
+0.1,1,1,5,10,101,1
+0.15,1,1,5,10,102,1
+0.2,1,1,5,10,100,1
+0.25,1,1,5,10,102,1
+0.3,1,1,5,10,103,1
+0.35,1,1,5,10,102,1
+
+This test is similar to test2, but in the sixth line when an eviction occurs, the item
+with kid = 101 is evicted. Hence, the last line results a hit.
+
+result:
+
+global_mem 45
+clock max value 15
+#accesses 7
+#global hits 3
+hit rate 0.428571
+noZeros 0

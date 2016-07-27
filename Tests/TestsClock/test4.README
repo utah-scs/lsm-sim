@@ -1,0 +1,12 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p clock -s 45 -f ./test4
+
+result:
+
+global_mem 45
+clock max value 15
+#accesses 8
+#global hits 4
+hit rate 0.5
+noZeros 1
