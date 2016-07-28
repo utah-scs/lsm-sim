@@ -31,6 +31,12 @@ size_t Clock::proc(const request* r, bool warmup) {
 			clockItemIt->second = CLOCK_MAX_VALUE;
 			return 1;
 		} else {
+			if (clockItemIt == clockIt) {
+				clockIt++;
+				if (clockIt == clockLru.end()) {
+					clockIt = clockLru.begin();
+				}
+			}
 			clockLru.erase(clockItemIt);
 			lruSize -= item.size;
 			allObjects.erase(item.kId);
@@ -45,17 +51,17 @@ size_t Clock::proc(const request* r, bool warmup) {
 	while (lruSize + newItem.size > stat.global_mem) {	
 		if (!firstEviction) { firstEviction = true;}		
 		bool isDeleted = false;
-		ClockLru::iterator tmpIt = clockIt;
-		
+		ClockLru::iterator tmpIt, startIt = clockIt;
+
 		while(clockIt != clockLru.end()) {
 			assert(clockIt->second <= CLOCK_MAX_VALUE);
 			if (clockIt->second == 0) {
+				tmpIt = clockIt;
 				tmpIt++;
 				deleteItem(clockIt->first);
 				isDeleted = true;
 				break;
 			} else {
-				assert(clockIt->second > 0);
 				clockIt->second--;
 			}
 			clockIt++;
@@ -63,14 +69,14 @@ size_t Clock::proc(const request* r, bool warmup) {
 		if (!isDeleted) {
 			clockIt = clockLru.begin();
 			assert(clockIt->second <= CLOCK_MAX_VALUE);
-			while (clockIt != tmpIt) {
+			while (clockIt != startIt) {
 				if (clockIt->second == 0) {
+					tmpIt = clockIt;
 					tmpIt++;
 					deleteItem(clockIt->first);
 					isDeleted = true;
 					break;
 				} else {
-					assert(clockIt->second > 0);
 					clockIt->second--;
 				}
 				clockIt++;
@@ -79,9 +85,10 @@ size_t Clock::proc(const request* r, bool warmup) {
 		if (!isDeleted) {
 			if (!warmup) { noZeros++;}
 			assert(clockLru.size() > 0);
+			assert(clockIt != clockLru.end());
+			tmpIt = clockIt;
 			tmpIt++;
 			deleteItem(clockIt->first);
-			break;
 		}				
 		clockIt = (tmpIt == clockLru.end()) ? clockLru.begin() : tmpIt;
 	}
