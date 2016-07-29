@@ -11,7 +11,7 @@ run this test:
 0.35,1,1,5,10,102,1
 
 This test is similar to test2, but in the sixth line when an eviction occurs, the item
-with kid = 101 is evicted. Hence, the last line results a hit.
+with kid = 102 is evicted. Hence, the last line results a hit.
 
 result:
 
