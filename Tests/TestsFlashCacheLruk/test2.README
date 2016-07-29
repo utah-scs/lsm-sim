@@ -1,0 +1,8 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p flashcache -F 0 -D 25 -f /test1
+
+result:
+
+accesses: 4
+hits: 1

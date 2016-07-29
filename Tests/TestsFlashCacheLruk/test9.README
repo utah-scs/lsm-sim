@@ -1,0 +1,19 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p flashcache -F 524290 -D 524290 -f ./test7
+
+In this test we want to check that we actually move from DRAM to FLASH when
+we have enough credits and there is fre space in Flash
+
+result:
+
+#accesses 2
+#global hits 17
+#dram hits 17
+#flash hits 0
+hit rate 0
+#writes to flash 1
+credit limit 0
+#bytes written to flash 524288
+
+
