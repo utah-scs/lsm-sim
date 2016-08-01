@@ -1,0 +1,13 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p flashcache -F 15 -D 15 -f ./test5
+
+result:
+
+#accesses 6
+#global hits 2
+#dram hits 0
+#flash hits 2
+hit rate 0.333333
+#writes to flash 1
+

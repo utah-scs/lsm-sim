@@ -32,12 +32,12 @@
 #include "ripq_shield.h"
 #include "lruk.h"
 #include "clock.h"
-
+#include "flash_cache_lruk.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[15] = { "shadowlru"
+const char* policy_names[16] = { "shadowlru"
                                , "fifo"
                                , "lru"
                                , "slab"
@@ -52,6 +52,7 @@ const char* policy_names[15] = { "shadowlru"
                                , "ripq"
                                , "ripq_shield"
 			       , "clock"
+		               , "flashcachelruk"
                               };
 
 enum pol_type { 
@@ -70,6 +71,7 @@ enum pol_type {
   , RIPQ 
   , RIPQ_SHIELD
   , CLOCK
+  , FLASHCACHELRUK
   };
 
 // globals
@@ -226,6 +228,8 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(13);
 	else if (std::string(optarg) == "clock")
 	  policy_type = pol_type(14);
+        else if (std::string(optarg) == "flashcachelruk")
+          policy_type = pol_type(15);
 	else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -317,9 +321,11 @@ int main(int argc, char *argv[]) {
         break;
       case 'F':
 	FLASH_SIZE = flash_size = atol(optarg);
+        FLASH_SIZE_FC_KLRU = flash_size = atol(optarg);
 	break;
       case 'D':
 	DRAM_SIZE = dram_size = atol(optarg);
+        DRAM_SIZE_FC_KLRU = dram_size = atol(optarg);
 	break;
       case 'K':
 	K_LRU = atol(optarg);
@@ -349,7 +355,7 @@ int main(int argc, char *argv[]) {
 
   //assert(apps.size() == 1);
 
-  if (policy_type == FLASHCACHE || policy_type == VICTIMCACHE || policy_type == RIPQ || policy_type == RIPQ_SHIELD) {
+  if (policy_type == FLASHCACHE || policy_type == FLASHCACHELRUK  || policy_type == VICTIMCACHE || policy_type == RIPQ || policy_type == RIPQ_SHIELD) {
 	global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 
@@ -373,6 +379,9 @@ int main(int argc, char *argv[]) {
     case FLASHCACHE :
 	policy.reset(new FlashCache(sts));
 	break;
+    case FLASHCACHELRUK :
+        policy.reset(new FlashCacheLruk(sts));
+        break;
     case VICTIMCACHE :
 	policy.reset(new VictimCache(sts));
 	break;
