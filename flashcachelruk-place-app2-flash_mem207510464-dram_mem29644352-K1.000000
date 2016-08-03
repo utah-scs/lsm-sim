@@ -1,0 +1,36 @@
+dram size 29644352
+flash size 207510464
+initial credit 1
+#credits per sec 1048576
+Place
+K 1
+#accesses 12461915
+#global hits 12444320
+#dram hits 50752
+#flash hits 12393568
+hit rate 0.998588
+#writes to flash 12577
+credit limit 0
+#bytes written to flash 318525355
+
+
+hwadsfasfsafasfsdaffasgasfdsdafasfgsfg
+key,rate
+Amount of lru queues: 8
+dram[0] has 1881 items
+dram[0] size written 22670691
+dram[1] has 100 items
+dram[1] size written 6045667
+dram[2] has 10 items
+dram[2] size written 785696
+dram[3] has 3 items
+dram[3] size written 31299
+dram[4] has 1 items
+dram[4] size written 2369
+dram[5] has 1 items
+dram[5] size written 2439
+dram[6] has 0 items
+dram[6] size written 0
+dram[7] has 0 items
+dram[7] size written 0
+Total dram filled size 29538161

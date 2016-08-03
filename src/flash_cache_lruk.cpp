@@ -73,12 +73,12 @@ size_t FlashCacheLruk::proc(const request* r, bool warmup) {
 				if (!warmup) {stat.hits_dram++;}
 
 				size_t qN = item.queueNumber;
-				std::pair<uint32_t, double> p = *(item.dramLocation);
-#ifdef COMPARE_TIME
-				p.second += hitCredit(item, currTime);
-#else
-				p.second += hitCredit(item);
-#endif
+//				std::pair<uint32_t, double> p = *(item.dramLocation);
+//#ifdef COMPARE_TIME
+//				p.second += hitCredit(item, currTime);
+//#else
+//				p.second += hitCredit(item);
+//#endif
 
 				dram[qN].erase(item.dramLocation);
 				kLruSizes[qN] -= item.size;
@@ -171,29 +171,29 @@ size_t FlashCacheLruk::proc(const request* r, bool warmup) {
 		size_t qN = mfuItem.queueNumber;
 
 		assert(mfuItem.size > 0);	
-		if (credits < (double) mfuItem.size) {
-			// If we can't write into the flash we need to make room in the dram
-			if (!warmup) {stat.credit_limit++;}
-
-			while (newItem.size + dramSize > DRAM_SIZE_FC_KLRU ) {
-				// -------------
-				// Need to extract the last items from the last queue until
-				// there will be enough space. Then to insert the new item at the
-				// beginning of the last queue
-				// ------------
-
-				uint32_t lruKid = ((dram[0]).back()).first;
-				FlashCacheLruk::Item& lruItem = allObjects[lruKid];
-
-				assert(lruItem.size > 0);
-				dram[0].erase(lruItem.dramLocation);
-				globalLru.erase(lruItem.globalLruIt);
-				kLruSizes[0] -= lruItem.size;
-				dramSize -= lruItem.size;
-				allObjects.erase(lruKid);
-			}
-			continue;
-		} else {
+//		if (credits < (double) mfuItem.size) {
+//			// If we can't write into the flash we need to make room in the dram
+//			if (!warmup) {stat.credit_limit++;}
+//
+//			while (newItem.size + dramSize > DRAM_SIZE_FC_KLRU ) {
+//				// -------------
+//				// Need to extract the last items from the last queue until
+//				// there will be enough space. Then to insert the new item at the
+//				// beginning of the last queue
+//				// ------------
+//
+//				uint32_t lruKid = ((dram[0]).back()).first;
+//				FlashCacheLruk::Item& lruItem = allObjects[lruKid];
+//
+//				assert(lruItem.size > 0);
+//				dram[0].erase(lruItem.dramLocation);
+//				globalLru.erase(lruItem.globalLruIt);
+//				kLruSizes[0] -= lruItem.size;
+//				dramSize -= lruItem.size;
+//				allObjects.erase(lruKid);
+//			}
+//			continue;
+//		} else {
 		// We can write items to the flash
 
 			if (flashSize + mfuItem.size <= FLASH_SIZE_FC_KLRU) {
@@ -231,7 +231,7 @@ size_t FlashCacheLruk::proc(const request* r, bool warmup) {
 				}
 				allObjects.erase(globalLruKid);
 			}	
-		}
+//		}
 	}
 	assert(false);	
 	return PROC_MISS;
@@ -321,6 +321,8 @@ void FlashCacheLruk::dramAddandReorder(std::vector<uint32_t>& objects,
 			}
 		} else {
 			while (sum + dramSize > DRAM_SIZE_FC_KLRU) {
+				//shouldnt get to here
+				assert(0);
 				assert(kLruSizes[k] > 0);
 				assert(dram[k].size() > 0);
 				uint32_t elem = (dram[k].back()).first;
@@ -338,19 +340,20 @@ void FlashCacheLruk::dramAddandReorder(std::vector<uint32_t>& objects,
 			assert(newSum == 0);
 		}
 
-		for (const uint32_t& elem : objects) {
-			FlashCacheLruk::Item& item = allObjects[elem];
-			std::pair<uint32_t, double> it;
-			it.first = elem;
-			it.second=0;
-			dram[k].emplace_front(it);
-			item.dramLocation = dram[k].begin();
-			item.queueNumber = k;
-			kLruSizes[k] += item.size;
-			dramSize += item.size;
-			if (k > 0)
-				{assert(kLruSizes[k] <= FC_KLRU_QUEUE_SIZE);}
-		}
+//		for (const uint32_t& elem : objects) {
+//			FlashCacheLruk::Item& item = allObjects[elem];
+//			std::pair<uint32_t, double> it;
+//			it.first = elem;
+//			it.second=0;
+//			dram[k].emplace_front(it);
+//			item.dramLocation = dram[k].begin();
+//			item.queueNumber = k;
+//			kLruSizes[k] += item.size;
+//			dramSize += item.size;
+//			if (k > 0)
+//				{assert(kLruSizes[k] <= FC_KLRU_QUEUE_SIZE);}
+//		}
+		dramAdd(objects,sum,k,updateWrites,warmup);
 
 		if (k > 0 && newObjects.size() > 0) {
 			dramAddandReorder(newObjects, newSum, k-1, true, warmup);
