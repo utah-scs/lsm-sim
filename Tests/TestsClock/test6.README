@@ -1,0 +1,24 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p clock -s 30 -f ./test6
+
+0.05,1,1,5,5,100,1
+0.1,1,1,5,5,101,1
+0.15,1,1,5,5,102,1
+0.2,1,1,5,5,101,1
+0.25,1,1,5,5,102,1
+0.3,1,1,6,5,100,1
+0.35,1,1,5,5,101,1
+
+In the sixth line there is a request for kid = 100, however the size of the item in the dram
+and in the request differ. As well, clockIt point to the item with kid = 100 in the dram.
+This test checks that clockIt holds the correct values.
+
+result:
+
+global_mem 30
+clock max value 15
+#accesses 7
+#global hits 2
+hit rate 0.285714
+noZeros 2

@@ -354,6 +354,7 @@ int main(int argc, char *argv[]) {
 	break;
       case 'C':
 	CLOCK_MAX_VALUE = atol(optarg);
+	CLOCK_MAX_VALUE_KLRU = atol(optarg);
 	break;	
     }
   }

@@ -97,11 +97,16 @@ size_t Clock::proc(const request* r, bool warmup) {
 	p = firstEviction 
 			? std::make_pair(newItem.kId, CLOCK_MAX_VALUE)
 			: std::make_pair(newItem.kId, (size_t) 0);
-	clockLru.emplace_front(p);
-	if (clockLru.size() == 1) {
+	if (clockLru.size() == 0) {
+		clockLru.emplace_front(p);
 		clockIt = clockLru.begin();
+		newItem.clockLruIt = clockLru.begin();
+	} else {
+		clockLru.insert(clockIt,p);
+		ClockLru::iterator it = clockIt;
+		it--;
+		newItem.clockLruIt = it;
 	}
-	newItem.clockLruIt = clockLru.begin();
 	allObjects[newItem.kId] = newItem;
 	lruSize += newItem.size;
 	return PROC_MISS;
