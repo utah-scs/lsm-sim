@@ -66,3 +66,4 @@ done
 
 cat top3-managed-*.data > t
 awk '/^time/ { if (head == 0) { print $0; head = 1; }; next; } { print $0; }' < t > top3-managed.data
+rm t top3-managed-*.data
