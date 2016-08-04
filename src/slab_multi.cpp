@@ -159,9 +159,7 @@ size_t slab_multi::proc(const request *r, bool warmup) {
   if (outcome == PROC_MISS) {
     // Count compulsory misses.
     return PROC_MISS;
-  }
-
-  if (!warmup) {
+  } else if (!warmup) {
     ++stat.hits;
     ++app.hits;
   }

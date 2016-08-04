@@ -134,6 +134,11 @@ void lsc_multi::compute_idle_mem(double time) {
 
 size_t lsc_multi::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
+  if (r->size() > int32_t(stat.segment_size)) {
+    std::cout << "Can't process large request of size " << r->size()
+              << std::endl;
+    return 1;
+  }
 
   assert(apps.find(r->appid) != apps.end());
 
@@ -171,11 +176,6 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
 
   auto it = map.find(r->kid);
   if (it != map.end()) {
-    if (!warmup) {
-      ++stat.hits;
-      ++app.hits;
-    }
-
     auto list_it = it->second;
     segment* old_segment = list_it->seg;
     int32_t old_request_size = list_it->req.size();
@@ -186,6 +186,11 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
       map[r->kid] = old_segment->queue.begin();
 
       ++old_segment->access_count;
+
+      if (!warmup) {
+        ++stat.hits;
+        ++app.hits;
+      }
 
       return 1;
     } else {
@@ -769,6 +774,13 @@ void lsc_multi::clean()
       // Rollover to new dst.
       dst = choose_cleaning_destination();
       dst_segments.push_back(dst);
+    }
+    if (dst->filled_bytes + item->req.size() > stat.segment_size) {
+      std::cerr << "Weird object while cleaning!" << std::endl
+                << "filled_bytes " << dst->filled_bytes << std::endl
+                << "item size " << item->req.size() << std::endl
+                << "segment_size " << stat.segment_size << std::endl;
+      item->req.dump();
     }
     assert(dst->filled_bytes + item->req.size() <= stat.segment_size);
     ++selected_app->cleaning_it;

@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Main script for generating data for the memshare paper. Runs the top 3
+# apps under a massive number of configurations. Most of the plots of the
+# paper are generated from this data.
+#
+# The other main script in the one that runs the top 20.
+
+source scripts/top-apps
+apps="$top3"
+source scripts/app-sizes
+
+./lsm-sim \
+  -a $app_lst \
+  -p multislab \
+  -M \
+  -s $total_size \
+  -S $((1024 * 1024)) \
+  -f ./data/m.cap.out \
+      2> err-top3-managed-multislab-greedy.log \
+      > temp-multislab-greedy.data &
+pids="$pids $!"
+wait_too_many
+
+for subpolicy in normal greedy static; do
+  ./lsm-sim \
+    -a $app_lst \
+    -p multi \
+    -E $subpolicy \
+    -s $total_size \
+    -S $((1024 * 1024)) \
+    -f ./data/m.cap.out \
+        2> err-top3-managed-multi-$subpolicy.log \
+        > top3-managed-multi-$subpolicy.data &
+  pids="$pids $!"
+  wait_too_many
+done 
+
+for app in $apps; do
+  ./lsm-sim \
+    -a $app \
+    -p multislab \
+    -M \
+    -s ${memcachier_app_size[$app]} \
+    -S $((1024 * 1024)) \
+    -f ./data/app${app} \
+        2> err-top3-managed-multislab-static-app$app.log \
+        > temp-multislab-static-app$app.data &
+  pids="$pids $!"
+  wait_too_many
+done 
+
+wait $pids
+
+sed 's/multislab/slab-greedy/g' \
+  < temp-multislab-greedy.data \
+  > top3-managed-multislab-greedy.data
+rm temp-multislab-greedy.data
+
+for app in $apps; do
+  sed 's/multislab/slab-static/g' \
+    < temp-multislab-static-app$app.data \
+    > top3-managed-multislab-static-app$app.data
+  rm temp-multislab-static-app$app.data
+done 
+
+cat top3-managed-*.data > t
+awk '/^time/ { if (head == 0) { print $0; head = 1; }; next; } { print $0; }' < t > top3-managed.data
