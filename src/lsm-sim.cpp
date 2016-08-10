@@ -32,12 +32,12 @@
 #include "ripq_shield.h"
 #include "lruk.h"
 #include "clock.h"
-
+#include "segment_util.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[15] = { "shadowlru"
+const char* policy_names[16] = { "shadowlru"
                                , "fifo"
                                , "lru"
                                , "slab"
@@ -52,6 +52,7 @@ const char* policy_names[15] = { "shadowlru"
                                , "ripq"
                                , "ripq_shield"
 			       , "clock"
+			       , "segment_util"
                               };
 
 enum pol_type { 
@@ -70,6 +71,7 @@ enum pol_type {
   , RIPQ 
   , RIPQ_SHIELD
   , CLOCK
+  , SEGMENT_UTIL
   };
 
 // globals
@@ -226,6 +228,8 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(13);
 	else if (std::string(optarg) == "clock")
 	  policy_type = pol_type(14);
+	else if (std::string(optarg) == "segment_util")
+	  policy_type = pol_type(15);
 	else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -381,6 +385,9 @@ int main(int argc, char *argv[]) {
 	break;
     case CLOCK :
 	policy.reset(new Clock(sts));
+	break;
+    case SEGMENT_UTIL:
+	policy.reset(new SegmentUtil(sts));
 	break;
     case SLAB :
       if (memcachier_classes) {
