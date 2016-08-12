@@ -44,12 +44,12 @@ class policy {
     stats* get_stats() { return &stat; }
 
     virtual void dump_stats(void) {
-      assert(stat.apps.size() == 1);
-      uint32_t appid = 0;
+      std::string appids{};
       for (const auto& app : stat.apps)
-        appid = app;
+        appids += std::to_string(app) + ",";
+      appids = appids.substr(0, appids.length() - 1);
       std::string filename{stat.policy
-                          + "-app" + std::to_string(appid)
+                          + "-app" + appids
                           + "-global_mem" + std::to_string(stat.global_mem)};
                              
       // Specific filename additions. 

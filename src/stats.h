@@ -159,10 +159,11 @@ struct stats {
   double get_utilization() { return double(bytes_cached) / global_mem; }
 
   void dump(std::ofstream& out) const {
-      assert(apps.size() == 1);
-      uint32_t appid = 0;
+      std::string appids{};
       for (const auto& app : apps)
-        appid = app;
+        appids += std::to_string(app) + ",";
+      appids = appids.substr(0, appids.length() - 1);
+
       out << "app "
              "policy "
              "global_mem "
@@ -187,7 +188,7 @@ struct stats {
              "dram_size "
              "flash_size "
           << std::endl;
-      out << appid << " "
+      out << appids << " "
           << policy << " "
           << global_mem << " "
           << segment_size << " "

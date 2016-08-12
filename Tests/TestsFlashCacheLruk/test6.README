@@ -1,0 +1,19 @@
+run this test:
+
+../../lsm-sim -a 1 -w 0 -p flashcache -F 524290 -D 524290 -f ./test6
+
+In this test there is enough space in the flash, however, there is not 
+enough credit; hence, we should evict from the DRAM.
+
+result:
+
+#accesses 2
+#global hits 0
+#dram hits 0
+#flash hits 0
+hit rate 0
+#writes to flash 0
+credit limit 1
+#bytes written to flash 0
+
+

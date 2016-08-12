@@ -33,11 +33,13 @@
 #include "lruk.h"
 #include "clock.h"
 #include "segment_util.h"
+#include "flash_cache_lruk.h"
+#include "flash_cache_lruk_clock.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[16] = { "shadowlru"
+const char* policy_names[18] = { "shadowlru"
                                , "fifo"
                                , "lru"
                                , "slab"
@@ -52,6 +54,8 @@ const char* policy_names[16] = { "shadowlru"
                                , "ripq"
                                , "ripq_shield"
 			       , "clock"
+			       , "flashcachelruk"
+			       , "flashcachelrukclk"
 			       , "segment_util"
                               };
 
@@ -71,6 +75,8 @@ enum pol_type {
   , RIPQ 
   , RIPQ_SHIELD
   , CLOCK
+  , FLASHCACHELRUK
+  , FLASHCACHELRUKCLK
   , SEGMENT_UTIL
   };
 
@@ -228,8 +234,12 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(13);
 	else if (std::string(optarg) == "clock")
 	  policy_type = pol_type(14);
+        else if (std::string(optarg) == "flashcachelruk")
+          policy_type = pol_type(15);
+	else if (std::string(optarg) == "flashcachelrukclk")
+          policy_type = pol_type(16);
 	else if (std::string(optarg) == "segment_util")
-	  policy_type = pol_type(15);
+	  policy_type = pol_type(17);
 	else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -321,9 +331,13 @@ int main(int argc, char *argv[]) {
         break;
       case 'F':
 	FLASH_SIZE = flash_size = atol(optarg);
+        FLASH_SIZE_FC_KLRU = flash_size = atol(optarg);
+	FLASH_SIZE_FC_KLRU_CLK = flash_size = atol(optarg);
 	break;
       case 'D':
 	DRAM_SIZE = dram_size = atol(optarg);
+        DRAM_SIZE_FC_KLRU = dram_size = atol(optarg);
+	DRAM_SIZE_FC_KLRU_CLK = dram_size = atol(optarg);
 	break;
       case 'K':
 	K_LRU = atol(optarg);
@@ -345,6 +359,7 @@ int main(int argc, char *argv[]) {
 	break;
       case 'C':
 	CLOCK_MAX_VALUE = atol(optarg);
+	CLOCK_MAX_VALUE_KLRU = atol(optarg);
 	break;	
     }
   }
@@ -353,7 +368,7 @@ int main(int argc, char *argv[]) {
 
   //assert(apps.size() == 1);
 
-  if (policy_type == FLASHCACHE || policy_type == VICTIMCACHE || policy_type == RIPQ || policy_type == RIPQ_SHIELD) {
+  if (policy_type == FLASHCACHE || policy_type == FLASHCACHELRUK || policy_type == FLASHCACHELRUKCLK  || policy_type == VICTIMCACHE || policy_type == RIPQ || policy_type == RIPQ_SHIELD) {
 	global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 
@@ -377,6 +392,12 @@ int main(int argc, char *argv[]) {
     case FLASHCACHE :
 	policy.reset(new FlashCache(sts));
 	break;
+    case FLASHCACHELRUK :
+        policy.reset(new FlashCacheLruk(sts));
+        break;
+    case FLASHCACHELRUKCLK :
+        policy.reset(new FlashCacheLrukClk(sts));
+        break;
     case VICTIMCACHE :
 	policy.reset(new VictimCache(sts));
 	break;

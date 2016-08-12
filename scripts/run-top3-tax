@@ -1,0 +1,26 @@
+#!/bin/bash
+
+source scripts/top-apps
+apps="$top3"
+source scripts/app-sizes
+
+for tax in 50; do
+  ./lsm-sim \
+    -a $app_lst \
+    -p multi \
+    -E normal \
+    -s $total_size \
+    -S $((1024 * 1024)) \
+    -T $tax \
+    -N 100 \
+    -f ./data/m.cap.out \
+        2> err-top3-tax-multi-${tax}pct.log \
+        > top3-tax-multi-${tax}pct.data &
+  pids="$pids $!"
+  wait_too_many
+done 
+
+wait $pids
+
+cat top3-tax-*.data > t
+awk < t '/^time/ { if (head == 0) { print $0; head = 1; }; next; } { print $0; }' > top3-tax.data 

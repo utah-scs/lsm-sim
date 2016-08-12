@@ -145,7 +145,10 @@ size_t lru::proc(const request *r, bool warmup) {
       queue.erase(list_it);
       queue.emplace_front(*r);
       map[r->kid] = queue.begin();
-      if (!warmup) {stat.hits++; }
+
+      if (!warmup)
+        stat.hits++;
+
       return 1;
     } else {
       // If the size changed, then we have to put it in head. Just
