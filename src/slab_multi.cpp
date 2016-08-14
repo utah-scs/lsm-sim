@@ -89,12 +89,19 @@ void slab_multi::dump_app_stats(double time) {
 
 size_t slab_multi::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
+  if (r->size() > int32_t(MAX_SIZE)) {
+    std::cerr << "Can't process large request of size " << r->size()
+              << std::endl;
+    return 1;
+  }
 
   if (!warmup && ((last_dump == 0.) || (r->time - last_dump > 3600.))) {
     if (last_dump == 0.)
       application::dump_stats_header();
     dump_app_stats(r->time);
-    last_dump = r->time;
+    if (last_dump == 0.)
+      last_dump = r->time;
+    last_dump += 3600.0;
   }
 
   if (stat.apps.empty())

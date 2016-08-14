@@ -102,7 +102,7 @@ size_t                partitions = 2;
 size_t                segment_size = 1 * 1024 * 1024;
 size_t                block_size = 1 * 1024 * 1024;
 size_t                num_dsections = 4;
-size_t                min_mem_pct = 25;
+size_t                min_mem_pct = 75;
 const size_t          default_steal_size = 65536;
 bool                  use_tax = false;
 double                tax_rate = 0.05;
@@ -433,12 +433,12 @@ int main(int argc, char *argv[]) {
       break;
     case LSM:
       sts.segment_size = segment_size;
-      sts.cleaning_width = 10;
+      sts.cleaning_width = 100;
       policy.reset(new lsm(sts));
       break;
     case MULTI:
       sts.segment_size = segment_size;
-      sts.cleaning_width = 10;
+      sts.cleaning_width = 100;
       {
         lsc_multi* multi = new lsc_multi(sts, subpolicy);
         policy.reset(multi);

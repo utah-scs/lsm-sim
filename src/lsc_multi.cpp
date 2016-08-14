@@ -135,7 +135,7 @@ void lsc_multi::compute_idle_mem(double time) {
 size_t lsc_multi::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
   if (r->size() > int32_t(stat.segment_size)) {
-    std::cout << "Can't process large request of size " << r->size()
+    std::cerr << "Can't process large request of size " << r->size()
               << std::endl;
     return 1;
   }

@@ -14,7 +14,7 @@ class slab_multi : public policy {
     static constexpr double   DEF_GFACT=1.25;     // Memcached growth factor
     static constexpr uint32_t PAGE_SIZE=1000000;  // Memcached page bytes
     static constexpr uint16_t MAX_CLASSES=256;    // Memcached max no of slabs   
-    static constexpr size_t   MAX_SIZE=5000000;   // Largest KV pair allowed 
+    static constexpr size_t   MAX_SIZE=1024 * 1024;   // Largest KV pair allowed 
 
     class application {
       public:
