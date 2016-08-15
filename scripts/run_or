@@ -38,15 +38,16 @@ for app in $apps; do
   dram_size=${cashflashlruk_app_size[$app]}
   dram_size=$(($dram_size/4))
   flash_size=$(($dram_size*7))
-
+#flashcachelrukclk\
+#    -D $dram_size \
+#    -F $flash_size \
   ./lsm-sim \
     -a $app \
     -p flashcachelruk \
     -D $dram_size \
     -F $flash_size \
     -f ./data/app${app} \
-        2> err-osdi-multislab-static-app$app.log \
-        > temp-multislab-static-app$app.data &
+        2> err-osdi-multislab-static-app$app.log &
   pids="$pids $!"
   wait_too_many
 done 

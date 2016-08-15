@@ -8,18 +8,22 @@ size_t DRAM_SIZE_FC_KLRU_CLK = 51209600;
 size_t FC_KLRU_QUEUE_SIZE_CLK = DRAM_SIZE_FC_KLRU_CLK / FC_K_LRU_CLK;
 size_t FLASH_SIZE_FC_KLRU_CLK = 51209600;
 size_t CLOCK_MAX_VALUE_KLRU = 7;
+size_t CLOCK_JUMP = 2;
+int MIN_QUEUE_TO_MOVE_TO_FLASH = 6;
 
 FlashCacheLrukClk::FlashCacheLrukClk(stats stat) :
 	policy(stat),
 	dram(FC_K_LRU_CLK),
-        clockLru(),
+	dramLru(0),
+	clockLru(),
 	kLruSizes(FC_K_LRU_CLK, 0),
 	flash(),
 	allObjects(),
+	allFlashObjects(),
 	dramSize(0),
 	flashSize(0),
 	clockIt(),
-        firstEviction(false)
+	firstEviction(false)
 {
 }
 
@@ -46,14 +50,18 @@ size_t FlashCacheLrukClk::proc(const request* r, bool warmup) {
 			if (!warmup) {stat.hits++;}
 
 			//reseting the clock
-			clockItemIt->second = CLOCK_MAX_VALUE_KLRU;
+		    if (item.clockJumpStatus + CLOCK_JUMP > CLOCK_MAX_VALUE_KLRU) {item.clockJumpStatus=CLOCK_MAX_VALUE_KLRU;}
+			else { item.clockJumpStatus += CLOCK_JUMP;}
+			clockItemIt->second = item.clockJumpStatus;
 
 			if (item.isInDram) {
 
 				if (!warmup) {stat.hits_dram++;}
 
 				size_t qN = item.queueNumber;
-
+				//--------dramLRU ---------------
+				if (item.dramLruIt != dramLru.end()) {dramLru.erase(item.dramLruIt);}
+				dramLru.emplace_front(item.kId);
 				dram[qN].erase(item.dramLocation);
 				kLruSizes[qN] -= item.size;
 				dramSize -= item.size;
@@ -64,11 +72,21 @@ size_t FlashCacheLrukClk::proc(const request* r, bool warmup) {
 						updateWrites = false;
 				}
 
+                //--------dramLRU ---------------
+                item.dramLruIt = dramLru.begin();
 				std::vector<uint32_t> objects{r->kid};
 				dramAddandReorder(objects, r->size(),qN, updateWrites, warmup);
 
 			} else {
-				if (!warmup) {stat.hits_flash++;}
+				if (!warmup) {
+					stat.hits_flash++;
+					auto searchflashKId = allFlashObjects.find(r->kid);
+					if (searchflashKId != allFlashObjects.end())
+					{
+						FlashCacheLrukClk::RecItem& recitem = searchflashKId->second;
+						recitem.hitTimesAfterInserted++;
+					}
+				}
 			}
 
 			return 1;
@@ -82,20 +100,7 @@ size_t FlashCacheLrukClk::proc(const request* r, bool warmup) {
 					clockIt = clockLru.begin();
 				}
 			}
-
-			if(item.isInDram) {
-				size_t qN = item.queueNumber;
-				dram[qN].erase(item.dramLocation);
-				kLruSizes[qN] -= item.size;
-				dramSize -= item.size;
-
-			} else {// in flash
-				flash.erase(item.flashIt);
-				flashSize -= item.size;
-			}	
-
-			clockLru.erase(clockItemIt);
-			allObjects.erase(item.kId);
+			deleteItem(r->kid);
 		}
 	}
 
@@ -122,7 +127,8 @@ size_t FlashCacheLrukClk::proc(const request* r, bool warmup) {
 	while (true) {
 
 		if (!firstEviction) { firstEviction = true;}
-		bool isDeleted = false;
+		bool isDeleted 	= false;
+        bool nomfuitem  = false;
 		dramIt tmpIt, startIt = clockIt;
 
 		if (newItem.size + dramSize <= DRAM_SIZE_FC_KLRU_CLK) {
@@ -130,70 +136,73 @@ size_t FlashCacheLrukClk::proc(const request* r, bool warmup) {
 
 			allObjects[newItem.kId] = newItem;
 			
-            std::vector<uint32_t> objects{r->kid};
-            dramAdd(objects, r->size(),0, true, warmup, true);
+ 		        std::vector<uint32_t> objects{r->kid};
+            		dramAdd(objects, r->size(),0, true, warmup, true);
 
 			return PROC_MISS;
 		}
 		// If we don't have enough space in the dram, we can move MRU items to the flash
 		// or to delete LRU items
 
-		for (int i=FC_K_LRU_CLK-1; i >=0 ; i--)
+		for (int i=FC_K_LRU_CLK-1; i >=MIN_QUEUE_TO_MOVE_TO_FLASH ; i--)
 		{// Find the MRU item
 			if (kLruSizes[i] > 0){
 				mfuKid = (dram[i]).front();
+				nomfuitem=false;
 				break;
 			}
+			else{nomfuitem = true;}
 		}
 
-		FlashCacheLrukClk::Item& mfuItem = allObjects[mfuKid];
-		size_t qN = mfuItem.queueNumber;
+		if (!nomfuitem)
+		{//If we have mfu item we need to move it to flash
+			FlashCacheLrukClk::Item& mfuItem = allObjects[mfuKid];
+			size_t qN = mfuItem.queueNumber;
 
-		assert(mfuItem.size > 0);	
+			assert(mfuItem.size > 0);
 
-		if (flashSize + mfuItem.size <= FLASH_SIZE_FC_KLRU_CLK) {
-		// If we have enough space in the flash, we will insert the MRU item
-		// to the flash
-
-			mfuItem.isInDram = false;
-			dram[qN].erase(mfuItem.dramLocation);
-			flash.emplace_front(mfuKid);
-			mfuItem.dramLocation = ((dram[0]).end());
-			dramSize -= mfuItem.size;
-			mfuItem.flashIt = flash.begin();
-			kLruSizes[qN] -= mfuItem.size;
-			flashSize += mfuItem.size;
-			if (!warmup) {
-				stat.writes_flash++;
-				stat.flash_bytes_written += mfuItem.size;
-			}
-		}else {
-		// If we don't have space in the flash, we will delete the first item with clock 0
-		// and make room for the new item
-
-			while(clockIt != clockLru.end()) {
-				assert(clockIt->second <= CLOCK_MAX_VALUE_KLRU);
-				if (clockIt->second == 0) {
-					// This item need to be delete
-					tmpIt = clockIt;
-					tmpIt++;
-					deleteItem(clockIt->first);
-					isDeleted = true;
-					break;
-				} else {
-					clockIt->second--;
+			if (flashSize + mfuItem.size <= FLASH_SIZE_FC_KLRU_CLK) {
+			// If we have enough space in the flash, we will insert the MRU item
+			// to the flash
+				if (!warmup){
+	                auto searchnewflashKId = allFlashObjects.find(r->kid);
+        	        if (searchnewflashKId == allFlashObjects.end()){
+						FlashCacheLrukClk::RecItem newrecitem;
+						newrecitem.kId=r->kid;
+						newrecitem.queueWhenInserted = qN;
+						newrecitem.size=mfuItem.size;
+						allFlashObjects[newrecitem.kId] = newrecitem;
+					}else{
+						FlashCacheLrukClk::RecItem& newrecitem= searchnewflashKId->second;
+						newrecitem.rewrites++;
+					}
 				}
-				clockIt++;
+				//-----------dramLru----------------
+				if (mfuItem.dramLruIt != dramLru.end()) {dramLru.erase(mfuItem.dramLruIt);}
+
+				mfuItem.isInDram = false;
+				dram[qN].erase(mfuItem.dramLocation);
+				flash.emplace_front(mfuKid);
+				mfuItem.dramLocation = (dram[0]).end();
+				dramSize -= mfuItem.size;
+				mfuItem.flashIt = flash.begin();
+				kLruSizes[qN] -= mfuItem.size;
+				flashSize += mfuItem.size;
+				//--------dramLRU ---------------
+				mfuItem.dramLruIt = dramLru.end();
+
+				if (!warmup) {
+					stat.writes_flash++;
+					stat.flash_bytes_written += mfuItem.size;
+				}
 			}
-
-			if (!isDeleted) {
-				// No item was deleted moving to items on the other
-				// half of the watch
-				clockIt = clockLru.begin();
-				assert(clockIt->second <= CLOCK_MAX_VALUE_KLRU);
-
-				while (clockIt != startIt) {
+			else{
+				// If we don't have space in the flash, we will delete the first
+				// item with clock 0 and make room for the new item
+				while(clockIt != clockLru.end()) {
+					//assert(clockIt->second <= CLOCK_MAX_VALUE_KLRU);
 					if (clockIt->second == 0) {
+						// This item need to be delete
 						tmpIt = clockIt;
 						tmpIt++;
 						deleteItem(clockIt->first);
@@ -204,20 +213,43 @@ size_t FlashCacheLrukClk::proc(const request* r, bool warmup) {
 					}
 					clockIt++;
 				}
-			}
 
-			if (!isDeleted) {
-				// After a full cycle no item was deleted
-				// Delete the item you started with
-				//if (!warmup) { noZeros++;}
-				assert(clockLru.size() > 0);
-				assert(clockIt != clockLru.end());
-				tmpIt = clockIt;
-				tmpIt++;
-				deleteItem(clockIt->first);
+				if (!isDeleted) {
+					// No item was deleted moving to items on the other
+					// half of the watch
+					clockIt = clockLru.begin();
+					//assert(clockIt->second <= CLOCK_MAX_VALUE_KLRU);
+
+					while (clockIt != startIt) {
+						if (clockIt->second == 0) {
+							tmpIt = clockIt;
+							tmpIt++;
+							deleteItem(clockIt->first);
+							isDeleted = true;
+							break;
+						} else {
+							clockIt->second--;
+						}
+						clockIt++;
+					}
+				}
+
+				if (!isDeleted) {
+					// After a full cycle no item was deleted
+					// Delete the item you started with
+					assert(clockLru.size() > 0);
+					assert(clockIt != clockLru.end());
+					tmpIt = clockIt;
+					tmpIt++;
+					deleteItem(clockIt->first);
+				}
+
+				//reseting the clockIt again
+				clockIt = (tmpIt == clockLru.end()) ? clockLru.begin() : tmpIt;
 			}
-			//reseting the clockIt again
-			clockIt = (tmpIt == clockLru.end()) ? clockLru.begin() : tmpIt;
+		}else{//We don't have mfu item so we need to delete item from dramLru
+			//--------dramLRU ---------------
+			deleteItem(dramLru.back());
 		}
 	}
 	assert(false);	
@@ -233,6 +265,10 @@ void FlashCacheLrukClk::dramAdd(std::vector<uint32_t>& objects,
 
 	    for (const uint32_t& elem : objects) {
 				FlashCacheLrukClk::Item& item = allObjects[elem];
+                                std::pair<uint32_t,size_t> it;
+                                it.first=item.kId;
+				it.second= CLOCK_START_VAL;
+
 				dram[k].emplace_front(elem);
 				item.dramLocation = dram[k].begin();
 				item.queueNumber = k;
@@ -241,9 +277,6 @@ void FlashCacheLrukClk::dramAdd(std::vector<uint32_t>& objects,
 				if (k != 0){ assert(kLruSizes[k] <= FC_KLRU_QUEUE_SIZE_CLK);}
 
 				if (NewItem){ //New Item, need to insert to clocklru and update clock
-					std::pair<uint32_t,size_t> it;
-					it =  std::make_pair(item.kId, CLOCK_MAX_VALUE_KLRU);
-
 					if (clockLru.size() == 0) {
 						clockLru.emplace_front(it);
 						clockIt = clockLru.begin();
@@ -254,6 +287,10 @@ void FlashCacheLrukClk::dramAdd(std::vector<uint32_t>& objects,
 						Clkit--;
 						item.ClockIt = Clkit;
 					}
+
+			                //--------dramLRU ---------------
+                    			dramLru.emplace_front(item.kId);
+					item.dramLruIt = dramLru.begin();
 				}
 		}
 }
@@ -316,19 +353,31 @@ void FlashCacheLrukClk::deleteItem(uint32_t keyId) {
 	assert(searchRKId != allObjects.end());
 
 	FlashCacheLrukClk::Item& item = searchRKId->second;
-	clockLru.erase(item.ClockIt);
+	if (item.ClockIt == clockIt)
+	{
+		clockIt++;
+		if (clockIt == clockLru.end()) {
+			clockIt = clockLru.begin();
+		}
+	}
+        clockLru.erase(item.ClockIt);
 
 	if (item.isInDram) {
 		size_t dGqN = item.queueNumber;
 		dram[dGqN].erase(item.dramLocation);
 		kLruSizes[dGqN] -= item.size;
 		dramSize -= item.size;
+		//--------dramLRU ---------------
+		if (item.dramLruIt != dramLru.end()) {dramLru.erase(item.dramLruIt);}
 	} else {
 		flash.erase(item.flashIt);
 		flashSize -= item.size;
 	}
 
 	allObjects.erase(keyId);
+
+
+
 }
 
 
@@ -361,5 +410,9 @@ void FlashCacheLrukClk::dump_stats(void) {
 		out << "dram[" << i << "] size written " << kLruSizes[i] << std::endl;
 	}
 	out << "Total dram filled size " << dramSize << std::endl;
+
+	for (auto it = allFlashObjects.begin(); it != allFlashObjects.end(); it++) {
+		out << it->second.kId << "," << it->second.queueWhenInserted << "," << it->second.hitTimesAfterInserted << "," << it->second.size << "," << it->second.rewrites << std::endl;
+	}
 }
 
