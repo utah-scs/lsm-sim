@@ -6,8 +6,7 @@ SegmentUtil::SegmentUtil(stats stat) :	policy(stat),
 					objects(), 
 					allObjects(),
 					dataSize(0), 
-					bytesCached(0),
-					stop(false)
+					bytesCached(0)
 {
 	assert(exp2(bits_for_page) == number_of_pages); 
 	assert(segment_util % page_size == 0); 
@@ -17,22 +16,18 @@ SegmentUtil::~SegmentUtil() {}
 
 
 size_t SegmentUtil::proc(const request *r, bool woormup) {
-	if (stop) { return 0; }
 	if (r->size() + dataSize > top_data_bound) {
-		stop = true;
 		std::sort(objects.begin(),objects.end(), compareSizes);
 		std::vector<size_t> pageSizes(number_of_pages, 0);
 		for (size_t i = 0; i < objects.size(); i++) {
 			SegmentUtil::SUItem& item = objects[i];
-			uint128_t hashResult, lastHash = item.kId;
-			uint32_t keySize = item.keySize;	
+
+      uint128_t lastHash = item.kId;
 			for (size_t j = 0 ; j < num_hash_functions; j++) {
-				void* key = &lastHash;
-				hashResult = MurmurHash3_x64_128(key, keySize, 0);
-				uint32_t pageId = hashResult & ((1lu << bits_for_page) - 1);
+				lastHash = MurmurHash3_x64_128((void*)&lastHash, sizeof(lastHash), 0);
+				uint32_t pageId = lastHash & ((1lu << bits_for_page) - 1);
+
 				assert(pageId < number_of_pages);
-				lastHash = hashResult;
-				keySize = sizeof(uint128_t);		
 				/*
 				* Objects whose size is less than a page should be 
 				* inserted to one page, and can't be split.
@@ -78,12 +73,22 @@ size_t SegmentUtil::proc(const request *r, bool woormup) {
 				}
 			}
 		}
+
+    dump_stats();
+    exit(0);
 	} else {
+    static int32_t next_dump = 10 * 1024 * 1024;
 		if (allObjects.find(r->kid) == allObjects.end()) {
 			SegmentUtil::SUItem item(r->kid,r->size(),r->time,r->key_sz, r->val_sz);	
 			objects.emplace_back(item);
 			allObjects[r->kid] = true;
 			dataSize += r->size();
+      if (next_dump < r->size()) {
+        std::cerr << "Progress: " << dataSize  / 1024 / 1024 << " MB"
+                  << std::endl;
+        next_dump += 10 * 1024 * 1024;
+      }
+      next_dump -= r->size();
 		}
 	}
 	return 0;

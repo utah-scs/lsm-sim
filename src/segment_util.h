@@ -45,8 +45,6 @@ private:
 	size_t dataSize;
 	size_t bytesCached;
 
-	bool stop;
-
 	static bool compareSizes(const SegmentUtil::SUItem& item1, 
 			const SegmentUtil::SUItem& item2);
 
