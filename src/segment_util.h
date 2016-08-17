@@ -27,17 +27,16 @@ private:
 		bool inserted;
 		int32_t keySize;
 		int32_t valSize;
-		size_t pageId;
 
 		SUItem() : kId(0), size(0), time(0), inserted(false),
-			keySize(0), valSize(0), pageId(0) {}
+			keySize(0), valSize(0) {}
 		SUItem(	const uint32_t& rkId, 
 			const size_t& rsize, 
 			const double& rtime,
 			const int32_t& rkeySize,
 			const int32_t& rvalSize) :
 			kId(rkId), size(rsize), time(rtime), inserted(false),
-			keySize(rkeySize), valSize(rvalSize), pageId(0) {} 
+			keySize(rkeySize), valSize(rvalSize) {} 
 	};	
 
 	std::vector<SUItem> objects;

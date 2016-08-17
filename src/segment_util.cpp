@@ -14,7 +14,6 @@ SegmentUtil::SegmentUtil(stats stat) :	policy(stat),
 
 SegmentUtil::~SegmentUtil() {}
 
-
 size_t SegmentUtil::proc(const request *r, bool woormup) {
 	if (r->size() + dataSize > top_data_bound) {
 		std::sort(objects.begin(),objects.end(), compareSizes);
@@ -26,69 +25,59 @@ size_t SegmentUtil::proc(const request *r, bool woormup) {
 				lastHash = MurmurHash3_x64_128((void*)&lastHash, sizeof(lastHash), 0);
 				uint32_t pageId = lastHash & ((1lu << bits_for_page) - 1);
 				assert(pageId < number_of_pages);
-				/*
-				* Objects whose size is less than a page should be 
-				* inserted to one page, and can't be split.
-				* Objects whose size is bigger than page should be 
-				* inserted to a continus memory location - starting
-				* from the hash.
-				*/
-				if (item.size <= page_size) {
-					if (pageSizes[pageId] + item.size <= page_size) {
-						item.inserted = true;
-						pageSizes[pageId] += item.size;
-						bytesCached += item.size;
-						break;
-					}
-				} else { 
-					// no space in the page
-					if (pageSizes[pageId] == page_size) {continue;}
-					
-					size_t head = page_size - pageSizes[pageId];
-					size_t numPages = item.size > head ? (item.size - head) / page_size : 0;
-					size_t tail = item.size > head ? item.size - head - numPages * page_size : 0;
-					
-					// no continuous memory 
-					if (pageId + numPages >= number_of_pages) { continue; }
-					if (tail > 0 && (pageId + numPages + 1 >= number_of_pages)) { continue; }
-					
-					bool isEmpty = true;
-					for (size_t i = 1; i <= numPages; i++) {
-						if (pageSizes[pageId + i] != 0) {
-							isEmpty = false;
-						}
-					}
-					if (!isEmpty) { continue; }
-					if (pageSizes[pageId + numPages + 1] + tail > page_size) { continue; }
+				// no space in the page
+				if (pageSizes[pageId] == page_size) {continue;}
+				assert(page_size >= pageSizes[pageId]);
+				size_t head = page_size - pageSizes[pageId];
+				if (item.size <= head) {
 					item.inserted = true;
+					pageSizes[pageId] += item.size;
 					bytesCached += item.size;
-					pageSizes[pageId] += head;
-					for (size_t i = 1; i <= numPages; i++) {
-						pageSizes[pageId + i] += page_size;
-					}
-					pageSizes[pageId + numPages + 1] += tail;
 					break;
 				}
+				assert(item.size > head);
+				size_t numPages = (item.size - head) / page_size;
+				assert(item.size >= (head + numPages * page_size));
+				size_t tail = item.size - (head + numPages * page_size);
+				// no continuous memory 
+				if (pageId + numPages >= number_of_pages) { continue; }
+				if (tail > 0 && (pageId + numPages + 1 >= number_of_pages)) { continue; }
+				
+				bool isEmpty = true;
+				for (size_t i = 1; i <= numPages; i++) {
+					if (pageSizes[pageId + i] != 0) {
+						isEmpty = false;
+					}
+				}
+				if (!isEmpty) { continue; }
+				if (pageSizes[pageId + numPages + 1] + tail > page_size) { continue; }
+				item.inserted = true;
+				bytesCached += item.size;
+				pageSizes[pageId] += head;
+				for (size_t i = 1; i <= numPages; i++) {
+					pageSizes[pageId + i] += page_size;
+				}
+				pageSizes[pageId + numPages + 1] += tail;
+				break;
 			}
 		}
-	dump_stats();
-	exit(0);
+		dump_stats();
+		exit(0);
 	} else {
-    	static int32_t next_dump = 10 * 1024 * 1024;
+    		static int32_t next_dump = 10 * 1024 * 1024;
 		if (allObjects.find(r->kid) == allObjects.end()) {
 			SegmentUtil::SUItem item(r->kid,(size_t)r->size(),r->time,r->key_sz, r->val_sz);	
 			objects.emplace_back(item);
 			allObjects[r->kid] = true;
 			dataSize += r->size();
-      		if (next_dump < r->size()) {
-        		std::cerr << "Progress: " << dataSize  / 1024 / 1024 << " MB" << std::endl;
-        		next_dump += 10 * 1024 * 1024;
-      		}
-      		next_dump -= r->size();
-			}
+      			if (next_dump < r->size()) {
+        			std::cerr << "Progress: " << dataSize  / 1024 / 1024 << " MB" << std::endl;
+        			next_dump += 10 * 1024 * 1024;
+      			}
+      			next_dump -= r->size();
+		}
 	}
 	return 0;
-
 }
 
 bool SegmentUtil::compareSizes(const SegmentUtil::SUItem& item1, 
