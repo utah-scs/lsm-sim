@@ -21,12 +21,10 @@ size_t SegmentUtil::proc(const request *r, bool woormup) {
 		std::vector<size_t> pageSizes(number_of_pages, 0);
 		for (size_t i = 0; i < objects.size(); i++) {
 			SegmentUtil::SUItem& item = objects[i];
-
-      uint128_t lastHash = item.kId;
+			uint128_t lastHash = item.kId;
 			for (size_t j = 0 ; j < num_hash_functions; j++) {
 				lastHash = MurmurHash3_x64_128((void*)&lastHash, sizeof(lastHash), 0);
 				uint32_t pageId = lastHash & ((1lu << bits_for_page) - 1);
-
 				assert(pageId < number_of_pages);
 				/*
 				* Objects whose size is less than a page should be 
@@ -35,20 +33,20 @@ size_t SegmentUtil::proc(const request *r, bool woormup) {
 				* inserted to a continus memory location - starting
 				* from the hash.
 				*/
-				if (((size_t)item.size) <= page_size) {
+				if (item.size <= page_size) {
 					if (pageSizes[pageId] + item.size <= page_size) {
 						item.inserted = true;
 						pageSizes[pageId] += item.size;
 						bytesCached += item.size;
 						break;
 					}
-				} else {
+				} else { 
 					// no space in the page
 					if (pageSizes[pageId] == page_size) {continue;}
 					
 					size_t head = page_size - pageSizes[pageId];
-					size_t numPages = (item.size - head) / page_size;
-					size_t tail = item.size - head - numPages * page_size;
+					size_t numPages = item.size > head ? (item.size - head) / page_size : 0;
+					size_t tail = item.size > head ? item.size - head - numPages * page_size : 0;
 					
 					// no continuous memory 
 					if (pageId + numPages >= number_of_pages) { continue; }
@@ -66,30 +64,28 @@ size_t SegmentUtil::proc(const request *r, bool woormup) {
 					bytesCached += item.size;
 					pageSizes[pageId] += head;
 					for (size_t i = 1; i <= numPages; i++) {
-                                        	pageSizes[pageId + i] += page_size;
+						pageSizes[pageId + i] += page_size;
 					}
 					pageSizes[pageId + numPages + 1] += tail;
 					break;
 				}
 			}
 		}
-
-    dump_stats();
-    exit(0);
+	dump_stats();
+	exit(0);
 	} else {
-    static int32_t next_dump = 10 * 1024 * 1024;
+    	static int32_t next_dump = 10 * 1024 * 1024;
 		if (allObjects.find(r->kid) == allObjects.end()) {
-			SegmentUtil::SUItem item(r->kid,r->size(),r->time,r->key_sz, r->val_sz);	
+			SegmentUtil::SUItem item(r->kid,(size_t)r->size(),r->time,r->key_sz, r->val_sz);	
 			objects.emplace_back(item);
 			allObjects[r->kid] = true;
 			dataSize += r->size();
-      if (next_dump < r->size()) {
-        std::cerr << "Progress: " << dataSize  / 1024 / 1024 << " MB"
-                  << std::endl;
-        next_dump += 10 * 1024 * 1024;
-      }
-      next_dump -= r->size();
-		}
+      		if (next_dump < r->size()) {
+        		std::cerr << "Progress: " << dataSize  / 1024 / 1024 << " MB" << std::endl;
+        		next_dump += 10 * 1024 * 1024;
+      		}
+      		next_dump -= r->size();
+			}
 	}
 	return 0;
 
@@ -103,8 +99,14 @@ bool SegmentUtil::compareSizes(const SegmentUtil::SUItem& item1,
 size_t SegmentUtil::get_bytes_cached() const { return bytesCached;}
 
 void SegmentUtil::dump_stats(void) {
+	assert(stat.apps.size() == 1);
+        uint32_t appId = 0;
+        for(const auto& app : stat.apps) {appId = app;}
 	std::string filename{stat.policy
-			+ "-segment_size" + std::to_string(segment_util)};
+			+ "-app" + std::to_string(appId)
+			+ "-segment_size" + std::to_string(segment_util)
+			+ "-hash" + std::to_string(num_hash_functions)
+			+ "-page" + std::to_string(page_size)};
 	std::ofstream out{filename};
 	out << "segment size: " << segment_util << std::endl;
 	out << "page size: " << page_size << std::endl;
