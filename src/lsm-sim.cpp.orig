@@ -26,19 +26,35 @@
 #include "lru.h"
 #include "slab.h"
 #include "mc.h"
+<<<<<<< HEAD
 #include "flash_cache.h"
 #include "victim_cache.h"
+#include "lruk.h"
+=======
 #include "ripq.h"
 #include "ripq_shield.h"
-#include "lruk.h"
-#include "ram_shield.h"
-#include "ram_shield_fifo.h"
-#include "ram_shield_sel.h"
+>>>>>>> c08a34b3229c3ae49a461da5a0c241db3b16087d
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[17] = { "shadowlru"
+<<<<<<< HEAD
+const char* policy_names[12] = { "shadowlru"
+                              , "fifo"
+                              , "lru"
+			      , "slab"
+                              , "shadowslab"
+                              , "partslab"
+                              , "lsm"
+                              , "multi"
+                              , "multislab"
+			      , "flashcache"
+			      , "victimcache"
+                              , "lruk"
+			      };
+
+=======
+const char* policy_names[11] = { "shadowlru"
                                , "fifo"
                                , "lru"
                                , "slab"
@@ -47,16 +63,10 @@ const char* policy_names[17] = { "shadowlru"
                                , "lsm"
                                , "multi"
                                , "multislab"
-      			       , "flashcache"
-			       , "victimcache"
-                               , "lruk"
                                , "ripq"
                                , "ripq_shield"
-                               , "ramshield"
-			       , "ramshield_fifo"
-			       , "ramshield_sel"
-                              };
-
+                               };
+>>>>>>> c08a34b3229c3ae49a461da5a0c241db3b16087d
 enum pol_type { 
     SHADOWLRU = 0
   , FIFO
@@ -67,15 +77,16 @@ enum pol_type {
   , LSM
   , MULTI
   , MULTISLAB
+<<<<<<< HEAD
   , FLASHCACHE
   , VICTIMCACHE 
   , LRUK
+};
+=======
   , RIPQ 
   , RIPQ_SHIELD
-  , RAMSHIELD
-  , RAMSHIELD_FIFO
-  , RAMSHIELD_SEL
   };
+>>>>>>> c08a34b3229c3ae49a461da5a0c241db3b16087d
 
 // globals
 std::set<uint32_t>    apps{};                        // apps to consider
@@ -108,7 +119,6 @@ bool                  use_percentage = false;           // specify priv mem %
 size_t                flash_size = 0;
 size_t                num_sections = 0;
 size_t                dram_size = 0;            // amount of dram memory allocated for ripq_shield active_blocks
-double 		      threshold = 0.7;
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -129,16 +139,20 @@ const std::string     usage  = "-f    specify file path\n"
                                "-M    use memcachier slab classes\n"
                                "-P    number of partitions for partslab\n"
                                "-S    segment size in bytes for lsm\n"
-                               "-B    block size in bytes for ripq and ram_shield\n"
+                               "-B    block size in bytes for ripq\n"
                                "-E    eviction subpolicy (for multi)\n"
                                "-m    private mem percentage of target mem\n"
-			       "-D    dram size in flashcache, victimcache and ripq_shield policies\n"
-			       "-F    flash size in flashcache, victimcache, ripq and ripq_shield policies\n"
+<<<<<<< HEAD
+			       "-D    dram size in flashcache and victimcache policies\n"
+			       "-F    flash size in flashcache and victimcache policies\n"
 			       "-K    number of queues in lruk policy\n"
-			       "-L    queue size in lruk policy\n"
-			       "-H    hit value in flashcache formula\n"
+			       "-L    queue size in lruk policy";
+=======
+                               "-D    DRAM size for ripq_shield\n"
+                               "-F    Flash size for ripq and ripq_shield\n"
                                "-n    number of flash sections for ripq and ripq_shield\n" 
                                "-d    number of dram sections for ripq_shield\n";
+>>>>>>> c08a34b3229c3ae49a461da5a0c241db3b16087d
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -195,7 +209,11 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:t:m:d:F:n:D:L:K:k:")) != -1) {
+<<<<<<< HEAD
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:E:N:W:T:m:F:D:L:K:k:")) != -1) {
+=======
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:m:d:D:n:F:")) != -1) {
+>>>>>>> c08a34b3229c3ae49a461da5a0c241db3b16087d
     switch (c)
     {
       case 'f':
@@ -220,23 +238,21 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(7);
         else if (std::string(optarg) == "multislab")
           policy_type = pol_type(8);
+<<<<<<< HEAD
 	else if (std::string(optarg) == "flashcache")
 	  policy_type = pol_type(9);
         else if (std::string(optarg) == "victimcache")
 	  policy_type = pol_type(10);
 	else if (std::string(optarg) == "lruk")
 	  policy_type = pol_type(11);
-        else if (std::string(optarg) == "ripq")
-          policy_type = pol_type(12);
-        else if (std::string(optarg) == "ripq_shield")
-          policy_type = pol_type(13);
-	else if (std::string(optarg) == "ramshield")
-	  policy_type = pol_type(14);
-        else if (std::string(optarg) == "ramshield_fifo")
-	  policy_type = pol_type(15);
-	else if (std::string(optarg) == "ramshield_sel")
-	  policy_type = pol_type(16);
 	else {
+=======
+        else if (std::string(optarg) == "ripq")
+          policy_type = pol_type(9);
+        else if (std::string(optarg) == "ripq_shield")
+          policy_type = pol_type(10);
+        else {
+>>>>>>> c08a34b3229c3ae49a461da5a0c241db3b16087d
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
         }            
@@ -326,31 +342,34 @@ int main(int argc, char *argv[]) {
         use_percentage = true;
         break;
       case 'F':
-	FLASH_SIZE = flash_size = atol(optarg);
+<<<<<<< HEAD
+	FLASH_SIZE = atoi(optarg);
 	break;
       case 'D':
-	DRAM_SIZE = dram_size = atol(optarg);
+	DRAM_SIZE = atoi(optarg);
 	break;
       case 'K':
-	K_LRU = atol(optarg);
+	K_LRU = atoi(optarg);
 	break;
       case 'L':
-	KLRU_QUEUE_SIZE = atol(optarg);
+	KLRU_QUEUE_SIZE = atoi(optarg);
 	break;	
+      case 'k':
+	K = atof(optarg);
+	break;	
+=======
+        flash_size = atol(optarg);
+        break;
+      case 'D':
+        dram_size = atol(optarg);
+        break;
       case 'n':
         num_sections =  atol(optarg);
         break;
       case 'd':
         num_dsections = atol(optarg);
         break;
-      case 'k':
-	K = atof(optarg);
-	break;
-      case 'H':
-	L_FC = atol(optarg);
-	break;
-      case 't':
-	threshold = atof(optarg);
+>>>>>>> c08a34b3229c3ae49a461da5a0c241db3b16087d
     }
   }
 
@@ -358,7 +377,7 @@ int main(int argc, char *argv[]) {
 
   //assert(apps.size() == 1);
 
-  if (policy_type == FLASHCACHE || policy_type == VICTIMCACHE || policy_type == RIPQ || policy_type == RIPQ_SHIELD) {
+  if (policy_type == FLASHCACHE || policy_type == VICTIMCACHE) {
 	global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 
@@ -458,6 +477,8 @@ int main(int argc, char *argv[]) {
         assert(memcachier_app_size[appid] > 0);
         slmulti->add_app(appid, min_mem_pct, memcachier_app_size[appid]);
       }
+<<<<<<< HEAD
+=======
       break;
     }
     case RIPQ:
@@ -473,26 +494,7 @@ int main(int argc, char *argv[]) {
       sts.num_sections = num_sections;
       sts.num_dsections = num_dsections;
       policy.reset(new ripq_shield(sts, block_size, num_sections, dram_size, num_dsections, flash_size));
-      break;
-    case RAMSHIELD:
-      sts.threshold = threshold;
-      sts.flash_size = flash_size;
-      sts.dram_size = dram_size;
-      policy.reset(new RamShield(sts, block_size));
-      break;
-    case RAMSHIELD_FIFO:
-      sts.threshold = threshold;
-      sts.block_size = block_size;
-      sts.flash_size = flash_size;
-      sts.dram_size = dram_size;
-      policy.reset(new RamShield_fifo(sts, block_size));
-      break;
-    case RAMSHIELD_SEL:
-      sts.threshold = threshold;
-      sts.block_size = block_size;
-      sts.flash_size = flash_size;
-      sts.dram_size = dram_size;
-      policy.reset(new RamShield_sel(sts, block_size));
+>>>>>>> c08a34b3229c3ae49a461da5a0c241db3b16087d
       break;
   }
 
