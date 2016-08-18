@@ -121,6 +121,9 @@ struct stats {
   // For ripq and ripq_shield, size of Flash cache (excluding active blocks).
   size_t flash_size;
 
+  // Threshold for the block algorithm
+  double threshold;
+
   stats(const std::string& policy, 
         const std::set<uint32_t>& apps, 
         size_t global_mem)
@@ -150,6 +153,7 @@ struct stats {
     , flash_bytes_written{}
     , dram_size{}
     , flash_size{}
+    , threshold{}
   {}
 
   /// Return the ratio of access that resulted in a cache hit.
@@ -187,6 +191,7 @@ struct stats {
              "flash_bytes_written "
              "dram_size "
              "flash_size "
+             "threshold "
           << std::endl;
       out << appids << " "
           << policy << " "
@@ -212,6 +217,7 @@ struct stats {
           << flash_bytes_written << " "
           << dram_size << " "
           << flash_size << " "
+          << threshold << " "
           << std::endl;
   }
   

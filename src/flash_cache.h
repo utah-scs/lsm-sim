@@ -21,7 +21,7 @@ extern size_t L_FC;
 extern double P_FC;
 
 class FlashCache : public policy {
-private:
+protected:
 	typedef std::list<std::pair<uint32_t, double> >::iterator dramIt;
 	typedef std::list<uint32_t>::iterator keyIt;
 

@@ -71,6 +71,8 @@ class policy {
         "-flash_size" + std::to_string(stat.flash_size) : "";
       filename += stat.num_sections > 0 ?
         "-num_sections" + std::to_string(stat.num_sections) : "";
+      filename += stat.threshold > 0 ?
+	"-threshold" + std::to_string(stat.threshold) : "";
      
       filename += ".data";
 
