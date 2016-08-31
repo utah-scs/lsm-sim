@@ -38,11 +38,12 @@
 #include "ram_shield_fifo.h"
 #include "ram_shield_sel.h"
 #include "flash_cache_lruk_clock.h"
+#include "replay.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[21] = { "shadowlru"
+const char* policy_names[22] = { "shadowlru"
                                , "fifo"
                                , "lru"
                                , "slab"
@@ -51,8 +52,8 @@ const char* policy_names[21] = { "shadowlru"
                                , "lsm"
                                , "multi"
                                , "multislab"
-      			       , "flashcache"
-			       , "victimcache"
+                               , "flashcache"
+                               , "victimcache"
                                , "lruk"
                                , "ripq"
                                , "ripq_shield"
@@ -63,6 +64,7 @@ const char* policy_names[21] = { "shadowlru"
                                , "ramshield"
 			       , "ramshield_fifo"
 			       , "ramshield_sel"
+                               , "replay"
                               };
 
 enum pol_type { 
@@ -87,6 +89,7 @@ enum pol_type {
   , RAMSHIELD
   , RAMSHIELD_FIFO
   , RAMSHIELD_SEL
+  , REPLAY
   };
 
 // globals
@@ -232,21 +235,21 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(7);
         else if (std::string(optarg) == "multislab")
           policy_type = pol_type(8);
-	else if (std::string(optarg) == "flashcache")
-	  policy_type = pol_type(9);
+        else if (std::string(optarg) == "flashcache")
+          policy_type = pol_type(9);
         else if (std::string(optarg) == "victimcache")
-	  policy_type = pol_type(10);
-	else if (std::string(optarg) == "lruk")
-	  policy_type = pol_type(11);
+          policy_type = pol_type(10);
+        else if (std::string(optarg) == "lruk")
+          policy_type = pol_type(11);
         else if (std::string(optarg) == "ripq")
           policy_type = pol_type(12);
         else if (std::string(optarg) == "ripq_shield")
           policy_type = pol_type(13);
-	else if (std::string(optarg) == "clock")
-	  policy_type = pol_type(14);
+        else if (std::string(optarg) == "clock")
+          policy_type = pol_type(14);
         else if (std::string(optarg) == "flashcachelruk")
           policy_type = pol_type(15);
-	else if (std::string(optarg) == "flashcachelrukclk")
+        else if (std::string(optarg) == "flashcachelrukclk")
           policy_type = pol_type(16);
 	else if (std::string(optarg) == "segment_util")
 	  policy_type = pol_type(17);
@@ -257,9 +260,12 @@ int main(int argc, char *argv[]) {
 	else if (std::string(optarg) == "ramshield_sel")
 	  policy_type = pol_type(20);
 	else {
+        else if (std::string(optarg) == "replay")
+          policy_type = pol_type(18);
+        else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
-        }            
+        }
         break;
       case 'E':
         if (std::string(optarg) == "normal")
@@ -534,6 +540,9 @@ int main(int argc, char *argv[]) {
       sts.flash_size = flash_size;
       sts.dram_size = dram_size;
       policy.reset(new RamShield_sel(sts, block_size));
+      break;
+    case REPLAY:
+      policy.reset(new replay(sts));
       break;
   }
 
