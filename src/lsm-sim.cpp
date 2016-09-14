@@ -259,7 +259,6 @@ int main(int argc, char *argv[]) {
 	  policy_type = pol_type(19);
 	else if (std::string(optarg) == "ramshield_sel")
 	  policy_type = pol_type(20);
-	else {
         else if (std::string(optarg) == "replay")
           policy_type = pol_type(18);
         else {
