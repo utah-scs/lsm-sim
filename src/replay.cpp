@@ -40,7 +40,7 @@ PRNG::operator()()
 
 replay::replay(stats stat)
   : policy{stat}
-  , random_chars{}
+  , random_chars{new char[NCHARS]{}}
   , client{}
   , prng{}
   , get_attempts{}
@@ -48,8 +48,8 @@ replay::replay(stats stat)
   , get_failures{}
   , set_failures{}
 {
-  for (size_t i = 0; i < sizeof(random_chars); ++i)
-    random_chars[i] = '!' + (random() % ('~' - '!' + 1));
+  for (size_t i = 0; i < NCHARS; ++i)
+    random_chars[i] = '!' + (prng() % ('~' - '!' + 1));
 
   client = memcached_create(NULL);
 
@@ -82,6 +82,11 @@ replay::~replay () {
 
 size_t replay::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
+  if (r->size() > int32_t(1024 * 1024)) {
+    std::cerr << "Can't process large request of size " << r->size()
+              << std::endl;
+    return 1;
+  }
 
    if (stat.apps.empty())
     stat.apps.insert(r->appid);
@@ -106,9 +111,10 @@ size_t replay::get_bytes_cached() const {
 void replay::issue_set(const char* key,
                        size_t value_len)
 {
-  assert(value_len <= sizeof(random_chars));
-  const char* value =
-    &random_chars[prng()  % (sizeof(random_chars) - value_len)];
+  if (value_len > NCHARS)
+    std::cerr << "Value too big: " << value_len << std::endl;
+  assert(value_len <= NCHARS);
+  const char* value = &random_chars[prng() % (NCHARS - value_len)];
   set_attempts++;
   memcached_return rc =
     memcached_set(client, key, strlen(key), value, value_len,

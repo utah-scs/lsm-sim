@@ -4,7 +4,7 @@ source scripts/top-apps
 apps="$top3"
 source scripts/app-sizes
 
-weights="16384 32768 49152"
+weights="65536 131072 196608"
 steal_lst=$(echo $weights | sed "s/ /,/g")
 
 rm stealweight-*.data

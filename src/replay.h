@@ -1,6 +1,8 @@
 #ifndef REPLAY_H
 #define REPLAY_H
 
+#include <memory>
+
 #include <libmemcached/memcached.h>
 
 #include "policy.h"
@@ -31,7 +33,8 @@ class replay : public policy {
 
     static constexpr int port = 12000;
 
-    char random_chars[100000];
+    static constexpr size_t NCHARS = 1u << 20;
+    std::unique_ptr<char[]> random_chars;
 
     memcached_st* client;
     PRNG prng;

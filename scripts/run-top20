@@ -32,7 +32,7 @@ done
   -S $((1024 * 1024)) \
   -f ./data/m.cap.out \
       2> err-top20-managed-multislab.log \
-      > top20-managed-multislab.data
+      > temp-multislab-greedy.data
 sed 's/multislab/slab-greedy/g' \
   < temp-multislab-greedy.data \
   > top20-managed-multislab-greedy.data
