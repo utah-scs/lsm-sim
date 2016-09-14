@@ -140,7 +140,8 @@ size_t lru::proc(const request *r, bool warmup) {
     auto list_it = it->second;
     request& prior_request = *list_it;
 
-    if (prior_request.size() == r->size()) {
+    if (prior_request.size() == r->size() &&
+        prior_request.frag_sz == r->frag_sz) {
       // Promote this item to the front.
       queue.erase(list_it);
       queue.emplace_front(*r);
