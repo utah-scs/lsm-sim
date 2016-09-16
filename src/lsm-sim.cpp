@@ -124,6 +124,7 @@ size_t                flash_size = 0;
 size_t                num_sections = 0;
 size_t                dram_size = 0;            // amount of dram memory allocated for ripq_shield active_blocks
 double 		      threshold = 0.7;
+size_t cleaning_width = 100;
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
@@ -147,6 +148,8 @@ const std::string     usage  = "-f    specify file path\n"
                                "-B    block size in bytes for ripq and ram_shield\n"
                                "-E    eviction subpolicy (for multi)\n"
                                "-m    private mem percentage of target mem\n"
+                               "-W    per-application weights\n"
+                               "-c    cleaning width\n"
 			       "-D    dram size in flashcache, victimcache and ripq_shield policies\n"
 			       "-F    flash size in flashcache, victimcache, ripq and ripq_shield policies\n"
 			       "-K    number of queues in lruk policy\n"
@@ -210,7 +213,7 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:t:m:d:F:n:D:L:K:k:C:")) != -1) {
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:t:m:d:F:n:D:L:K:k:C:c:")) != -1) {
     switch (c)
     {
       case 'f':
@@ -260,7 +263,7 @@ int main(int argc, char *argv[]) {
 	else if (std::string(optarg) == "ramshield_sel")
 	  policy_type = pol_type(20);
         else if (std::string(optarg) == "replay")
-          policy_type = pol_type(18);
+          policy_type = pol_type(21);
         else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -342,6 +345,9 @@ int main(int argc, char *argv[]) {
           }
           break;
         }
+      case 'c':
+        cleaning_width = atol(optarg);
+        break;
       case 'T':
         use_tax = true;
         tax_rate = atol(optarg) / 100.;
@@ -457,12 +463,12 @@ int main(int argc, char *argv[]) {
       break;
     case LSM:
       sts.segment_size = segment_size;
-      sts.cleaning_width = 100;
+      sts.cleaning_width = cleaning_width;
       policy.reset(new lsm(sts));
       break;
     case MULTI:
       sts.segment_size = segment_size;
-      sts.cleaning_width = 100;
+      sts.cleaning_width = cleaning_width;
       {
         lsc_multi* multi = new lsc_multi(sts, subpolicy);
         policy.reset(multi);
@@ -561,7 +567,8 @@ int main(int argc, char *argv[]) {
             << "request limit " << request_limit << std::endl
             << "global mem " << global_mem << std::endl
             << "use tax " << use_tax << std::endl
-            << "tax rate " << tax_rate << std::endl;
+            << "tax rate " << tax_rate << std::endl
+            << "cleaning width " << cleaning_width << std::endl;
   if (policy_type == SHADOWSLAB) {
     if (memcachier_classes)
       std::cerr << "slab growth factor: memcachier" << std::endl;

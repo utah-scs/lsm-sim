@@ -29,6 +29,7 @@ for subpolicy in greedy static; do
     -a $app_lst \
     -p multi \
     -E $subpolicy \
+    -c 50 \
     -s $total_size \
     -S $((1024 * 1024)) \
     -f ./data/m.cap.out \
@@ -43,6 +44,7 @@ for private in 0 25 50 75 100; do
     -a $app_lst \
     -p multi \
     -E normal \
+    -c 50 \
     -N $private \
     -s $total_size \
     -S $((1024 * 1024)) \

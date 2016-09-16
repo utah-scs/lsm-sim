@@ -57,7 +57,7 @@ wait $pids
 for app in $apps; do
   sed 's/multislab/slab-static/g' \
     < temp-multislab-static-app$app.data \
-    > top3-managed-multislab-static-app$app.data
+    > top20-managed-multislab-static-app$app.data
   rm temp-multislab-static-app$app.data
 done 
 
