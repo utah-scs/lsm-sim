@@ -1,3 +1,5 @@
+#ifndef NOREPLAY
+
 #include <iostream>
 #include <cassert>
 #include <fstream>
@@ -154,3 +156,4 @@ void replay::issue_get(const char* key,
   }
 }
 
+#endif // NOREPLAY

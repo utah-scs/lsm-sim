@@ -1,8 +1,18 @@
 CXX := g++-4.9
 CXXFLAGS := -std=c++14 -Wall -g -pedantic-errors -Werror -O3 \
 						-Wno-unused-parameter -Wextra -Weffc++
+# REPLAY := yes enables a policy that can feed traces to memcached, but it
+# requires libmemcached to be linked in as a result. Only enable it if you
+# have the library and headers installed.
+REPLAY ?= no
 
-LDFLAGS := -lmemcached
+LDFLAGS :=
+
+ifeq ($(REPLAY),yes)
+LDFLAGS += -lmemcached
+else
+CXXFLAGS += -DNOREPLAY
+endif
 
 HEADERS := $(wildcard src/*.h)
 SRCS := $(wildcard src/*.cpp)

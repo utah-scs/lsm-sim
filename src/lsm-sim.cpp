@@ -541,7 +541,11 @@ int main(int argc, char *argv[]) {
       policy.reset(new RamShield_sel(sts, block_size));
       break;
     case REPLAY:
+#ifdef NOREPLAY
+      assert("Replay support not compiled in; adjust Makefile." && false);
+#else
       policy.reset(new replay(sts));
+#endif
       break;
   }
 
