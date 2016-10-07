@@ -85,9 +85,9 @@ void VictimCache::insertToDram(FlashCache::Item& item, bool warmup) {
 }
 
 void VictimCache::dump_stats(void) {
-	assert(stat.apps.size() == 1);
+	assert(stat.apps->size() == 1);
 	uint32_t appId = 0;
-	for(const auto& app : stat.apps) {appId = app;}
+	for(const auto& app : *stat.apps) {appId = app;}
 	std::string filename{stat.policy
 			+ "-app" + std::to_string(appId)
 			+ "-flash_mem" + std::to_string(FLASH_SIZE)

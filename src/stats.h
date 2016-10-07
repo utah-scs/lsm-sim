@@ -21,7 +21,7 @@ struct stats {
    * #lsc_multi track application request separately and tune eviction
    * for each separation application.
    */
-  std::set<uint32_t> apps;
+  std::set<uint32_t>* apps;
 
   /**
    * The total amount of data that can be stored in the cache. Policies count
@@ -125,7 +125,7 @@ struct stats {
   double threshold;
 
   stats(const std::string& policy, 
-        const std::set<uint32_t>& apps, 
+        std::set<uint32_t>* apps, 
         size_t global_mem)
     : policy{policy}
     , apps{apps}
@@ -164,7 +164,7 @@ struct stats {
 
   void dump(std::ofstream& out) const {
       std::string appids{};
-      for (const auto& app : apps)
+      for (const auto& app : *apps)
         appids += std::to_string(app) + ",";
       appids = appids.substr(0, appids.length() - 1);
 
@@ -221,6 +221,10 @@ struct stats {
           << std::endl;
   }
   
+  stats(const stats&) = default;
+  stats& operator=(const stats&) = default;
+  stats& operator=(stats&&) = default;
+  stats(stats&&) = default;
 };
 
 #endif

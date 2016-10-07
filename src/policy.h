@@ -25,10 +25,12 @@ class policy {
   
   protected:  
     stats stat; 
+    bool all_apps;
     
   public:
-    policy (stats stat)
-      :stat{stat}
+    policy(stats stat)
+      : stat{stat}
+      , all_apps{stat.apps->empty()}
     {}
 
     virtual ~policy() {}
@@ -45,8 +47,12 @@ class policy {
 
     virtual void dump_stats(void) {
       std::string appids{};
-      for (const auto& app : stat.apps)
-        appids += std::to_string(app) + ",";
+      if (all_apps) {
+        appids = "-all,";
+      } else {
+        for (const auto& app : *stat.apps)
+          appids += std::to_string(app) + ",";
+      }
       appids = appids.substr(0, appids.length() - 1);
       std::string filename{stat.policy
                           + "-app" + appids

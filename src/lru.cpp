@@ -128,8 +128,8 @@ bool lru::try_add_tail(const request *r) {
 size_t lru::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
-  if (stat.apps.empty())
-    stat.apps.insert(r->appid);
+  if (stat.apps->empty())
+    stat.apps->insert(r->appid);
   //assert(stat.apps.count(r->appid) == 1);
 
   if (!warmup)

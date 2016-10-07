@@ -88,9 +88,9 @@ bool SegmentUtil::compareSizes(const SegmentUtil::SUItem& item1,
 size_t SegmentUtil::get_bytes_cached() const { return bytesCached;}
 
 void SegmentUtil::dump_stats(void) {
-	assert(stat.apps.size() == 1);
+	assert(stat.apps->size() == 1);
         uint32_t appId = 0;
-        for(const auto& app : stat.apps) {appId = app;}
+        for(const auto& app : *stat.apps) {appId = app;}
 	std::string filename{stat.policy
 			+ "-app" + std::to_string(appId)
 			+ "-segment_size" + std::to_string(segment_util)

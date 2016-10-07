@@ -57,13 +57,13 @@ const char* policy_names[22] = { "shadowlru"
                                , "lruk"
                                , "ripq"
                                , "ripq_shield"
-			       , "clock"
-			       , "flashcachelruk"
-			       , "flashcachelrukclk"
-			       , "segment_util"
+                               , "clock"
+                               , "flashcachelruk"
+                               , "flashcachelrukclk"
+                               , "segment_util"
                                , "ramshield"
-			       , "ramshield_fifo"
-			       , "ramshield_sel"
+                               , "ramshield_fifo"
+                               , "ramshield_sel"
                                , "replay"
                               };
 
@@ -92,38 +92,39 @@ enum pol_type {
   , REPLAY
   };
 
-// globals
-std::set<uint32_t>    apps{};                        // apps to consider
-std::unordered_map<uint32_t, uint32_t> app_steal_sizes{}; // how much each app
-                                                        // steals per shadow q
-                                                        // hit
-bool                  all_apps = true;                  // run all by default 
-bool                  roundup  = false;                 // no rounding default
-float                 lsm_util = 1.0;                   // default util factor
-std::string           trace    = "data/m.cap.out";      // default filepath
-std::string           app_str;                          // for logging apps
-std::string           app_steal_sizes_str;
-double                hit_start_time = 86400;           // default time 
-size_t                global_mem = 0;
-pol_type              policy_type;                      // policy type
-lsc_multi::subpolicy  subpolicy;                        // subpolicy type
-bool                  verbose = false;
-double                gfactor = 1.25;                   // def slab growth fact
-bool                  memcachier_classes = false;
-size_t                partitions = 2;
-size_t                segment_size = 1 * 1024 * 1024;
-size_t                block_size = 1 * 1024 * 1024;
-size_t                num_dsections = 4;
-size_t                min_mem_pct = 75;
-const size_t          default_steal_size = 65536;
-bool                  use_tax = false;
-double                tax_rate = 0.05;
-double                priv_mem_percentage =0.25; 
-bool                  use_percentage = false;           // specify priv mem %
-size_t                flash_size = 0;
-size_t                num_sections = 0;
-size_t                dram_size = 0;            // amount of dram memory allocated for ripq_shield active_blocks
-double 		      threshold = 0.7;
+std::set<uint32_t> apps{}; //< apps to consider
+
+/// How much each app steals per shadow q hit.
+std::unordered_map<uint32_t, uint32_t> app_steal_sizes{};
+bool all_apps = true; //< run all by default 
+bool roundup  = false; //< no rounding default
+float lsm_util = 1.0; //< default util factor
+std::string trace = "data/m.cap.out"; //< default filepath
+std::string app_str; //< for logging apps
+std::string app_steal_sizes_str;
+double hit_start_time = 86400; //< default warmup time
+size_t global_mem = 0;
+pol_type policy_type;
+lsc_multi::subpolicy subpolicy;
+bool verbose = false;
+double gfactor = 1.25; //< Slab growth factor.
+bool memcachier_classes = false;
+size_t partitions = 2;
+size_t segment_size = 1 * 1024 * 1024;
+size_t block_size = 1 * 1024 * 1024;
+size_t num_dsections = 4;
+size_t min_mem_pct = 75;
+const size_t default_steal_size = 65536;
+bool use_tax = false;
+double tax_rate = 0.05;
+double priv_mem_percentage =0.25;
+bool use_percentage = false; // specify priv mem %
+size_t flash_size = 0;
+size_t num_sections = 0;
+
+/// Amount of dram memory allocated for ripq_shield active_blocks.
+size_t dram_size = 0;
+double threshold = 0.7;
 size_t cleaning_width = 100;
 
 // Only parse this many requests from the CSV file before breaking.
@@ -132,31 +133,32 @@ int request_limit = 0;
 
 bool debug = false;
 
-const std::string     usage  = "-f    specify file path\n"
-                               "-a    specify app to eval\n"
-                               "-r    enable rounding\n"
-                               "-u    specify utilization\n"
-                               "-w    specify warmup period\n"
-                               "-l    number of requests after warmup\n"
-                               "-s    simulated cache size in bytes\n"
-                               "-p    policy 0, 1, 2; shadowlru, fifo, lru\n"
-                               "-v    incremental output\n"
-                               "-g    specify slab growth factor\n"
-                               "-M    use memcachier slab classes\n"
-                               "-P    number of partitions for partslab\n"
-                               "-S    segment size in bytes for lsm\n"
-                               "-B    block size in bytes for ripq and ram_shield\n"
-                               "-E    eviction subpolicy (for multi)\n"
-                               "-m    private mem percentage of target mem\n"
-                               "-W    per-application weights\n"
-                               "-c    cleaning width\n"
-			       "-D    dram size in flashcache, victimcache and ripq_shield policies\n"
-			       "-F    flash size in flashcache, victimcache, ripq and ripq_shield policies\n"
-			       "-K    number of queues in lruk policy\n"
-			       "-L    queue size in lruk policy\n"
-			       "-H    hit value in flashcache formula\n"
-                               "-n    number of flash sections for ripq and ripq_shield\n" 
-                               "-d    number of dram sections for ripq_shield\n";
+const std::string usage =
+  "-f    specify file path\n"
+  "-a    specify app to eval\n"
+  "-r    enable rounding\n"
+  "-u    specify utilization\n"
+  "-w    specify warmup period\n"
+  "-l    number of requests after warmup\n"
+  "-s    simulated cache size in bytes\n"
+  "-p    policy 0, 1, 2; shadowlru, fifo, lru\n"
+  "-v    incremental output\n"
+  "-g    specify slab growth factor\n"
+  "-M    use memcachier slab classes\n"
+  "-P    number of partitions for partslab\n"
+  "-S    segment size in bytes for lsm\n"
+  "-B    block size in bytes for ripq and ram_shield\n"
+  "-E    eviction subpolicy (for multi)\n"
+  "-m    private mem percentage of target mem\n"
+  "-W    per-application weights\n"
+  "-c    cleaning width\n"
+  "-D    dram size in flashcache, victimcache and ripq_shield policies\n"
+  "-F    flash size in flashcache, victimcache, ripq and ripq_shield policies\n"
+  "-K    number of queues in lruk policy\n"
+  "-L    queue size in lruk policy\n"
+  "-H    hit value in flashcache formula\n"
+  "-n    number of flash sections for ripq and ripq_shield\n" 
+  "-d    number of dram sections for ripq_shield\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -187,24 +189,7 @@ std::unordered_map<size_t, size_t> memcachier_app_size = { {1, 701423104}
                                                          };
 
 
-// returns true if an ID is in the spec'd set
-// returns true if set is empty
-// bool valid_id(const request *r) {
-//  if (all_apps)
-//    return true;
-//  else
-//    return apps.count(r->appid);
-//}
-
 int main(int argc, char *argv[]) {
-
-  // just checking boost
-  std::cerr << "Using Boost "     
-            << BOOST_VERSION / 100000     << "."  // major version
-            << BOOST_VERSION / 100 % 1000 << "."  // minor version
-            << BOOST_VERSION % 100                // patch level
-            << std::endl;
-
   // calculate global memory
   for (int i = 0; i < 15; i++)
     global_mem += orig_alloc[i];
@@ -213,7 +198,10 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:t:m:d:F:n:D:L:K:k:C:c:")) != -1) {
+  while ((c = getopt(argc, argv,
+                     "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:t:"
+                     "m:d:F:n:D:L:K:k:C:c:")) != -1)
+  {
     switch (c)
     {
       case 'f':
@@ -254,14 +242,14 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(15);
         else if (std::string(optarg) == "flashcachelrukclk")
           policy_type = pol_type(16);
-	else if (std::string(optarg) == "segment_util")
-	  policy_type = pol_type(17);
-	else if (std::string(optarg) == "ramshield")
-	  policy_type = pol_type(18);  
+        else if (std::string(optarg) == "segment_util")
+          policy_type = pol_type(17);
+        else if (std::string(optarg) == "ramshield")
+          policy_type = pol_type(18);  
         else if (std::string(optarg) == "ramshield_fifo")
-	  policy_type = pol_type(19);
-	else if (std::string(optarg) == "ramshield_sel")
-	  policy_type = pol_type(20);
+          policy_type = pol_type(19);
+        else if (std::string(optarg) == "ramshield_sel")
+          policy_type = pol_type(20);
         else if (std::string(optarg) == "replay")
           policy_type = pol_type(21);
         else {
@@ -301,6 +289,7 @@ int main(int argc, char *argv[]) {
           string_vec v;
           csv_tokenize(std::string(optarg), &v);
           for (const auto& e : v) {
+            all_apps = false;
             int i = stoi(e);
             apps.insert(i);
             ordered_apps.push_back(i);
@@ -357,21 +346,21 @@ int main(int argc, char *argv[]) {
         use_percentage = true;
         break;
       case 'F':
-	FLASH_SIZE = flash_size = atol(optarg);
+        FLASH_SIZE = flash_size = atol(optarg);
         FLASH_SIZE_FC_KLRU = flash_size = atol(optarg);
-	FLASH_SIZE_FC_KLRU_CLK = flash_size = atol(optarg);
-	break;
+        FLASH_SIZE_FC_KLRU_CLK = flash_size = atol(optarg);
+        break;
       case 'D':
-	DRAM_SIZE = dram_size = atol(optarg);
+        DRAM_SIZE = dram_size = atol(optarg);
         DRAM_SIZE_FC_KLRU = dram_size = atol(optarg);
-	DRAM_SIZE_FC_KLRU_CLK = dram_size = atol(optarg);
-	break;
+        DRAM_SIZE_FC_KLRU_CLK = dram_size = atol(optarg);
+        break;
       case 'K':
-	K_LRU = atol(optarg);
-	break;
+        K_LRU = atol(optarg);
+        break;
       case 'L':
-	KLRU_QUEUE_SIZE = atol(optarg);
-	break;	
+        KLRU_QUEUE_SIZE = atol(optarg);
+        break;  
       case 'n':
         num_sections =  atol(optarg);
         break;
@@ -379,31 +368,35 @@ int main(int argc, char *argv[]) {
         num_dsections = atol(optarg);
         break;
       case 'k':
-	K = atof(optarg);
-	break;
+        K = atof(optarg);
+        break;
       case 'H':
-	L_FC = atol(optarg);
-	break;
+        L_FC = atol(optarg);
+        break;
       case 't':
-	threshold = atof(optarg);
-	break;
+        threshold = atof(optarg);
+        break;
       case 'C':
-	CLOCK_MAX_VALUE = atol(optarg);
-	CLOCK_MAX_VALUE_KLRU = atol(optarg);
-	break;	
+        CLOCK_MAX_VALUE = atol(optarg);
+        CLOCK_MAX_VALUE_KLRU = atol(optarg);
+        break;
     }
   }
 
   assert(apps.size() >= app_steal_sizes.size());
 
-  //assert(apps.size() == 1);
-
-  if (policy_type == FLASHCACHE || policy_type == FLASHCACHELRUK || policy_type == FLASHCACHELRUKCLK  || policy_type == VICTIMCACHE || policy_type == RIPQ || policy_type == RIPQ_SHIELD) {
-	global_mem = DRAM_SIZE + FLASH_SIZE;
+  if (policy_type == FLASHCACHE ||
+      policy_type == FLASHCACHELRUK ||
+      policy_type == FLASHCACHELRUKCLK ||
+      policy_type == VICTIMCACHE ||
+      policy_type == RIPQ ||
+      policy_type == RIPQ_SHIELD)
+  {
+    global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 
   // build a stats struct with basic info relevant to every policy.
-  stats sts{policy_names[policy_type], apps, global_mem};
+  stats sts{policy_names[policy_type], &apps, global_mem};
 
   //printf("APPID: %lu\n", appid);
  
@@ -420,8 +413,8 @@ int main(int argc, char *argv[]) {
       policy.reset(new lru(sts));
       break;
     case FLASHCACHE :
-	policy.reset(new FlashCache(sts));
-	break;
+      policy.reset(new FlashCache(sts));
+      break;
     case FLASHCACHELRUK :
         policy.reset(new FlashCacheLruk(sts));
         break;
@@ -429,17 +422,17 @@ int main(int argc, char *argv[]) {
         policy.reset(new FlashCacheLrukClk(sts));
         break;
     case VICTIMCACHE :
-	policy.reset(new VictimCache(sts));
-	break;
+        policy.reset(new VictimCache(sts));
+        break;
     case LRUK :
-	policy.reset(new Lruk(sts));
-	break;
+        policy.reset(new Lruk(sts));
+        break;
     case CLOCK :
-	policy.reset(new Clock(sts));
-	break;
+        policy.reset(new Clock(sts));
+        break;
     case SEGMENT_UTIL:
-	policy.reset(new SegmentUtil(sts));
-	break;
+        policy.reset(new SegmentUtil(sts));
+        break;
     case SLAB :
       if (memcachier_classes) {
         sts.gfactor = 2.0;
@@ -524,7 +517,8 @@ int main(int argc, char *argv[]) {
       sts.dram_size = dram_size;
       sts.num_sections = num_sections;
       sts.num_dsections = num_dsections;
-      policy.reset(new ripq_shield(sts, block_size, num_sections, dram_size, num_dsections, flash_size));
+      policy.reset(new ripq_shield(sts, block_size, num_sections,
+                                   dram_size, num_dsections, flash_size));
       break;
     case RAMSHIELD:
       sts.threshold = threshold;
@@ -613,11 +607,18 @@ int main(int argc, char *argv[]) {
 
     // Only process requests for specified app, of type GET,
     // and values of size > 0, after time 'hit_start_time'.
-    if ((r.type != request::GET) ||
-        std::find(std::begin(apps),
-                  std::end(apps), r.appid) == std::end(apps) ||
-        (r.val_sz <= 0))
-    {
+    if (r.type != request::GET)
+      continue;
+
+    if (r.val_sz <= 0)
+      continue;
+
+    const bool in_apps =
+      std::find(std::begin(apps), std::end(apps), r.appid) != std::end(apps);
+
+    if (all_apps && !in_apps) {
+      apps.insert(r.appid);
+    } else if (!in_apps) {
       continue;
     }
 
@@ -628,7 +629,7 @@ int main(int argc, char *argv[]) {
   auto stop = hrc::now();
 
   // Log curves for shadowlru, shadowslab, and partslab.
-  if(policy_type == 0 || policy_type == 4 || policy_type == 5)
+  if (policy_type == 0 || policy_type == 4 || policy_type == 5)
     policy->log_curves();
  
   // Dump stats for all policies. 

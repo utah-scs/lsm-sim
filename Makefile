@@ -4,12 +4,13 @@ CXXFLAGS := -std=c++14 -Wall -g -pedantic-errors -Werror -O3 \
 
 LDFLAGS := -lmemcached
 
+HEADERS := $(wildcard src/*.h)
 SRCS := $(wildcard src/*.cpp)
 OBJS := $(patsubst src/%.cpp, src/%.o, $(SRCS))
 
 all: lsm-sim
 
-%.o : src/%.cpp $(wildcard src/*.h)
+%.o: src/%.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $<
 
 lsm-sim: $(OBJS)

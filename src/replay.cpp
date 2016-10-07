@@ -88,9 +88,9 @@ size_t replay::proc(const request *r, bool warmup) {
     return 1;
   }
 
-   if (stat.apps.empty())
-    stat.apps.insert(r->appid);
-  assert(stat.apps.count(r->appid) == 1);
+   if (stat.apps->empty())
+    stat.apps->insert(r->appid);
+  assert(stat.apps->count(r->appid) == 1);
 
   if (!warmup)
     ++stat.accesses;

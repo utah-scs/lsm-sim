@@ -156,9 +156,6 @@ size_t ripq::proc(const request *r, bool warmup) {
 
   assert(r->size() > 0);
 
-  if (stat.apps.empty())
-    stat.apps.insert(r->appid);
-  
   this->warmup = warmup;
   if (!warmup)
     ++stat.accesses;
