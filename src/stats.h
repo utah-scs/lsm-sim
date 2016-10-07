@@ -21,7 +21,7 @@ struct stats {
    * #lsc_multi track application request separately and tune eviction
    * for each separation application.
    */
-  std::set<uint32_t> apps;
+  std::set<uint32_t>* apps;
 
   /**
    * The total amount of data that can be stored in the cache. Policies count
@@ -121,8 +121,11 @@ struct stats {
   // For ripq and ripq_shield, size of Flash cache (excluding active blocks).
   size_t flash_size;
 
+  // Threshold for the block algorithm
+  double threshold;
+
   stats(const std::string& policy, 
-        const std::set<uint32_t>& apps, 
+        std::set<uint32_t>* apps, 
         size_t global_mem)
     : policy{policy}
     , apps{apps}
@@ -150,6 +153,7 @@ struct stats {
     , flash_bytes_written{}
     , dram_size{}
     , flash_size{}
+    , threshold{}
   {}
 
   /// Return the ratio of access that resulted in a cache hit.
@@ -160,7 +164,7 @@ struct stats {
 
   void dump(std::ofstream& out) const {
       std::string appids{};
-      for (const auto& app : apps)
+      for (const auto& app : *apps)
         appids += std::to_string(app) + ",";
       appids = appids.substr(0, appids.length() - 1);
 
@@ -187,6 +191,7 @@ struct stats {
              "flash_bytes_written "
              "dram_size "
              "flash_size "
+             "threshold "
           << std::endl;
       out << appids << " "
           << policy << " "
@@ -212,9 +217,14 @@ struct stats {
           << flash_bytes_written << " "
           << dram_size << " "
           << flash_size << " "
+          << threshold << " "
           << std::endl;
   }
   
+  stats(const stats&) = default;
+  stats& operator=(const stats&) = default;
+  stats& operator=(stats&&) = default;
+  stats(stats&&) = default;
 };
 
 #endif

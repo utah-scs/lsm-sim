@@ -134,7 +134,7 @@ void shadowslab::log_curves() {
   
   std::string app_ids = "";
 
-  for(auto &a : stat.apps)
+  for(auto &a : *stat.apps)
     app_ids += std::to_string(a); 
 
   std::string filename_suffix{"-app" + app_ids

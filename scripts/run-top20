@@ -7,16 +7,7 @@ source scripts/top-apps
 apps="$top20"
 source scripts/app-sizes
 
-./lsm-sim \
-  -a $app_lst \
-  -p multislab \
-  -M \
-  -s $total_size \
-  -S $((1024 * 1024)) \
-  -f ./data/m.cap.out \
-      2> err-top20-multislab.log \
-      > top20-multislab.data
-
+# Run Memshare for several min mems.
 for private in 0 25 50 75 100; do
   ./lsm-sim \
     -a $app_lst \
@@ -26,10 +17,51 @@ for private in 0 25 50 75 100; do
     -s $total_size \
     -S $((1024 * 1024)) \
     -f ./data/m.cap.out \
-        2> err-top20-managed-$private-private.data \
-        > top20-managed-$private-private.data
+        2> err-top20-managed-$private-private.log \
+        > top20-managed-$private-private.data &
+  pids="$pids $!"
+  wait_too_many
 done
+
+# Run Memcachier with all apps greedily sharing space.
+./lsm-sim \
+  -a $app_lst \
+  -p multislab \
+  -M \
+  -s $total_size \
+  -S $((1024 * 1024)) \
+  -f ./data/m.cap.out \
+      2> err-top20-managed-multislab.log \
+      > temp-multislab-greedy.data
+sed 's/multislab/slab-greedy/g' \
+  < temp-multislab-greedy.data \
+  > top20-managed-multislab-greedy.data
+rm temp-multislab-greedy.data
+
+# Run each app in isolation with memcachier's slab setup.
+for app in $apps; do
+  ./lsm-sim \
+    -a $app \
+    -p multislab \
+    -M \
+    -s ${memcachier_app_size[$app]} \
+    -S $((1024 * 1024)) \
+    -f ./data/app${app} \
+        2> err-top20-multislab-static-app$app.log \
+        > temp-multislab-static-app$app.data &
+  pids="$pids $!"
+  wait_too_many
+done 
+wait $pids
+
+for app in $apps; do
+  sed 's/multislab/slab-static/g' \
+    < temp-multislab-static-app$app.data \
+    > top20-managed-multislab-static-app$app.data
+  rm temp-multislab-static-app$app.data
+done 
 
 cat top20-managed-*.data > t
 awk '/^time/ { if (head == 0) { print $0; head = 1; }; next; } { print $0; }' < t > top20-managed.data
 rm t top20-managed-*.data
+

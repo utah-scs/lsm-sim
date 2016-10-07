@@ -23,7 +23,7 @@ memcachier_app_size[227]=20237184
 memcachier_app_size[53]=11044096
 
 pids=""
-maxprocs=8
+maxprocs=4
 
 wait_too_many() {
   cnt=( $pids )

@@ -104,9 +104,9 @@ size_t slab_multi::proc(const request *r, bool warmup) {
     last_dump += 3600.0;
   }
 
-  if (stat.apps.empty())
-    stat.apps.insert (r->appid);
-  assert(stat.apps.count(r->appid) == 1);
+  if (stat.apps->empty())
+    stat.apps->insert(r->appid);
+  assert(stat.apps->count(r->appid) == 1);
 
   auto appit = apps.find(r->appid);
   assert(appit != apps.end());

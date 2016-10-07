@@ -361,9 +361,9 @@ void FlashCacheLruk::dramAddandReorder(std::vector<uint32_t>& objects,
 }
 
 void FlashCacheLruk::dump_stats(void) {
-	assert(stat.apps.size() == 1);
+	assert(stat.apps->size() == 1);
 	uint32_t appId = 0;
-	for(const auto& app : stat.apps) {appId = app;}
+	for(const auto& app : *stat.apps) {appId = app;}
 	std::string filename{stat.policy
 #ifdef RELATIVE
 			+ "-relative" + std::to_string(P_FC_KLRU)

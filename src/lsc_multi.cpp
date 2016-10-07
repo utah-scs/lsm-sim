@@ -161,10 +161,6 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
     last_dump += 3600.0;
   }
 
-  if (stat.apps.empty())
-    stat.apps.insert (r->appid);
-  assert(stat.apps.count(r->appid) == 1);
-
   auto appit = apps.find(r->appid);
   assert(appit != apps.end());
   application& app = appit->second;
@@ -227,7 +223,7 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
   app.bytes_in_use += r->size();
 
   std::vector<size_t> appids{};
-  for (size_t appid : stat.apps)
+  for (size_t appid : *stat.apps)
     appids.push_back(appid);
 
   // Check to see if the access would have hit in the app's shadow Q.

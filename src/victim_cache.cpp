@@ -85,11 +85,16 @@ void VictimCache::insertToDram(FlashCache::Item& item, bool warmup) {
 }
 
 void VictimCache::dump_stats(void) {
-	assert(stat.apps.size() == 1);
-	uint32_t appId = 0;
-	for(const auto& app : stat.apps) {appId = app;}
+  std::string appids{};
+  if (all_apps) {
+    appids = "-all,";
+  } else {
+    for (const auto& app : *stat.apps)
+      appids += std::to_string(app) + ",";
+  }
+  appids = appids.substr(0, appids.length() - 1);
 	std::string filename{stat.policy
-			+ "-app" + std::to_string(appId)
+			+ "-app" + appids
 			+ "-flash_mem" + std::to_string(FLASH_SIZE)
 			+ "-dram_mem" + std::to_string(DRAM_SIZE)};
 	std::ofstream out{filename};
