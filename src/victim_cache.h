@@ -20,6 +20,8 @@ private:
 	size_t dramSize;
 	size_t flashSize;
 
+	size_t missed_bytes;
+
 	void insertToDram(FlashCache::Item& item, bool warmup);	
 public:
 	VictimCache(stats stat);

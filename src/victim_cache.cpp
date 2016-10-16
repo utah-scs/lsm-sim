@@ -6,7 +6,8 @@ VictimCache::VictimCache(stats stat) :
         flash(),
 	allObjects(),
 	dramSize(0),
-	flashSize(0)
+	flashSize(0),
+	missed_bytes(0)
 {
 }
 
@@ -53,6 +54,7 @@ size_t VictimCache::proc(const request* r, bool warmup) {
 	assert(((unsigned int) newItem.size) <= DRAM_SIZE);
 	insertToDram(newItem, warmup);
 	allObjects[newItem.kId] = newItem; 
+	if (!warmup) {missed_bytes += newItem.size;}
 	return PROC_MISS;
 }
 
@@ -107,4 +109,5 @@ void VictimCache::dump_stats(void) {
 	out << "hit rate " << double(stat.hits) / stat.accesses << std::endl;
 	out << "#writes to flash " << stat.writes_flash << std::endl;
 	out << "#bytes written to flash " << stat.flash_bytes_written << std::endl;
+	out << "#missed bytes written to dram " << missed_bytes << std::endl;
 }
