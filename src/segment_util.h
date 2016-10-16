@@ -10,7 +10,7 @@
 
 static const size_t top_data_bound = 1024u * 1024u * 1024u;
 static const size_t segment_util = 512 * 1024u * 1024u;
-static const size_t page_size = 128; 
+static const size_t page_size = 1024; 
 static const size_t number_of_pages = segment_util / page_size;
 static const size_t num_hash_functions = 8;
 static const size_t bits_for_page = log2(number_of_pages);
@@ -44,6 +44,8 @@ private:
 
 	size_t dataSize;
 	size_t bytesCached;
+	size_t numHash;
+	size_t numInserted;
 
 	static bool compareSizes(const SegmentUtil::SUItem& item1, 
 			const SegmentUtil::SUItem& item2);

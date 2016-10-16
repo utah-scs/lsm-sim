@@ -6,7 +6,9 @@ SegmentUtil::SegmentUtil(stats stat) :	policy(stat),
 					objects(), 
 					allObjects(),
 					dataSize(0), 
-					bytesCached(0)
+					bytesCached(0),
+					numHash(0),
+					numInserted(0)
 {
 	assert(exp2(bits_for_page) == number_of_pages); 
 	assert(segment_util % page_size == 0); 
@@ -33,6 +35,8 @@ size_t SegmentUtil::proc(const request *r, bool woormup) {
 					item.inserted = true;
 					pageSizes[pageId] += item.size;
 					bytesCached += item.size;
+					numHash += (j + 1);
+					numInserted++;
 					break;
 				}
 				assert(item.size > head);
@@ -53,6 +57,8 @@ size_t SegmentUtil::proc(const request *r, bool woormup) {
 				if (pageSizes[pageId + numPages + 1] + tail > page_size) { continue; }
 				item.inserted = true;
 				bytesCached += item.size;
+				numHash += (j + 1);
+				numInserted++;
 				pageSizes[pageId] += head;
 				for (size_t i = 1; i <= numPages; i++) {
 					pageSizes[pageId + i] += page_size;
@@ -100,13 +106,14 @@ void SegmentUtil::dump_stats(void) {
 	out << "segment size: " << segment_util << std::endl;
 	out << "page size: " << page_size << std::endl;
 	out << "#hash functions: " << num_hash_functions << std::endl;
+	out << "avg hash function used: " << (double) numHash/ ((double) numInserted) << std::endl;
 	out << "bits per page: " << bits_for_page << std::endl;
 	out << "total bytes cached: " << bytesCached << std::endl;
 	out << "util: " << ((double) bytesCached) / segment_util << std::endl;
-	out << "key,size,inserted" << std::endl;
-	for (auto& item : objects) {
-		out << item.kId << "," << item.size << "," << item.inserted << std::endl;
-	}
+	//out << "key,size,inserted" << std::endl;
+	// for (auto& item : objects) {
+	//	out << item.kId << "," << item.size << "," << item.inserted << std::endl;
+	//}
 }
 
 inline static uint64_t rotl64 ( uint64_t x, int8_t r ) {
