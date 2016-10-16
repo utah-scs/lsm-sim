@@ -206,6 +206,9 @@ size_t ripq::proc(const request *r, bool warmup) {
     //MISS
   }
   stat.bytes_cached += (uint32_t)r->size();
+  if (!warmup) {
+      stat.missed_bytes += (size_t)r->size();
+  }
 
   add(r, num_sections-1);
   return PROC_MISS;

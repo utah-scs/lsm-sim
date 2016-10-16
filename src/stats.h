@@ -42,10 +42,12 @@ struct stats {
   /// Total size of all keys and values stored in the cache.
   size_t bytes_cached;
 
+  // Total size of all new items that were stored in the cache (missed get requests)
+  size_t missed_bytes;
+
   /// Number size of all keys and values evicted by the cache.
   size_t evicted_bytes;
-
-
+  
   /// Number of key/value pairs evicted from the cache.
   size_t evicted_items;
 
@@ -134,6 +136,7 @@ struct stats {
     , accesses{}
     , hits{}
     , bytes_cached{}
+    , missed_bytes{}
     , evicted_bytes{}
     , evicted_items{}
     , segment_size{}
@@ -180,6 +183,7 @@ struct stats {
              "hits accesses "
              "hit_rate "
              "bytes_cached "
+             "missed_bytes " 
              "evicted_bytes "
              "evicted_items "
              "cleaned_generated_segs "
@@ -206,6 +210,7 @@ struct stats {
           << accesses << " "
           << double(hits) / accesses << " "
           << bytes_cached << " "
+          << missed_bytes << " "
           << evicted_bytes << " "
           << evicted_items << " "
           << cleaned_generated_segs << " "
