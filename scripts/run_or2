@@ -59,10 +59,10 @@ for app in $apps; do
 #    -a $app \
 #    -f ./data/app${app}
   ./lsm-sim \
-    -p ramshield \
+    -p flashshield \
     -D 134217728 \
     -F 939524096 \
-    -f /home/haimovichor/or_lsm_sim/data
+    -f /datay/m.cap.out \
         2> err-osdi-multislab-static-app$app.log &
   pids="$pids $!"
   wait_too_many
