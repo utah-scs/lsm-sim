@@ -24,7 +24,7 @@ all: lsm-sim
 	$(CXX) $(CXXFLAGS) -c $<
 
 lsm-sim: $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $^
+	$(CXX) $(LDFLAGS) -o $@ -lpython2.7 $^
 
 clean:
 	-rm lsm-sim src/*.o

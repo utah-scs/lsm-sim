@@ -4,7 +4,7 @@ PASSWORD=$1
 
 #apps="5 19 20"
 #apps="2 7 11 13 18 19 20 23 29 31 59 94 227 53 1 5 10" 
-apps="1 20 19 18 3"
+apps="53"
 #apps="1 5 10 94 227 53"
 declare -A cashflashlruk_app_size
 cashflashlruk_app_size[1]=701423104
@@ -56,12 +56,13 @@ for app in $apps; do
 #flashcachelrukclk\
 #    -D $dram_size \
 #    -F $flash_size \
+#    -a $app \
+#    -f ./data/app${app}
   ./lsm-sim \
-    -a $app \
     -p ramshield \
-    -D $dram_size \
-    -F $flash_size \
-    -f ./data/app${app} \
+    -D 134217728 \
+    -F 939524096 \
+    -f /home/haimovichor/or_lsm_sim/data
         2> err-osdi-multislab-static-app$app.log &
   pids="$pids $!"
   wait_too_many

@@ -37,13 +37,14 @@
 #include "ram_shield.h"
 #include "ram_shield_fifo.h"
 #include "ram_shield_sel.h"
+#include "flash_shield.h"
 #include "flash_cache_lruk_clock.h"
 #include "replay.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[22] = { "shadowlru"
+const char* policy_names[23] = { "shadowlru"
                                , "fifo"
                                , "lru"
                                , "slab"
@@ -65,6 +66,7 @@ const char* policy_names[22] = { "shadowlru"
                                , "ramshield_fifo"
                                , "ramshield_sel"
                                , "replay"
+                               , "flashshield"
                               };
 
 enum pol_type { 
@@ -90,6 +92,7 @@ enum pol_type {
   , RAMSHIELD_FIFO
   , RAMSHIELD_SEL
   , REPLAY
+  , FLASHSHIELD
   };
 
 std::set<uint32_t> apps{}; //< apps to consider
@@ -252,6 +255,8 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(20);
         else if (std::string(optarg) == "replay")
           policy_type = pol_type(21);
+        else if (std::string(optarg) == "flashshield")
+          policy_type = pol_type(22);
         else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -349,12 +354,14 @@ int main(int argc, char *argv[]) {
         FLASH_SIZE = flash_size = atol(optarg);
         FLASH_SIZE_FC_KLRU = flash_size = atol(optarg);
         FLASH_SIZE_FC_KLRU_CLK = flash_size = atol(optarg);
+        FLASH_SHILD_FLASH_SIZE = flash_size = atol(optarg);
         break;
       case 'D':
         DRAM_SIZE = dram_size = atol(optarg);
         DRAM_SIZE_FC_KLRU = dram_size = atol(optarg);
         DRAM_SIZE_FC_KLRU_CLK = dram_size = atol(optarg);
-        break;
+        FLASH_SHILD_DRAM_SIZE = dram_size = atol(optarg);
+	break;
       case 'K':
         K_LRU = atol(optarg);
         break;
@@ -385,7 +392,8 @@ int main(int argc, char *argv[]) {
 
   assert(apps.size() >= app_steal_sizes.size());
 
-  if (policy_type == FLASHCACHE ||
+  if (policy_type == FLASHSHIELD ||
+      policy_type == FLASHCACHE ||
       policy_type == FLASHCACHELRUK ||
       policy_type == FLASHCACHELRUKCLK ||
       policy_type == VICTIMCACHE ||
@@ -547,6 +555,13 @@ int main(int argc, char *argv[]) {
       policy.reset(new replay(sts));
 #endif
       break;
+    case FLASHSHIELD:
+        FLASH_SHILD_APP_NUMBER = *std::begin(apps);
+        sts.threshold = threshold;
+        sts.flash_size = flash_size;
+        sts.dram_size = dram_size;
+        policy.reset(new flashshield(sts));
+        break;
   }
 
    if (!policy) {
