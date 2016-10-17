@@ -19,7 +19,7 @@ double NumberOfSetsOperations=0;
 double SizeOfSetsOperations=0;
 
 double Min_Block_Fill_Threshold=0.95;
-double FLASH_SHILD_BLOCK_SIZE = 512*1024; //8*1024*1024;
+double FLASH_SHILD_BLOCK_SIZE = 8*1024*1024;
 double START_TIME = 0;
 double END_TIME = 82799;
 double TIME_TO_RUN_SVM = 86400;

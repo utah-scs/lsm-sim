@@ -45,7 +45,6 @@ wait_too_many() {
     pids=""
   fi
 
-  rm my_file.csv
 }
 
 for app in $apps; do
