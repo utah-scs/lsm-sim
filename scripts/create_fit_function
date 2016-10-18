@@ -30,6 +30,7 @@ cashflashlruk_app_size[53]=11044096
 app_lst=$(echo $apps | sed "s/ /,/g")
 
 finish() {
+echo "finish"
 #  $PASSWORD | sudo -S pkill lsm-sim
 }
 trap finish EXIT

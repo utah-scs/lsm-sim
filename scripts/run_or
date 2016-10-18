@@ -31,6 +31,7 @@ app_lst=$(echo $apps | sed "s/ /,/g")
 
 finish() {
 #  $PASSWORD | sudo -S pkill lsm-sim
+echo "finished"
 }
 trap finish EXIT
 
