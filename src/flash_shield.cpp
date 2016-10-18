@@ -13,7 +13,7 @@ size_t FLASH_SHILD_KLRU_QUEUE_SIZE = FLASH_SHILD_DRAM_SIZE / FLASH_SHILD_K_LRU_Q
 size_t FLASH_SHILD_FLASH_SIZE = 51209600;
 size_t FLASH_SHILD_CLOCK_MAX_VALUE = 7;
 int FLASH_SHILD_MIN_QUEUE_TO_MOVE_TO_FLASH = 1;
-double AmountOfSizeToGoOverWhileAllocatingBlock = 16777216;
+
 uint32_t FLASH_SHILD_APP_NUMBER =0;
 bool DidntFindMFU = false;
 double NumberOfSetsOperations=0;
@@ -21,6 +21,7 @@ double SizeOfSetsOperations=0;
 
 double Min_Block_Fill_Threshold=0.95;
 double FLASH_SHILD_BLOCK_SIZE = 8*1024*1024;
+double AmountOfSizeToGoOverWhileAllocatingBlock = 2*FLASH_SHILD_BLOCK_SIZE;
 double START_TIME = 0;
 double END_TIME = 82799;
 double TIME_TO_RUN_SVM = 86400;
@@ -171,7 +172,7 @@ size_t flashshield::proc(const request* r, bool warmup) {
                         item.clockIt = Clkit;
                     }
                     
-                    while (dramSize + flashSize > FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold)
+                    while (((double)(dramSize + flashSize) > (double)(FLASH_SHILD_DRAM_SIZE + (double)FLASH_SHILD_FLASH_SIZE*stat.threshold)))
                     {
                         uint32_t globalLruKid = ClockFindItemToErase(r);
                         flashshield::RItem& victimItem = allObjects[globalLruKid];
@@ -243,7 +244,7 @@ size_t flashshield::proc(const request* r, bool warmup) {
     
     while (true)
     {
-        if ((newItem.size + dramSize <= FLASH_SHILD_DRAM_SIZE) && (dramSize + flashSize + newItem.size <= FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold))
+        if ((newItem.size + dramSize <= FLASH_SHILD_DRAM_SIZE) && ((double)(dramSize + flashSize + newItem.size) <= (double)(FLASH_SHILD_DRAM_SIZE + (double)FLASH_SHILD_FLASH_SIZE*stat.threshold)))
         {
             allObjects[newItem.kId] = newItem;
             
@@ -259,8 +260,8 @@ size_t flashshield::proc(const request* r, bool warmup) {
         assert(numBlocks <= maxBlocks);
         
         //Not enough space in DRAM, check flash
-        if ((dramSize + flashSize + newItem.size) >= FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold)
-        {/*(dramSize + flashSize + newItem.size) >= DRAM_SIZE + FLASH_SIZE*stat.threshold)*/
+        if ((double)(dramSize + flashSize + newItem.size) >= (double)(FLASH_SHILD_DRAM_SIZE + (double)FLASH_SHILD_FLASH_SIZE*stat.threshold))
+        {
          //If not enough space both in dram and in flash - evict item by global LRU (Clock)
             uint32_t globalLruKid = ClockFindItemToErase(r);
             flashshield::RItem& victimItem = allObjects[globalLruKid];
@@ -430,7 +431,7 @@ void flashshield::allocate_flash_block(bool warmup,const request *r)
                                 SumOfMruObjects +=tmpItem.size;
                                 AmountOfSVM_1--;
                                 kLruAmountOfSVM[i]--;
-                                if (SumOfMruObjects >= (double)FLASH_SHILD_BLOCK_SIZE * Min_Block_Fill_Threshold)
+                                if ((double)SumOfMruObjects >= (double)FLASH_SHILD_BLOCK_SIZE * Min_Block_Fill_Threshold)
                                 {//We found enough items to move to flash
                                     found = true;       /* queue's For */
                                     FoundMfu = true;    /* items in queue's For */
@@ -602,8 +603,6 @@ void flashshield::dramAddandReorder(
     {
         while (sum + kLruSizes[k] > FLASH_SHILD_KLRU_QUEUE_SIZE)
         {
-            if (dram[k].size() <= 0)
-                printf("%d",(uint32_t)k);
             assert(kLruSizes[k] > 0);
             assert(dram[k].size() > 0);
             
@@ -721,6 +720,9 @@ void flashshield::ColectItemDataAndPredict(const request *r, bool warmup, bool P
             PyObject* args = PyTuple_Pack(6,PyFloat_FromDouble(dramitem.FirstHitTimePeriod),PyFloat_FromDouble(dramitem.AvgTimeBetweenhits),PyFloat_FromDouble(dramitem.TimeBetweenLastAction),PyFloat_FromDouble(dramitem.MaxTimeBetweenHits),PyFloat_FromDouble(dramitem.AmountOfHitsSinceArrivel),PyInt_FromLong((long)FLASH_SHILD_APP_NUMBER));
             PyObject* myResult = PyObject_CallObject(SVMPredictFunction, args);
             
+
+            
+            
             //Predict the class labele for test data sample
             dramitem.SVMResult = PyFloat_AsDouble(myResult);
             if (dramitem.SVMResult)
@@ -728,6 +730,9 @@ void flashshield::ColectItemDataAndPredict(const request *r, bool warmup, bool P
                 kLruAmountOfSVM[item.queueNumber]++;
                 AmountOfSVM_1++;
             }
+            
+            Py_XDECREF(args);
+            Py_XDECREF(myResult);
         }
         dramitem.LastAction = r->time;
     }
