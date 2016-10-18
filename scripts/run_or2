@@ -59,8 +59,8 @@ for app in $apps; do
 #    -f ./data/app${app}
   ./lsm-sim \
     -p flashshield \
-    -D 134217728 \
-    -F 939524096 \
+    -D 67108864 \
+    -F 469762048 \
     -f /datay/m.cap.out \
         2> err-osdi-multislab-static-app$app.log &
   pids="$pids $!"
