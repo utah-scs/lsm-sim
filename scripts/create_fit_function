@@ -1,0 +1,69 @@
+#!/bin/bash
+
+TH=$1
+
+#apps="5 19 20"
+#apps="2 7 11 13 18 19 20 23 29 31 59 94 227 53 1 5 10" 
+apps="53"
+#apps="1 5 10 94 227 53"
+declare -A cashflashlruk_app_size
+cashflashlruk_app_size[1]=701423104
+cashflashlruk_app_size[2]=118577408
+cashflashlruk_app_size[3]=19450368
+cashflashlruk_app_size[5]=35743872
+cashflashlruk_app_size[6]=7108608
+cashflashlruk_app_size[7]=77842880
+cashflashlruk_app_size[8]=10485760
+cashflashlruk_app_size[10]=684898304
+cashflashlruk_app_size[11]=7829952
+cashflashlruk_app_size[13]=36647040
+cashflashlruk_app_size[18]=6313216
+cashflashlruk_app_size[19]=51209600
+cashflashlruk_app_size[20]=70953344
+cashflashlruk_app_size[23]=4542897472
+cashflashlruk_app_size[29]=187378624
+cashflashlruk_app_size[31]=1409535488
+cashflashlruk_app_size[59]=1713664
+cashflashlruk_app_size[94]=23238784
+cashflashlruk_app_size[227]=20237184
+cashflashlruk_app_size[53]=11044096
+app_lst=$(echo $apps | sed "s/ /,/g")
+
+finish() {
+  $PASSWORD | sudo -S pkill lsm-sim
+}
+trap finish EXIT
+
+pids=""
+maxprocs=1
+
+wait_too_many() {
+  cnt=( $pids )
+  cnt="${#cnt[@]}"
+  if [[ "$cnt" == "$maxprocs" ]]; then
+    wait $pids
+    pids=""
+  fi
+}
+
+for app in $apps; do
+
+  dram_size=${cashflashlruk_app_size[$app]}
+  dram_size=$(($dram_size/4))
+  flash_size=$(($dram_size*7))
+#flashcachelrukclk\
+#    -D $dram_size \
+#    -F $flash_size \
+  ./lsm-sim \
+    -p flashcachelrukclkmachinelearning \
+    -D  67108864 \
+    -F  469,762,048 \
+    -f /datay/m.cap.out \
+    -A $TH \
+        2> err-osdi-multislab-static-app$app.log &
+  pids="$pids $!"
+  wait_too_many
+done 
+
+wait $pids
+

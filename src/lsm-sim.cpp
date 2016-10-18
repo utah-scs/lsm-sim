@@ -40,11 +40,12 @@
 #include "flash_shield.h"
 #include "flash_cache_lruk_clock.h"
 #include "replay.h"
+#include "flash_cache_lruk_clock_machinelearning.h"
 
 namespace ch = std::chrono;
 typedef ch::high_resolution_clock hrc;
 
-const char* policy_names[23] = { "shadowlru"
+const char* policy_names[24] = { "shadowlru"
                                , "fifo"
                                , "lru"
                                , "slab"
@@ -67,6 +68,7 @@ const char* policy_names[23] = { "shadowlru"
                                , "ramshield_sel"
                                , "replay"
                                , "flashshield"
+							   , "flashcachelrukclkmachinelearning"
                               };
 
 enum pol_type { 
@@ -93,6 +95,7 @@ enum pol_type {
   , RAMSHIELD_SEL
   , REPLAY
   , FLASHSHIELD
+  , FLASHCACHELRUKCLKMACHINELEARNING
   };
 
 std::set<uint32_t> apps{}; //< apps to consider
@@ -124,6 +127,7 @@ double priv_mem_percentage =0.25;
 bool use_percentage = false; // specify priv mem %
 size_t flash_size = 0;
 size_t num_sections = 0;
+double USER_SVM_TH=1;
 
 /// Amount of dram memory allocated for ripq_shield active_blocks.
 size_t dram_size = 0;
@@ -203,7 +207,7 @@ int main(int argc, char *argv[]) {
   std::vector<int32_t> ordered_apps{};
   while ((c = getopt(argc, argv,
                      "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:t:"
-                     "m:d:F:n:D:L:K:k:C:c:")) != -1)
+                     "m:d:F:n:D:L:K:k:C:c:A:")) != -1)
   {
     switch (c)
     {
@@ -257,6 +261,8 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(21);
         else if (std::string(optarg) == "flashshield")
           policy_type = pol_type(22);
+		else if (std::string(optarg) == "flashcachelrukclkmachinelearning")
+          policy_type = pol_type(23);
         else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -355,12 +361,14 @@ int main(int argc, char *argv[]) {
         FLASH_SIZE_FC_KLRU = flash_size = atol(optarg);
         FLASH_SIZE_FC_KLRU_CLK = flash_size = atol(optarg);
         FLASH_SHILD_FLASH_SIZE = flash_size = atol(optarg);
+		FLASH_SIZE_FC_KLRU_CLK_ML = flash_size = atol(optarg);
         break;
       case 'D':
         DRAM_SIZE = dram_size = atol(optarg);
         DRAM_SIZE_FC_KLRU = dram_size = atol(optarg);
         DRAM_SIZE_FC_KLRU_CLK = dram_size = atol(optarg);
         FLASH_SHILD_DRAM_SIZE = dram_size = atol(optarg);
+		DRAM_SIZE_FC_KLRU_CLK_ML = dram_size = atol(optarg);
 	break;
       case 'K':
         K_LRU = atol(optarg);
@@ -387,6 +395,10 @@ int main(int argc, char *argv[]) {
         CLOCK_MAX_VALUE = atol(optarg);
         CLOCK_MAX_VALUE_KLRU = atol(optarg);
         break;
+      case 'A':
+        USER_SVM_TH = atol(optarg);
+
+        break;
     }
   }
 
@@ -398,6 +410,7 @@ int main(int argc, char *argv[]) {
       policy_type == FLASHCACHELRUKCLK ||
       policy_type == VICTIMCACHE ||
       policy_type == RIPQ ||
+	  policy_type == FLASHCACHELRUKCLKMACHINELEARNING ||
       policy_type == RIPQ_SHIELD)
   {
     global_mem = DRAM_SIZE + FLASH_SIZE;
@@ -428,6 +441,11 @@ int main(int argc, char *argv[]) {
         break;
     case FLASHCACHELRUKCLK :
         policy.reset(new FlashCacheLrukClk(sts));
+        break;
+    case FLASHCACHELRUKCLKMACHINELEARNING :
+        APP_NUMBER = USER_SVM_TH;
+        ML_SVM_TH = USER_SVM_TH;
+        policy.reset(new FlashCacheLrukClkMachineLearning(sts));
         break;
     case VICTIMCACHE :
         policy.reset(new VictimCache(sts));

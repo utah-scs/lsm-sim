@@ -18,12 +18,12 @@ from sklearn.externals import joblib
 clf = svm.LinearSVC(random_state=10)
 
 def FitFunction(App_number):
-    y=np.genfromtxt('my_file.csv',dtype={'names': ('kId','First_Hit_Time_period','Avg_Time_Between_Hits','Time_Between_Last_Hits','Max_Time_between_Hits','Amount_Of_Hits_Till_Arrival','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(6)).astype(np.float)
-    x=np.genfromtxt('my_file.csv',dtype={'names': ('kId','a','Avg_Time_Between_Hits','Time_Between_Last_Hits','Max_Time_between_Hits','Amount_Of_Hits_Till_Arrival','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(1)).astype(np.float)
-    t=np.genfromtxt('my_file.csv',dtype={'names': ('kId','First_Hit_Time_period','a','Max_Time_between_Hits','Amount_Of_Hits_Till_Arrival','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(2)).astype(np.float)
-    s=np.genfromtxt('my_file.csv',dtype={'names': ('kId','First_Hit_Time_period','Avg_Time_Between_Hits','Time_Between_Last_Hits','a','Amount_Of_Hits_Till_Arrival','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(3)).astype(np.float)
-    r=np.genfromtxt('my_file.csv',dtype={'names': ('kId','First_Hit_Time_period','Avg_Time_Between_Hits','Time_Between_Last_Hits','a','Amount_Of_Hits_Till_Arrival','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(4)).astype(np.float)
-    z=np.genfromtxt('my_file.csv',dtype={'names': ('kId','First_Hit_Time_period','Avg_Time_Between_Hits','Time_Between_Last_Hits','Max_Time_between_Hits','a','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(5)).astype(np.float)
+    y=np.genfromtxt('my_file' + str(App_number)  + '.csv',dtype={'names': ('kId','First_Hit_Time_period','Avg_Time_Between_Hits','Time_Between_Last_Hits','Max_Time_between_Hits','Amount_Of_Hits_Till_Arrival','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(6)).astype(np.float)
+    x=np.genfromtxt('my_file' + str(App_number) + '.csv',dtype={'names': ('kId','a','Avg_Time_Between_Hits','Time_Between_Last_Hits','Max_Time_between_Hits','Amount_Of_Hits_Till_Arrival','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(1)).astype(np.float)
+    t=np.genfromtxt('my_file' + str(App_number) + '.csv',dtype={'names': ('kId','First_Hit_Time_period','a','Max_Time_between_Hits','Amount_Of_Hits_Till_Arrival','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(2)).astype(np.float)
+    s=np.genfromtxt('my_file' + str(App_number) + '.csv',dtype={'names': ('kId','First_Hit_Time_period','Avg_Time_Between_Hits','Time_Between_Last_Hits','a','Amount_Of_Hits_Till_Arrival','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(3)).astype(np.float)
+    r=np.genfromtxt('my_file' + str(App_number) + '.csv',dtype={'names': ('kId','First_Hit_Time_period','Avg_Time_Between_Hits','Time_Between_Last_Hits','a','Amount_Of_Hits_Till_Arrival','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(4)).astype(np.float)
+    z=np.genfromtxt('my_file' + str(App_number) + '.csv',dtype={'names': ('kId','First_Hit_Time_period','Avg_Time_Between_Hits','Time_Between_Last_Hits','Max_Time_between_Hits','a','target'),'formats': ('i10','f8','f8','f8','f8','f8','f8')},delimiter=',',skiprows=1,usecols=(5)).astype(np.float)
     X=np.hstack((x.reshape(len(x), 1),t.reshape(len(t), 1),s.reshape(len(s), 1),r.reshape(len(r), 1),z.reshape(len(z), 1)))
     
     clf.fit(X.reshape(len(X),5),y)
