@@ -13,8 +13,9 @@ size_t FLASH_SHILD_KLRU_QUEUE_SIZE = FLASH_SHILD_DRAM_SIZE / FLASH_SHILD_K_LRU_Q
 size_t FLASH_SHILD_FLASH_SIZE = 51209600;
 size_t FLASH_SHILD_CLOCK_MAX_VALUE = 7;
 int FLASH_SHILD_MIN_QUEUE_TO_MOVE_TO_FLASH = 1;
+double AmountOfSizeToGoOverWhileAllocatingBlock = 16777216;
 uint32_t FLASH_SHILD_APP_NUMBER =0;
-
+bool DidntFindMFU = false;
 double NumberOfSetsOperations=0;
 double SizeOfSetsOperations=0;
 
@@ -87,7 +88,7 @@ size_t flashshield::proc(const request* r, bool warmup) {
     bool updateWrites = true;
     //double currTime = r->time;
     
-    assert(dramSize + flashSize <= DRAM_SIZE + FLASH_SIZE*stat.threshold);
+    assert(dramSize + flashSize <= FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold);
     auto searchRKId = allObjects.find(r->kid);
     if (searchRKId != allObjects.end()) {
         /*
@@ -170,7 +171,7 @@ size_t flashshield::proc(const request* r, bool warmup) {
                         item.clockIt = Clkit;
                     }
                     
-                    while (dramSize + flashSize > DRAM_SIZE + FLASH_SIZE*stat.threshold)
+                    while (dramSize + flashSize > FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold)
                     {
                         uint32_t globalLruKid = ClockFindItemToErase(r);
                         flashshield::RItem& victimItem = allObjects[globalLruKid];
@@ -178,12 +179,10 @@ size_t flashshield::proc(const request* r, bool warmup) {
                         evict_item(victimItem, warmup,r);
                     }
                     
-                    assert(dramSize + flashSize <= DRAM_SIZE + FLASH_SIZE*stat.threshold);
+                    assert(dramSize + flashSize <= FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold);
                 }
             }
             
-            //item.lastAccessInTrace = counter;
-            //item.last_accessed = currTime;
             //----------------------SVM-calculation-----------------------
             if (item.hasItem)
             {
@@ -239,12 +238,12 @@ size_t flashshield::proc(const request* r, bool warmup) {
     newItem.LastAction = r->time;
     
     assert(((unsigned int) newItem.size) <= FLASH_SHILD_KLRU_QUEUE_SIZE);
-    assert(dramSize + flashSize <= DRAM_SIZE + FLASH_SIZE*stat.threshold);
-    bool DidntFindMFU = false;
+    assert(dramSize + flashSize <= FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold);
+    DidntFindMFU = false;
     
     while (true)
     {
-        if ((newItem.size + dramSize <= DRAM_SIZE) && (dramSize + flashSize + newItem.size <= DRAM_SIZE + FLASH_SIZE*stat.threshold))
+        if ((newItem.size + dramSize <= FLASH_SHILD_DRAM_SIZE) && (dramSize + flashSize + newItem.size <= FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold))
         {
             allObjects[newItem.kId] = newItem;
             
@@ -257,99 +256,36 @@ size_t flashshield::proc(const request* r, bool warmup) {
             return PROC_MISS;
         }
         
-        //Not enough space in DRAM, check flash
         assert(numBlocks <= maxBlocks);
         
-        //Need to check that we have enough MRU Items to move to flash
-        //in order to insert the new Item to Dram
-
-        double SumOfMruObjects=0;
-        std::list<uint32_t>  MRUobjects;
-        bool FoundMfu = false;
-        /* every MRU item that being found need to add to the list
-            and check every time if we passed the amount needed. If does break else keep adding*/
-        if (AmountOfSVM_1 && !DidntFindMFU)
-        {//If we even have Item to move to flash
-            
-                for (int i=FLASH_SHILD_K_LRU_QUEUES-1; i >=FLASH_SHILD_MIN_QUEUE_TO_MOVE_TO_FLASH ; i--)
-                {// Find the MRU item
-                    if (kLruAmountOfSVM[i] > 0)
-                    {
-                        bool found=false;
-                        for (std::list<uint32_t>::iterator tmpkId= (dram[i]).begin() ; tmpkId != (dram[i]).end();tmpkId++)
-                        {
-                            flashshield::RItem& tmpItem = allObjects[*tmpkId];
-                            //Check if SVMResult is 1
-                            if (tmpItem.hasItem)
-                            {
-                                if (tmpItem.DramItemListLocation->SVMResult)
-                                {
-                                    if (SumOfMruObjects + (double) tmpItem.size < (double) FLASH_SHILD_BLOCK_SIZE)
-                                    {
-                                        MRUobjects.emplace_back(*tmpkId);
-                                        SumOfMruObjects +=tmpItem.size;
-                                        AmountOfSVM_1--;
-                                        kLruAmountOfSVM[i]--;
-                                        if (SumOfMruObjects >= (double)FLASH_SHILD_BLOCK_SIZE * Min_Block_Fill_Threshold)
-                                        {//We found enough items to move to flash
-                                            found = true;       /* queue's For */
-                                            FoundMfu = true;    /* items in queue's For */
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if (found){break;}
-                    }else{FoundMfu=false;}
-                }
-        }
-
-        
-        if (!FoundMfu)
-        {//If at the end we didnt found enough need to restore all items
-            for (std::list<uint32_t>::iterator tmpkId= (MRUobjects).begin() ; tmpkId != (MRUobjects).end();tmpkId++)
-            {
-                AmountOfSVM_1++;
-                flashshield::RItem& tmpItem = allObjects[*tmpkId];
-                kLruAmountOfSVM[tmpItem.queueNumber]++;
-            }
-            
-            DidntFindMFU = true;
-            
-            //If we don't find an MRU item to move to flash we will delete items from dram by LRU
-            //--------dramLRU ---------------
-            uint32_t globalLruKid = dramLru.back();
+        //Not enough space in DRAM, check flash
+        if ((dramSize + flashSize + newItem.size) >= FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold)
+        {/*(dramSize + flashSize + newItem.size) >= DRAM_SIZE + FLASH_SIZE*stat.threshold)*/
+         //If not enough space both in dram and in flash - evict item by global LRU (Clock)
+            uint32_t globalLruKid = ClockFindItemToErase(r);
             flashshield::RItem& victimItem = allObjects[globalLruKid];
+            assert(victimItem.size > 0);
             evict_item(victimItem, warmup,r);
-            //-------------------------------
-            
-        }else{
-            
-
-            if (numBlocks == maxBlocks) /*(dramSize + flashSize + newItem.size) >= DRAM_SIZE + FLASH_SIZE*stat.threshold)*/
-            {//If not enough space both in dram and in flash - evict item by global LRU (Clock)
-                uint32_t globalLruKid = ClockFindItemToErase(r);
-                flashshield::RItem& victimItem = allObjects[globalLruKid];
-                assert(victimItem.size > 0);
-                evict_item(victimItem, warmup,r);
-                assert(dramSize + flashSize <= DRAM_SIZE + FLASH_SIZE*stat.threshold);
-            }
-            else if (numBlocks < maxBlocks)
-            {//If we have spce in flash for block- allocate block and move it to flash
-                allocate_flash_block(warmup,MRUobjects);
-                assert(dramSize + flashSize <= DRAM_SIZE + FLASH_SIZE*stat.threshold);
-            }
-            else
-            {
-                //if there is no place in dram and all the blocks are full (The flash isnt full
-                //since it's size might be bigger then the the size of all the blocks
-                assert(0);
-            }
-            assert(numBlocks <= maxBlocks);
+            assert(dramSize + flashSize <= FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold);
         }
-
+        else if (numBlocks == maxBlocks)
+        {
+            evict_block(--flash.end(),warmup,r);
+            assert(dramSize + flashSize <= FLASH_SHILD_DRAM_SIZE + FLASH_SHILD_FLASH_SIZE*stat.threshold);
+        }
+        else if (numBlocks < maxBlocks)
+        {//If we have spce in flash for block- allocate block and move it to flash
+            allocate_flash_block(warmup,r);
+        }
+        else
+        {
+            //if there is no place in dram and all the blocks are full (The flash isnt full
+            //since it's size might be bigger then the the size of all the blocks
+            assert(0);
+        }
+        assert(numBlocks <= maxBlocks);
     }
+
     assert(0);
     return PROC_MISS;
 }
@@ -364,12 +300,14 @@ void flashshield::evict_item(flashshield::RItem& victimItem, bool warmup /*uint3
     if (victimItem.clockIt == GlobalclockIt)
     {
         GlobalclockIt++;
-        if (GlobalclockIt == clockLru.end()) {
+        if (GlobalclockIt == clockLru.end())
+        {
             GlobalclockIt = clockLru.begin();
         }
     }
-
-    clockLru.erase(victimItem.clockIt);
+    
+    if (victimItem.clockIt != clockLru.end())
+        clockLru.erase(victimItem.clockIt);
     
     if (victimItem.isInDram)
     {
@@ -394,11 +332,7 @@ void flashshield::evict_item(flashshield::RItem& victimItem, bool warmup /*uint3
         }
         
         allObjects.erase(victimItem.kId);
-        
-        //dram.erase(victimItem.dramLocation);
-        //dramSize -= victimItem.size;
-        //assert(allObjects.find(victimItem.kId) != allObjects.end());
-        //allObjects.erase(victimItem.kId);
+
     } else {
         //Item is in flash
 
@@ -407,72 +341,18 @@ void flashshield::evict_item(flashshield::RItem& victimItem, bool warmup /*uint3
         curr_block->size -= victimItem.size;
         flashSize -= victimItem.size;
         
-        if ((curr_block->size/FLASH_SHILD_BLOCK_SIZE) < stat.threshold) {
-            assert(dramSize <= DRAM_SIZE);
-            evict_block(curr_block,warmup,r);
+        //if ((double)((double)curr_block->size/(double)FLASH_SHILD_BLOCK_SIZE) < stat.threshold)
+        //{
+        //    assert(dramSize <= DRAM_SIZE);
+        //    evict_block(curr_block,warmup,r);
             
-            double SumOfMruObjects=0;
-            std::list<uint32_t>  MRUobjects;
-            bool FoundMfu = false;
-            
-            //In order to regulate the dram size allocate block to flash
-            if (AmountOfSVM_1)
-            {//If we even have Item to move to flash
-                
-                for (int i=FLASH_SHILD_K_LRU_QUEUES-1; i >=FLASH_SHILD_MIN_QUEUE_TO_MOVE_TO_FLASH ; i--)
-                {// Find the MRU item
-                    if (kLruAmountOfSVM[i] > 0)
-                    {
-                        bool found=false;
-                        for (std::list<uint32_t>::iterator tmpkId= (dram[i]).begin() ; tmpkId != (dram[i]).end();tmpkId++)
-                        {
-                            flashshield::RItem& tmpItem = allObjects[*tmpkId];
-                            //Check if SVMResult is 1
-                            if (tmpItem.hasItem)
-                            {
-                                if (tmpItem.DramItemListLocation->SVMResult)
-                                {
-                                    if (SumOfMruObjects + (double) tmpItem.size < (double) FLASH_SHILD_BLOCK_SIZE)
-                                    {
-                                        MRUobjects.emplace_back(*tmpkId);
-                                        SumOfMruObjects +=tmpItem.size;
-                                        AmountOfSVM_1--;
-                                        kLruAmountOfSVM[i]--;
-                                        if (SumOfMruObjects >= (double)FLASH_SHILD_BLOCK_SIZE * Min_Block_Fill_Threshold)
-                                        {//We found enough items to move to flash
-                                            found = true;       /* queue's For */
-                                            FoundMfu = true;    /* items in queue's For */
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if (found){break;}
-                    }else{FoundMfu=false;}
-                }
-            }
-            
-            if (!FoundMfu)
-            {
-                
-                for (std::list<uint32_t>::iterator tmpkId= (MRUobjects).begin() ; tmpkId != (MRUobjects).end();tmpkId++)
-                {
-                    AmountOfSVM_1++;
-                    flashshield::RItem& tmpItem = allObjects[*tmpkId];
-                    kLruAmountOfSVM[tmpItem.queueNumber]++;
-                }
-                
-                while (dramSize > FLASH_SHILD_DRAM_SIZE)
-                {// If there is no way to allocate new block start erase dramLru
-                    uint32_t globalLruKid = dramLru.back();
-                    flashshield::RItem& victimItem = allObjects[globalLruKid];
-                    evict_item(victimItem, warmup,r);
-                }
-            }else{
-                allocate_flash_block(warmup,MRUobjects);
-            }
-        }
+        //    DidntFindMFU = false;
+        //    while (dramSize > FLASH_SHILD_DRAM_SIZE)
+        //    {// If there is no way to allocate new block start erase dramLru
+        //        allocate_flash_block(warmup,r);
+        //    }
+        //}
+
     }
 }
 
@@ -487,11 +367,8 @@ void flashshield::evict_block(blockIt victim_block, bool warmup,const request *r
         
             if (victim_item.isGhost)
             {//If item is Ghost delete it from memory
-            
                 allObjects.erase(victim_item.kId);
-            
             } else {
-            
                 //Need to insert the item into dram again
                 victim_item.isInDram = true;
                 victim_item.flashIt = flash.end();
@@ -518,70 +395,144 @@ void flashshield::evict_block(blockIt victim_block, bool warmup,const request *r
 }
 
 
-void flashshield::allocate_flash_block(bool warmup, std::list<uint32_t>&  MRUobjects)
+void flashshield::allocate_flash_block(bool warmup,const request *r)
 {//For every item in the sent list need to evict from dram and
-    assert(flashSize <= FLASH_SIZE);
+    assert(flashSize <= FLASH_SHILD_FLASH_SIZE);
     
-    flash.emplace_front();
-    flashshield::Block &curr_block = flash.front();
+    double SumOfMruObjects=0;
+    double AmountOfDataChecked=0;
+    std::list<uint32_t>  MRUobjects;
+    bool FoundMfu = false;
     
-    //auto mfu_it = --dram.end();
-    for (auto mfuKid : MRUobjects)
-    {
-        //assert(!dram.empty());
-        //uint32_t mfuKid = mfu_it->first;
-        //mfu_it--;
+    /* every MRU item that being found need to add to the list
+     and check every time if we passed the amount needed. If does break else keep adding*/
+    if (AmountOfSVM_1 && !DidntFindMFU)
+    {//If we even have Item to move to flash
         
-        flashshield::RItem &mfuItem = allObjects[mfuKid];
-        assert(mfuItem.size > 0);
+        for (int i=FLASH_SHILD_K_LRU_QUEUES-1; i >=FLASH_SHILD_MIN_QUEUE_TO_MOVE_TO_FLASH ; i--)
+        {// Find the MRU item
+            if (kLruAmountOfSVM[i] > 0)
+            {
+                bool found=false;
+                for (std::list<uint32_t>::iterator tmpkId= (dram[i]).begin() ; tmpkId != (dram[i]).end();tmpkId++)
+                {
+                    flashshield::RItem& tmpItem = allObjects[*tmpkId];
+                    //Check if SVMResult is 1
+                    AmountOfDataChecked+=tmpItem.size;
+
+                    if (tmpItem.hasItem)
+                    {
+                        if (tmpItem.DramItemListLocation->SVMResult)
+                        {
+                            if (SumOfMruObjects + (double) tmpItem.size < (double) FLASH_SHILD_BLOCK_SIZE)
+                            {
+                                MRUobjects.emplace_back(*tmpkId);
+                                SumOfMruObjects +=tmpItem.size;
+                                AmountOfSVM_1--;
+                                kLruAmountOfSVM[i]--;
+                                if (SumOfMruObjects >= (double)FLASH_SHILD_BLOCK_SIZE * Min_Block_Fill_Threshold)
+                                {//We found enough items to move to flash
+                                    found = true;       /* queue's For */
+                                    FoundMfu = true;    /* items in queue's For */
+                                    break;
+                                }
+                                
+                                if (AmountOfDataChecked > AmountOfDataChecked)
+                                {
+                                    found = true;
+                                    break;
+                                }
+                                
+                            }
+                        }
+                    }
+                }
+                if (found){break;}
+            }else{FoundMfu=false;}
+        }
+    }
+    
+    if (!FoundMfu)
+    {//If at the end we didnt found enough need to restore all items
         
-        //--------dramLRU ---------------
-        if (mfuItem.dramlruIt != dramLru.end())
+        for (std::list<uint32_t>::iterator tmpkId= (MRUobjects).begin() ; tmpkId != (MRUobjects).end();tmpkId++)
         {
+            AmountOfSVM_1++;
+            flashshield::RItem& tmpItem = allObjects[*tmpkId];
+            kLruAmountOfSVM[tmpItem.queueNumber]++;
+        }
+        
+        DidntFindMFU = true;
+        
+        //If we don't find an MRU item to move to flash we will delete items from dram by LRU
+        //--------dramLRU ---------------
+        uint32_t globalLruKid = dramLru.back();
+        flashshield::RItem& victimItem = allObjects[globalLruKid];
+        evict_item(victimItem, warmup,r);
+        //-------------------------------
+        
+    }else{
+        
+        flash.emplace_front();
+        flashshield::Block &curr_block = flash.front();
+    
+        //auto mfu_it = --dram.end();
+        for (auto mfuKid : MRUobjects)
+        {
+            //assert(!dram.empty());
+            //uint32_t mfuKid = mfu_it->first;
+            //mfu_it--;
+        
+            flashshield::RItem &mfuItem = allObjects[mfuKid];
+            assert(mfuItem.size > 0);
+        
+            //--------dramLRU ---------------
             dramLru.erase(mfuItem.dramlruIt);
             mfuItem.dramlruIt = dramLru.end();
-        }
-        //-------------------------------
-        size_t qN = mfuItem.queueNumber;
-        mfuItem.isInDram = false;
-        dram[qN].erase(mfuItem.dramLocation);
-        kLruSizes[qN]-=mfuItem.size;
+            //-------------------------------
+            
+            size_t qN = mfuItem.queueNumber;
+            mfuItem.isInDram = false;
+            dram[qN].erase(mfuItem.dramLocation);
+            kLruSizes[qN]-=mfuItem.size;
+            
+            mfuItem.dramLocation = dram[0].end();
+            mfuItem.flashIt = flash.begin();
+            dramSize -= mfuItem.size;
+            mfuItem.queueNumber = 8;
         
-        mfuItem.dramLocation = dram[0].end();
-        mfuItem.flashIt = flash.begin();
-        dramSize -= mfuItem.size;
-        mfuItem.queueNumber = 8;
+            curr_block.items.emplace_front(mfuKid);
+            curr_block.size += mfuItem.size;
         
-        curr_block.items.emplace_front(mfuKid);
-        curr_block.size += mfuItem.size;
-        
-        if (mfuItem.hasItem)
-        {
-            if (mfuItem.DramItemListLocation->SVMResult)
+            if (mfuItem.hasItem)
             {
-                kLruAmountOfSVM[mfuItem.queueNumber]--;
-                AmountOfSVM_1--;
+                if (mfuItem.DramItemListLocation->SVMResult)
+                {
+                    kLruAmountOfSVM[mfuItem.queueNumber]--;
+                    AmountOfSVM_1--;
+                }
+                dramItemList.erase(mfuItem.DramItemListLocation);
+                mfuItem.hasItem = false;
             }
-            dramItemList.erase(mfuItem.DramItemListLocation);
-            mfuItem.hasItem = false;
+        
+            assert(!mfuItem.hasItem);
+            
+            assert(mfuItem.size > 0);
+            assert(numBlocks <= maxBlocks);
         }
+    
+        assert(curr_block.size <= FLASH_SHILD_BLOCK_SIZE);
+        numBlocks++;
+        flashSize += curr_block.size;
         
-        assert(!mfuItem.hasItem);
-        
-        assert(mfuItem.size > 0);
         assert(numBlocks <= maxBlocks);
-    };
+        assert(flashSize <= FLASH_SHILD_FLASH_SIZE);
     
-    assert(curr_block.size <= FLASH_SHILD_BLOCK_SIZE);
-    numBlocks++;
-    flashSize += curr_block.size;
-    assert(numBlocks <= maxBlocks);
-    assert(flashSize <= FLASH_SIZE);
-    
-    if (!warmup)
-    {
-        stat.writes_flash++;
-        stat.flash_bytes_written += FLASH_SHILD_BLOCK_SIZE;
+        if (!warmup)
+        {
+            stat.writes_flash++;
+            stat.flash_bytes_written += FLASH_SHILD_BLOCK_SIZE;
+        }
     }
 }
 

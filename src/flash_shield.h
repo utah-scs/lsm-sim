@@ -96,7 +96,7 @@ protected:
     void evict_block(blockIt victim_block, bool warmup,const request *r);
     uint32_t ClockFindItemToErase(const request *r);
     void ColectItemDataAndPredict(const request *r, bool warmup, bool Predict);
-    void allocate_flash_block(bool warmup, std::list<uint32_t>&  MRUobjects);
+    void allocate_flash_block(bool warmup,const request *r);
     
     void dramAddandReorder(
          std::vector<uint32_t>& objects,
