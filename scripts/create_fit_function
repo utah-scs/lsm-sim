@@ -58,7 +58,7 @@ for app in $apps; do
   ./lsm-sim \
     -p flashcachelrukclkmachinelearning \
     -D  67108864 \
-    -F  469,762,048 \
+    -F  469762048 \
     -f /datay/m.cap.out \
     -A $TH \
         2> err-osdi-multislab-static-app$app.log &
