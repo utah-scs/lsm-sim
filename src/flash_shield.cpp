@@ -220,7 +220,7 @@ size_t flashshield::proc(const request* r, bool warmup) {
             if (!item.isInDram)
             {
                 //item is a ghost - need to erase it from allObjects list
-                assert(allObjects.find(item.kId) != allObjects.end());
+//                assert(allObjects.find(item.kId) != allObjects.end());
                 allObjects.erase(item.kId);
             }
 
