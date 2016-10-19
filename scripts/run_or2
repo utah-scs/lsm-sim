@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PASSWORD=$1
+TH=$1
 
 #apps="5 19 20"
 #apps="2 7 11 13 18 19 20 23 29 31 59 94 227 53 1 5 10" 
@@ -63,7 +63,8 @@ for app in $apps; do
     -D 67108864 \
     -F 469762048 \
     -f /datay/m.cap.out \
-        2> err-osdi-multislab-static-app$app.log &
+    -A $TH \
+    2> err-osdi-multislab-static-app$app.log &
   pids="$pids $!"
   wait_too_many
 done 
