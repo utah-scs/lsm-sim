@@ -575,6 +575,7 @@ int main(int argc, char *argv[]) {
       break;
     case FLASHSHIELD:
         FLASH_SHILD_APP_NUMBER = *std::begin(apps);
+        FLASH_SHILD_TH = USER_SVM_TH;
         sts.threshold = threshold;
         sts.flash_size = flash_size;
         sts.dram_size = dram_size;

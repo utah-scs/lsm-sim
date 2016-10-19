@@ -12,6 +12,7 @@
 extern  uint32_t FLASH_SHILD_APP_NUMBER;
 extern  size_t   FLASH_SHILD_DRAM_SIZE;
 extern  size_t   FLASH_SHILD_FLASH_SIZE;
+extern  uint32_t FLASH_SHILD_TH;
 
 class flashshield : public FlashCache {
 protected:

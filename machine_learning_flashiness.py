@@ -38,10 +38,10 @@ def LoadSavedFunction(App_number):
         clf = pickle.load(f)
     print clf.coef_, clf.intercept_
 
-def PredictFunction(a, b, c, d, e,App_number):
+def PredictFunction(a, b, c, d, e,App_number,SVM_TH):
     perclf = svm.LinearSVC(random_state=10)
 
-    with open("fit_functions/fit_app" + str(App_number) + ".pkl", 'rb') as f:
+    with open("fit_functions/fit_app" + str(App_number) + "_" + str(SVM_TH)  + ".pkl", 'rb') as f:
         perclf = pickle.load(f)
     #print perclf.coef_, perclf.intercept_
     tmp = perclf.predict([[a,b,c,d,e]])
