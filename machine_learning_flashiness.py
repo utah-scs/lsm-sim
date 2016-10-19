@@ -34,7 +34,7 @@ def FitFunction(App_number):
 
 def LoadSavedFunction(App_number):
     print "Load Function for app:" + str(App_number)
-    with open("fit_functions/fit_app" + str(App_number) + ".pkl", 'rb') as f:
+    with open("fit_functions/fit_app" + str(App_number) + "_" + str(SVM_TH)  + ".pkl", 'rb') as f:
         clf = pickle.load(f)
     print clf.coef_, clf.intercept_
 
