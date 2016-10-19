@@ -114,7 +114,8 @@ protected:
          bool updateWrites,
          bool warmup,
          bool NewItem);
-    
+   std::ofstream out;
+ 
 public:
     flashshield(stats stat);
     ~flashshield();

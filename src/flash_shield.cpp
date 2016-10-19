@@ -37,6 +37,10 @@ PyObject* SVMFitFunction = NULL;
 PyObject* SVMLoadFitFunction = NULL;
 PyObject* SVMLoadedFitFunction = NULL;
 
+static bool file_defined = false;
+static double lastRequest = 0;
+
+   
 flashshield::flashshield(stats stat):
 FlashCache(stat),
 flash{},
@@ -54,7 +58,8 @@ SVMCalculationRun(false),
 AmountOfSVM_1(0),
 dramSize(0),
 flashSize(0),
-svm_size(0)
+svm_size(0),
+out{}
 {
     maxBlocks = FLASH_SHILD_FLASH_SIZE/FLASH_SHILD_BLOCK_SIZE;
     
@@ -83,7 +88,9 @@ double S_TIME=0;
 flashshield::~flashshield() {}
 
 size_t flashshield::proc(const request* r, bool warmup) {
-    
+
+    lastRequest = r->time; 
+   
     S_KID = r->kid;
     S_TIME= r->time;
     
@@ -738,12 +745,16 @@ void flashshield::dump_stats(void) {
     //policy::dump_stats();
 
     std::string filename{stat.policy
-        + "-app" + std::to_string(FLASH_SHILD_APP_NUMBER)
 	+ "-dramSize" + std::to_string(FLASH_SHILD_DRAM_SIZE) 
 	+ "-flashSize" + std::to_string(FLASH_SHILD_FLASH_SIZE)
 	+ "-threshold" + std::to_string(FLASH_SHILD_TH)};
-    std::ofstream out{filename};
-    
+
+    if (!file_defined ) {
+	out.open(filename);
+	file_defined = true;
+    }
+    out << "Last request was at :" << std::setprecision(5) << lastRequest << std::endl;
+ 
     out << "dram size " << FLASH_SHILD_DRAM_SIZE << std::endl;
     out << "flash size " << FLASH_SHILD_FLASH_SIZE << std::endl;
     out << "#accesses "  << stat.accesses << std::endl;

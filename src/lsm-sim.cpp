@@ -618,7 +618,7 @@ int main(int argc, char *argv[]) {
   auto last_progress = start;
   size_t bytes = 0;
   
- 
+  size_t time_hour = 1; 
   while (std::getline(t_stream, line) &&
          (request_limit == 0 || i < request_limit))
   {
@@ -661,7 +661,11 @@ int main(int argc, char *argv[]) {
     }
 
     policy->proc(&r, r.time < hit_start_time);
-
+    if (verbose && policy_type == FLASHSHIELD && time_hour * 3600 < r.time) {
+    	printf ("Dumping stats for FLASHSHIELD\n");
+	policy->dump_stats();
+	time_hour++;
+    }
     ++i;
   }
   auto stop = hrc::now();
