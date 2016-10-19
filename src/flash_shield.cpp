@@ -738,7 +738,10 @@ void flashshield::dump_stats(void) {
     //policy::dump_stats();
 
     std::string filename{stat.policy
-        + "-app" + std::to_string(FLASH_SHILD_APP_NUMBER)};
+        + "-app" + std::to_string(FLASH_SHILD_APP_NUMBER)
+	+ "-dramSize" + std::to_string(FLASH_SHILD_DRAM_SIZE) 
+	+ "-flashSize" + std::to_string(FLASH_SHILD_FLASH_SIZE)
+	+ "-threshold" + std::to_string(FLASH_SHILD_TH)};
     std::ofstream out{filename};
     
     out << "dram size " << FLASH_SHILD_DRAM_SIZE << std::endl;
