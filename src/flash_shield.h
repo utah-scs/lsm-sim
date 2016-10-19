@@ -89,7 +89,8 @@ protected:
     double      AmountOfSVM_1;
     size_t      dramSize;
     size_t      flashSize;
-    
+    size_t      svm_size;
+   
     
     void add_item(RItem &newItem);
     virtual void evict_item(RItem& victimItem, bool warmup,const request *r);
