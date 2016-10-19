@@ -14,6 +14,8 @@ size_t FLASH_SHILD_FLASH_SIZE = 51209600;
 size_t FLASH_SHILD_CLOCK_MAX_VALUE = 7;
 int FLASH_SHILD_MIN_QUEUE_TO_MOVE_TO_FLASH = 0;
 
+
+uint32_t FLASH_SHILD_TH =1;
 uint32_t FLASH_SHILD_APP_NUMBER =0;
 bool DidntFindMFU = false;
 double NumberOfSetsOperations=0;
@@ -712,10 +714,8 @@ void flashshield::ColectItemDataAndPredict(const request *r, bool warmup, bool P
         
         if (Predict)
         {
-            PyObject* args = PyTuple_Pack(6,PyFloat_FromDouble(dramitem.FirstHitTimePeriod),PyFloat_FromDouble(dramitem.AvgTimeBetweenhits),PyFloat_FromDouble(dramitem.TimeBetweenLastAction),PyFloat_FromDouble(dramitem.MaxTimeBetweenHits),PyFloat_FromDouble(dramitem.AmountOfHitsSinceArrivel),PyInt_FromLong((long)FLASH_SHILD_APP_NUMBER));
+            PyObject* args = PyTuple_Pack(7,PyFloat_FromDouble(dramitem.FirstHitTimePeriod),PyFloat_FromDouble(dramitem.AvgTimeBetweenhits),PyFloat_FromDouble(dramitem.TimeBetweenLastAction),PyFloat_FromDouble(dramitem.MaxTimeBetweenHits),PyFloat_FromDouble(dramitem.AmountOfHitsSinceArrivel),PyInt_FromLong((long)FLASH_SHILD_APP_NUMBER),PyInt_FromLong((long)FLASH_SHILD_TH));
             PyObject* myResult = PyObject_CallObject(SVMPredictFunction, args);
-            
-
             
             
             //Predict the class labele for test data sample
