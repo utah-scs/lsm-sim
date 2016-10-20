@@ -1,5 +1,8 @@
 #include "victim_cache.h"
 
+static bool file_defined = false;
+static double lastRequest = 0;
+
 VictimCache::VictimCache(stats stat) :
 	policy(stat),
         dram(),
@@ -7,7 +10,8 @@ VictimCache::VictimCache(stats stat) :
 	allObjects(),
 	dramSize(0),
 	flashSize(0),
-	missed_bytes(0)
+	missed_bytes(0),
+	out()
 {
 }
 
@@ -17,6 +21,7 @@ size_t VictimCache::get_bytes_cached() const {return dramSize + flashSize;}
 
 size_t VictimCache::proc(const request* r, bool warmup) {
 	if (!warmup) {stat.accesses++;}	
+	lastRequest = r->time;
 
 	auto searchRKId = allObjects.find(r->kid);
 	bool hitFlash = false;
@@ -99,7 +104,11 @@ void VictimCache::dump_stats(void) {
 			+ "-app" + appids
 			+ "-flash_mem" + std::to_string(FLASH_SIZE)
 			+ "-dram_mem" + std::to_string(DRAM_SIZE)};
-	std::ofstream out{filename};
+	if (!file_defined) {
+		out.open(filename);
+		file_defined = true;
+	}
+	out << "Last request was at :" << lastRequest << std::endl;
 	out << "dram size " << DRAM_SIZE << std::endl;
 	out << "flash size " << FLASH_SIZE << std::endl;
 	out << "#accesses "  << stat.accesses << std::endl;

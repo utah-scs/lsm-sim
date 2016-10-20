@@ -22,6 +22,7 @@ private:
 
 	size_t missed_bytes;
 
+	std::ofstream out;
 	void insertToDram(FlashCache::Item& item, bool warmup);	
 public:
 	VictimCache(stats stat);
