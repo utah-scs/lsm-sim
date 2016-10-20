@@ -661,7 +661,9 @@ int main(int argc, char *argv[]) {
     }
 
     policy->proc(&r, r.time < hit_start_time);
-    if (verbose && ( policy_type == FLASHSHIELD || policy_type == VICTIMCACHE ) && time_hour * 3600 < r.time) {
+    if (verbose 
+	&& ( policy_type == FLASHSHIELD || policy_type == VICTIMCACHE || policy_type == RIPQ ) 
+	&& time_hour * 3600 < r.time) {
     	printf ("Dumping stats for FLASHSHIELD\n");
 	policy->dump_stats();
 	time_hour++;

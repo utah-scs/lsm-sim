@@ -171,7 +171,9 @@ class ripq : public policy {
         block_ptr evict_block();
     };
 
-      
+  private:
+    std::ofstream out;
+  
   public:
     ripq(stats stat, size_t block_size, size_t dram_size, size_t flash_size);
     virtual ~ripq();
@@ -187,6 +189,7 @@ class ripq : public policy {
 
     virtual void evict();
     void balance(int start=0);
+    void dump_stats(void);
 };
 
 #endif

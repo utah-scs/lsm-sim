@@ -1,5 +1,8 @@
 #include "ripq.h"
 
+static bool file_defined = false;
+static double lastRequest = 0;
+
 ripq::ripq(stats stat,size_t block_size,size_t num_sections,size_t flash_size)
   : policy{stat}
   , sections{}
@@ -7,6 +10,7 @@ ripq::ripq(stats stat,size_t block_size,size_t num_sections,size_t flash_size)
   , section_size{}
   , warmup{}
   , map{}
+  , out{}
 {
   assert(block_size);
   assert(num_sections && flash_size);
@@ -153,9 +157,8 @@ void ripq::evict() {
 }
 
 size_t ripq::proc(const request *r, bool warmup) {
-
   assert(r->size() > 0);
-
+  lastRequest = r->time;
   this->warmup = warmup;
   if (!warmup)
     ++stat.accesses;
@@ -291,4 +294,18 @@ ripq::block_ptr ripq::section::evict_block() {
   filled_bytes -= last_block->filled_bytes;
   blocks.pop_back();
   return last_block;
+}
+
+void ripq::dump_stats(void) {
+	std::string filename{stat.policy
+		+ "-block_size" + std::to_string(stat.block_size)
+		+ "-flash_size" + std::to_string(stat.flash_size)
+		+ "-num_sections" + std::to_string(stat.num_sections)};
+	if(!file_defined) {
+		out.open(filename);
+		file_defined = true;
+	}
+	out << "Last request was at :" << lastRequest << std::endl;
+	stat.dump(out);
+	out << std::endl;
 }
