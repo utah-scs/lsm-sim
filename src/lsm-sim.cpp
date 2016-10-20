@@ -443,7 +443,7 @@ int main(int argc, char *argv[]) {
         policy.reset(new FlashCacheLrukClk(sts));
         break;
     case FLASHCACHELRUKCLKMACHINELEARNING :
-        APP_NUMBER = USER_SVM_TH;
+        APP_NUMBER = *std::begin(apps);
         ML_SVM_TH = USER_SVM_TH;
         policy.reset(new FlashCacheLrukClkMachineLearning(sts));
         break;
