@@ -39,6 +39,9 @@ shadowslab::~shadowslab() {
 size_t shadowslab::proc(const request *r, bool warmup) {
   assert(r->size() > 0);
 
+  if (!warmup) {
+    ++stat.accesses;
+  }
   uint64_t class_size = 0;
   uint64_t klass = 0;
   std::tie(class_size, klass) = get_slab_class(r->size());
@@ -96,8 +99,10 @@ size_t shadowslab::proc(const request *r, bool warmup) {
 
   size_t approx_global_size_distance =
      (slabid * SLABSIZE) + (size_distance % SLABSIZE);
-  if (!warmup)
+  if (!warmup) {
     size_curve.hit(approx_global_size_distance);
+    ++stat.hits;
+  }
 
   return 0;
 }
