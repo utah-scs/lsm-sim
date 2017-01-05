@@ -7,6 +7,7 @@
 #include "common.h"
 #include "request.h"
 #include "stats.h"
+#include <iostream>
 
 // abstract base class for plug-and-play policies
 class policy {
@@ -30,7 +31,7 @@ class policy {
   public:
     policy(stats stat)
       : stat{stat}
-      , all_apps{stat.apps->empty()}
+      , all_apps{!stat.apps ? false : stat.apps->empty()}
     {}
 
     virtual ~policy() {}
@@ -40,7 +41,7 @@ class policy {
 
     virtual size_t get_bytes_cached() const = 0; 
 
-    void log_curves() { std::cout << "Not enabled for this policy" 
+    virtual void log_curves() { std::cout << "Not enabled for this policy" 
       << std::endl; }
 
     stats* get_stats() { return &stat; }

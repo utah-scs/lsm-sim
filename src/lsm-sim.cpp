@@ -476,6 +476,7 @@ int main(int argc, char *argv[]) {
       }
       sts.memcachier_classes = memcachier_classes;
       policy.reset(new shadowslab(sts));
+      break;
     case PARTSLAB:
       sts.partitions = partitions;
       policy.reset(new partslab(sts));
