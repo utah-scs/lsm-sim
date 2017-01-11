@@ -75,3 +75,65 @@ INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
 OF USE, DATA OR PROFITS, WHETHER AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
+
+# More Trace File Details
+
+## Trace format layout
+
+	In the output file, each row is a single request:
+	The first column is the time (in seconds)
+	The second column is the application ID
+	The third column is the type of request (see legend below)
+	The fourth column is the size of the key
+	The fifth column is the size of the value. If the size of the value is -1, it means the request does not have a value size (e.g., Delete), or it means that the request was a miss and we could not determine the size of the value.
+	The sixth column is the unique key ID. We simply used an incremental counter to identify each request.
+	The seventh column indicates if the request hit or missed if it was a GET request (0 is a miss)
+
+	Type of request:
+	1 = Get
+	2 = Set
+	3 = Delete
+	4 = Add
+	5 = Increment
+	6 = Stats
+	7 = Other
+
+
+## Trace format FAQ
+
+Q :   For the paper we estimated the amount of memory memcachier allocated each slab class, by looking at the hit rate that each slab class achieved in the trace, and then by seeing how much memory would be required to achieve this hit rate.So basically, you scan the whole trace to get hit rate. You generate your hit rate curve for each slab class using the whole trace. And then you match the slab class’s hit rate on the y-axis of your hit rate graphs to find a slab size (on the x-axis). Correct me if I’m wrong on that.
+
+A : 	Exactly correct. When calculating the hit rate curves, we ran the trace for one day (letting the cache fill up) and then started computing the hit rate curve. The only rub: in some applications (application trace IDs 1, 3 and 5), estimating the hit rate precisely seems impossible (basically we are estimating the stack distances, and for these applications the stack distances explode and it would take many years to compute it across the entire week of traces. Unfortunately calculating stack distances precisely seems like a sequential operation, so it's hard to parallelize). So instead of calculating the stack distances precisely for these applications, we used an approximation (using the bucket technique described in Mimir).
+
+
+Q :		Does this mean orig_memory_allocation is application specific? The script runs for app_ID 19. Would we need a new orig_memory_allocation to test it for app_ID 5?
+
+A :		Yes, orig_memory_allocation is application specific.
+
+Q :		The paper reports the LSM number for app_ID 5, not for app_ID 19. We wanted to sanity check against the paper. I assume if we re-run this for app_ID 5 it should match table 2 (96.9%).
+
+A:		The numbers are switched. In the paper we ranked the applications based on the number of requests they had in the trace. In the simulation, we used the original application IDs. So application 20 in the trace is application 5 in the paper. The mapping is:
+
+
+Application in Trace	Application in Cliffhanger Paper
+*					1											1
+*					3											2
+*					19										3
+*					18										4
+*					20										5
+*					6											6
+*					5											7
+*					8											8
+*					59										9
+*					227										10
+*					29										11
+*					10										12
+*					94										13
+*					11										14
+*					23										15
+*					2											16
+*					7											17
+*					53										18
+*					13										19
+*					31										20
+
