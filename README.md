@@ -115,25 +115,27 @@ Q :		The paper reports the LSM number for app_ID 5, not for app_ID 19. We wanted
 A:		The numbers are switched. In the paper we ranked the applications based on the number of requests they had in the trace. In the simulation, we used the original application IDs. So application 20 in the trace is application 5 in the paper. The mapping is:
 
 
+```
 Application in Trace	Application in Cliffhanger Paper
-*					1											1
-*					3											2
-*					19										3
-*					18										4
-*					20										5
-*					6											6
-*					5											7
-*					8											8
-*					59										9
-*					227										10
-*					29										11
-*					10										12
-*					94										13
-*					11										14
-*					23										15
-*					2											16
-*					7											17
-*					53										18
-*					13										19
-*					31										20
+1											1
+3											2
+19										3
+18										4
+20										5
+6											6
+5											7
+8											8
+59										9
+227										10
+29										11
+10										12
+94										13
+11										14
+23										15
+2											16
+7											17
+53										18
+13										19
+31										20
+```
 
