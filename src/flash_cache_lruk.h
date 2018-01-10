@@ -22,11 +22,11 @@ extern double K_FC_KLRU;
 extern size_t L_FC_KLRU;
 extern double P_FC_KLRU;
 
+typedef std::list<std::pair<uint32_t, double> >::iterator dramIt;
+typedef std::list<uint32_t>::iterator keyIt;
+
 class FlashCacheLruk : public policy {
 private:
-	typedef std::list<std::pair<uint32_t, double> >::iterator dramIt;
-	typedef std::list<uint32_t>::iterator keyIt;
-
 	struct Item {
 		uint32_t kId;
 		int32_t size;
@@ -40,7 +40,7 @@ private:
 		keyIt globalLruIt;
 	
 		Item() : kId(0), size(0), last_accessed(0), lastAccessInTrace(0),
-			isInDram(true), dramLocation(0), queueNumber(0), dramLruIt(), flashIt(), globalLruIt(){}
+			isInDram(true), dramLocation(), queueNumber(0), dramLruIt(), flashIt(), globalLruIt(){}
 	};
 
 	std::vector< std::list<std::pair<uint32_t, double> > > dram;

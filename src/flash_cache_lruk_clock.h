@@ -36,7 +36,7 @@ private:
 		dramIt ClockIt;
 		size_t clockJumpStatus;
 	
-		Item() : kId(0), size(0), isInDram(true), dramLocation(0), queueNumber(0), flashIt(), dramLruIt(), ClockIt(), clockJumpStatus(CLOCK_START_VAL){}
+		Item() : kId(0), size(0), isInDram(true), dramLocation(), queueNumber(0), flashIt(), dramLruIt(), ClockIt(), clockJumpStatus(CLOCK_START_VAL){}
 	};
 
 	struct RecItem {
