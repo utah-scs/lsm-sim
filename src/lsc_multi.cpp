@@ -342,11 +342,11 @@ auto lsc_multi::choose_cleaning_sources_oldest_item() -> std::vector<segment*>
   std::vector<segment*> srcs{};
 
   for (auto& segment : segments) {
-    // Don't pick free segments.
+  /*   // Don't pick free segments. */
     if (!segment)
       continue;
 
-    // Don't pick the head segment.
+  /*   // Don't pick the head segment. */
     if (&segment.value() == head)
       continue;
 
@@ -357,7 +357,7 @@ auto lsc_multi::choose_cleaning_sources_oldest_item() -> std::vector<segment*>
       [](const segment* left, const segment* right) {
         return left->low_timestamp < right->low_timestamp;
       });
-  //std::cout << "Sorted list" << std::endl;
+//std::cout << "Sorted list" << std::endl;
   //for (segment* src : srcs)
     //std::cout << src->low_timestamp << std::endl;
   srcs.resize(stat.cleaning_width);

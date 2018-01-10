@@ -89,7 +89,7 @@ size_t shadowslab::proc(const request *r, bool warmup) {
   
   // Determine if we need to 'grow' the slab class by giving it more slabs.
   size_t max_slabid_index = slab_class.get_bytes_cached() / SLABSIZE; 
-  std::vector<size_t>& class_ids = slabids.at(klass);
+  std::vector<uint64_t>& class_ids = slabids.at(klass);
   while (class_ids.size() < max_slabid_index + 1)
     class_ids.emplace_back(next_slabid++);
 

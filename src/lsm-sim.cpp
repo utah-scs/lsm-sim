@@ -21,7 +21,7 @@
 #include "shadowslab.h"
 #include "partslab.h"
 #include "lsm.h"
-// #include "lsc_multi.h"
+#include "lsc_multi.h"
 #include "slab_multi.h"
 #include "lru.h"
 #include "slab.h"
@@ -32,7 +32,7 @@
 #include "ripq_shield.h"
 #include "lruk.h"
 #include "clock.h"
-#include "segment_util.h"
+// #include "segment_util.h"
 #include "flash_cache_lruk.h"
 #include "ram_shield.h"
 #include "ram_shield_fifo.h"
@@ -62,7 +62,7 @@ const char* policy_names[24] = { "shadowlru"
                                , "clock"
                                , "flashcachelruk"
                                , "flashcachelrukclk"
-                               , "segment_util"
+                               // , "segment_util"
                                , "ramshield"
                                , "ramshield_fifo"
                                , "ramshield_sel"
@@ -79,7 +79,7 @@ enum pol_type {
   , SHADOWSLAB
   , PARTSLAB
   , LSM
-  //, MULTI
+  , MULTI
   , MULTISLAB
   , FLASHCACHE
   , VICTIMCACHE 
@@ -89,7 +89,7 @@ enum pol_type {
   , CLOCK
   , FLASHCACHELRUK
   , FLASHCACHELRUKCLK
-  , SEGMENT_UTIL
+  // , SEGMENT_UTIL
   , RAMSHIELD
   , RAMSHIELD_FIFO
   , RAMSHIELD_SEL
@@ -111,7 +111,7 @@ std::string app_steal_sizes_str;
 double hit_start_time = 86400; //< default warmup time
 size_t global_mem = 0;
 pol_type policy_type;
-// lsc_multi::subpolicy subpolicy;
+lsc_multi::subpolicy subpolicy;
 bool verbose = false;
 double gfactor = 1.25; //< Slab growth factor.
 bool memcachier_classes = false;
@@ -249,8 +249,8 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(15);
         else if (std::string(optarg) == "flashcachelrukclk")
           policy_type = pol_type(16);
-        else if (std::string(optarg) == "segment_util")
-          policy_type = pol_type(17);
+        /* else if (std::string(optarg) == "segment_util") */
+        /*   policy_type = pol_type(17); */
         else if (std::string(optarg) == "ramshield")
           policy_type = pol_type(18);  
         else if (std::string(optarg) == "ramshield_fifo")
@@ -268,18 +268,18 @@ int main(int argc, char *argv[]) {
           exit(EXIT_FAILURE);
         }
         break;
-      /* case 'E': */
-      /*   if (std::string(optarg) == "normal") */
-      /*     subpolicy = lsc_multi::subpolicy(0); */ 
-      /*   else if (std::string(optarg) == "greedy") */
-      /*     subpolicy = lsc_multi::subpolicy(1); */ 
-      /*   else if (std::string(optarg) == "static") */
-      /*     subpolicy = lsc_multi::subpolicy(2); */ 
-      /*   else { */
-      /*     std::cerr << "Invalid subpolicy specified" << std::endl; */
-      /*     exit(EXIT_FAILURE); */
-      /*   } */            
-      /*   break; */
+      case 'E':
+        if (std::string(optarg) == "normal")
+          subpolicy = lsc_multi::subpolicy(0); 
+        else if (std::string(optarg) == "greedy")
+          subpolicy = lsc_multi::subpolicy(1); 
+        else if (std::string(optarg) == "static")
+          subpolicy = lsc_multi::subpolicy(2); 
+        else {
+          std::cerr << "Invalid subpolicy specified" << std::endl;
+          exit(EXIT_FAILURE);
+        }            
+        break;
       case 'N':
         min_mem_pct = atol(optarg);
         break;
@@ -456,9 +456,9 @@ int main(int argc, char *argv[]) {
     case CLOCK :
         policy.reset(new Clock(sts));
         break;
-    case SEGMENT_UTIL:
-        policy.reset(new SegmentUtil(sts));
-        break;
+    /* case SEGMENT_UTIL: */
+    /*     policy.reset(new SegmentUtil(sts)); */
+    /*     break; */
     case SLAB :
       if (memcachier_classes) {
         sts.gfactor = 2.0;
@@ -486,35 +486,35 @@ int main(int argc, char *argv[]) {
       sts.cleaning_width = cleaning_width;
       policy.reset(new lsm(sts));
       break;
-    /* case MULTI: */
-    /*   sts.segment_size = segment_size; */
-    /*   sts.cleaning_width = cleaning_width; */
-    /*   { */
-    /*     lsc_multi* multi = new lsc_multi(sts, subpolicy); */
-    /*     policy.reset(multi); */
+    case MULTI:
+      sts.segment_size = segment_size;
+      sts.cleaning_width = cleaning_width;
+      {
+        lsc_multi* multi = new lsc_multi(sts, subpolicy);
+        policy.reset(multi);
 
-    /*     for (size_t appid : apps) { */
-    /*       assert(memcachier_app_size[appid] > 0); */
-    /*       uint32_t app_steal_size = 65536; */
-    /*       auto it = app_steal_sizes.find(appid); */
-    /*       if (it != app_steal_sizes.end()) { */
-    /*         app_steal_size = it->second; */
-    /*       } */ 
-    /*       size_t private_mem = use_percentage ? */ 
-    /*         (size_t)(memcachier_app_size[appid] * priv_mem_percentage) : */
-    /*         min_mem_pct; */         
-    /*       multi->add_app(appid, */
-    /*                      private_mem , */
-    /*                      memcachier_app_size[appid], */
-    /*                      app_steal_size); */
-    /*     } */
+        for (size_t appid : apps) {
+          assert(memcachier_app_size[appid] > 0);
+          uint32_t app_steal_size = 65536;
+          auto it = app_steal_sizes.find(appid);
+          if (it != app_steal_sizes.end()) {
+            app_steal_size = it->second;
+          } 
+          size_t private_mem = use_percentage ? 
+            (size_t)(memcachier_app_size[appid] * priv_mem_percentage) :
+            min_mem_pct;         
+          multi->add_app(appid,
+                         private_mem ,
+                         memcachier_app_size[appid],
+                         app_steal_size);
+        }
 
-    /*     if (use_tax) { */
-    /*       multi->set_tax(tax_rate); */
-    /*     } */
-    /*   } */
+        if (use_tax) {
+          multi->set_tax(tax_rate);
+        }
+      }
 
-    /*   break; */
+      break;
     case MULTISLAB:
     {
       if (memcachier_classes) {
