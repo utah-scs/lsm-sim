@@ -68,9 +68,8 @@ const char* policy_names[24] = { "shadowlru"
                                , "ramshield_sel"
                                , "replay"
                                , "flashshield"
-							   , "flashcachelrukclkmachinelearning"
+							                 , "flashcachelrukclkmachinelearning"
                               };
-
 enum pol_type { 
     SHADOWLRU = 0
   , FIFO
@@ -102,43 +101,44 @@ std::set<uint32_t> apps{}; //< apps to consider
 
 /// How much each app steals per shadow q hit.
 std::unordered_map<uint32_t, uint32_t> app_steal_sizes{};
-bool all_apps = true; //< run all by default 
-bool roundup  = false; //< no rounding default
-float lsm_util = 1.0; //< default util factor
-std::string trace = "data/m.cap.out"; //< default filepath
-std::string app_str; //< for logging apps
-std::string app_steal_sizes_str;
-double hit_start_time = 86400; //< default warmup time
-size_t global_mem = 0;
-pol_type policy_type;
-lsc_multi::subpolicy subpolicy;
-bool verbose = false;
-double gfactor = 1.25; //< Slab growth factor.
-bool memcachier_classes = false;
-size_t partitions = 2;
-size_t segment_size = 1 * 1024 * 1024;
-size_t block_size = 1 * 1024 * 1024;
-size_t num_dsections = 4;
-size_t min_mem_pct = 75;
-const size_t default_steal_size = 65536;
-bool use_tax = false;
-double tax_rate = 0.05;
-double priv_mem_percentage =0.25;
-bool use_percentage = false; // specify priv mem %
-size_t flash_size = 0;
-size_t num_sections = 0;
-double USER_SVM_TH=1;
 
-/// Amount of dram memory allocated for ripq_shield active_blocks.
-size_t dram_size = 0;
-double threshold = 0.7;
-size_t cleaning_width = 100;
+bool          all_apps             = true;             //< run all by default 
+bool          roundup              = false;            //< no rounding default
+float         lsm_util             = 1.0;              //< default util factor
+std::string   trace                = "data/m.cap.out"; //< default filepath
+double        hit_start_time       = 86400;            //< default warmup time
+size_t        global_mem           = 0;
+bool          verbose              = false;
+double        gfactor              = 1.25;             //< Slab growth factor.
+bool          memcachier_classes   = false;
+size_t        partslab_partitions  = 2;
+size_t        segment_size         = 1 * 1024 * 1024;
+size_t        block_size           = 1 * 1024 * 1024;
+size_t        num_dsections        = 4;
+size_t        min_mem_pct          = 75;
+const size_t  default_steal_size   = 65536;
+bool          use_tax              = false;
+double        tax_rate             = 0.05;
+double        priv_mem_percentage  = 0.25;
+bool          use_percentage       = false;            // specify priv mem %
+size_t        flash_size           = 0;
+size_t        num_sections         = 0;
+double        USER_SVM_TH          = 1;
+bool          debug                = false;
 
 // Only parse this many requests from the CSV file before breaking.
 // Helpful for limiting runtime when playing around.
-int request_limit = 0;
+int           request_limit        = 0;
 
-bool debug = false;
+/// Amount of dram memory allocated for ripq_shield active_blocks.
+size_t        dram_size            = 0;
+double        threshold            = 0.7;
+size_t        cleaning_width       = 100;
+
+std::string           app_str;                        //< for logging apps
+pol_type              policy_type;
+lsc_multi::subpolicy  subpolicy;
+std::string           app_steal_sizes_str;
 
 const std::string usage =
   "-f    specify file path\n"
@@ -165,7 +165,9 @@ const std::string usage =
   "-L    queue size in lruk policy\n"
   "-H    hit value in flashcache formula\n"
   "-n    number of flash sections for ripq and ripq_shield\n" 
-  "-d    number of dram sections for ripq_shield\n";
+  "-d    number of dram sections for ripq_shield\n"
+  "-C    CLOCK maximum value\n"
+  "-Z    number of cores to partition cache processing by\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -195,6 +197,39 @@ std::unordered_map<size_t, size_t> memcachier_app_size = { {1, 701423104}
                                                          , {227, 20237184}
                                                          };
 
+// Partition (high-level partitioning) : A Partition is a logical grouping of
+// cache-related mechanisms and statistical variables that emulates a single
+// parition in high-level partitioning of cache processing.  Parititoning at
+// this level isolates both allocation and eviction of a portion of the cache
+// and delegates processing to a single unique policy object for that partition.
+// A lower-level partitioning will consist of partitioning within the policy.
+//
+// TODO: Policies to be measured with eviction partitioning will need to be
+// modified to partition within the policy and high-level partitioning disabled.
+// A dispaatch object will be added to policy to handle even distribubtion of
+// requests across the specified number of cores. These changes should be added
+// to the IX for policy.
+struct Partition
+{ 
+  std::unique_ptr<stats> _stats;
+  std::unique_ptr<policy> _policy;
+};
+
+// The number of partitions in which to globally partition the cache.
+uint16_t num_global_partitions = 1;
+
+// The global cache partitions.
+std::vector<std::unique_ptr<Partition>> global_partitions; 
+
+void init_partitions(const pol_type policy, const size_t num_partitions)
+{
+  for (size_t p = 0; p < num_partitions; ++p)
+  {
+    
+
+  }
+
+}
 
 int main(int argc, char *argv[]) {
   // calculate global memory
@@ -205,9 +240,8 @@ int main(int argc, char *argv[]) {
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
-  while ((c = getopt(argc, argv,
-                     "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:t:"
-                     "m:d:F:n:D:L:K:k:C:c:A:")) != -1)
+  while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:t:m:d:F:n:"
+                                 "D:L:K:k:C:c:A:C:Y:Z:")) != -1)
   {
     switch (c)
     {
@@ -261,7 +295,7 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(21);
         else if (std::string(optarg) == "flashshield")
           policy_type = pol_type(22);
-		else if (std::string(optarg) == "flashcachelrukclkmachinelearning")
+		    else if (std::string(optarg) == "flashcachelrukclkmachinelearning")
           policy_type = pol_type(23);
         else {
           std::cerr << "Invalid policy specified" << std::endl;
@@ -331,7 +365,7 @@ int main(int argc, char *argv[]) {
         memcachier_classes = true;
         break;
       case 'P':
-        partitions = atoi(optarg); 
+        partslab_partitions = atoi(optarg); 
         break;
       case 'W':
         {
@@ -361,15 +395,15 @@ int main(int argc, char *argv[]) {
         FLASH_SIZE_FC_KLRU = flash_size = atol(optarg);
         FLASH_SIZE_FC_KLRU_CLK = flash_size = atol(optarg);
         FLASH_SHILD_FLASH_SIZE = flash_size = atol(optarg);
-		FLASH_SIZE_FC_KLRU_CLK_ML = flash_size = atol(optarg);
+		    FLASH_SIZE_FC_KLRU_CLK_ML = flash_size = atol(optarg);
         break;
       case 'D':
         DRAM_SIZE = dram_size = atol(optarg);
         DRAM_SIZE_FC_KLRU = dram_size = atol(optarg);
         DRAM_SIZE_FC_KLRU_CLK = dram_size = atol(optarg);
         FLASH_SHILD_DRAM_SIZE = dram_size = atol(optarg);
-		DRAM_SIZE_FC_KLRU_CLK_ML = dram_size = atol(optarg);
-	break;
+		    DRAM_SIZE_FC_KLRU_CLK_ML = dram_size = atol(optarg);
+	      break;
       case 'K':
         K_LRU = atol(optarg);
         break;
@@ -397,8 +431,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'A':
         USER_SVM_TH = atol(optarg);
-
         break;
+      case 'Y':
+        num_global_partitions = atoi(optarg);
     }
   }
 
@@ -419,8 +454,15 @@ int main(int argc, char *argv[]) {
   // build a stats struct with basic info relevant to every policy.
   stats sts{policy_names[policy_type], &apps, global_mem};
 
-  //printf("APPID: %lu\n", appid);
- 
+  // TODO: Populate partition vector here, instantiate a policy for each
+  // partition.  For normal (previous) operation, global_partitions will 
+  // just be set to 1 and global_partitions will contain a singlt
+  // partition/single policy.  For partitioning > 1, need to implement a
+  // global level dispatch to evenly distribute requests across the partitions.
+  // Questions: Should this be parallelized with threads? Should it be pinned to
+  // cores? Probably not since we only have 8.  This will probably just simulate 
+  // hardware instead of actualizing it.
+
   // instantiate a policy
   std::unique_ptr<policy> policy{};
   switch(policy_type) {
@@ -478,7 +520,7 @@ int main(int argc, char *argv[]) {
       policy.reset(new shadowslab(sts));
       break;
     case PARTSLAB:
-      sts.partitions = partitions;
+      sts.partitions = partslab_partitions;
       policy.reset(new partslab(sts));
       break;
     case LSM:
@@ -623,6 +665,10 @@ int main(int argc, char *argv[]) {
   while (std::getline(t_stream, line) &&
          (request_limit == 0 || i < request_limit))
   {
+  
+  // TODO: Create a dispatch function here to distribute lines evenly aross
+  // partitions.
+
     request r{line};
     bytes += line.size();
 
@@ -630,6 +676,8 @@ int main(int argc, char *argv[]) {
       auto now  = hrc::now();
       double seconds =
         ch::duration_cast<ch::nanoseconds>(now - last_progress).count() / 1e9;
+
+      // TODO: Report stats for each parition as well as the overall hit rate.
       if (seconds > 1.0) {
         stats* stats = policy->get_stats();
         std::cerr << "Progress: " << std::setprecision(10) << r.time << " "
@@ -686,4 +734,3 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-
