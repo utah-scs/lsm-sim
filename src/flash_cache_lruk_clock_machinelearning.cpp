@@ -320,10 +320,10 @@ size_t FlashCacheLrukClkMachineLearning::proc(const request* r, bool warmup) {
 }
 
 void FlashCacheLrukClkMachineLearning::dramAdd(std::vector<uint32_t>& objects,
-		size_t sum,
+		size_t sum __attribute__ ((unused)),
 		size_t k,
-		bool updateWrites,
-		bool warmup,
+		bool updateWrites __attribute__ ((unused)),
+		bool warmup __attribute__ ((unused)),
 		bool NewItem) {
 
 	    for (auto elem : objects)
@@ -481,7 +481,7 @@ bool FlashCacheLrukClkMachineLearning::inTimesforupdate(const request *r){
 	return false;
 }
 
-void FlashCacheLrukClkMachineLearning::SVMWarmUPCalculation(const request *r,double v1, bool warmup)
+void FlashCacheLrukClkMachineLearning::SVMWarmUPCalculation(const request *r,double v1, bool warmup __attribute__ ((unused)))
 {
 	FlashCacheLrukClkMachineLearning::Item& item = allObjects[r->kid];
 
@@ -535,7 +535,7 @@ void FlashCacheLrukClkMachineLearning::SVMWarmUPCalculation(const request *r,dou
 	//------------------------------------------------------------
 }
 
-void FlashCacheLrukClkMachineLearning::ColectItemDataAndPredict(const request *r, bool warmup, bool Predict)
+void FlashCacheLrukClkMachineLearning::ColectItemDataAndPredict(const request *r, bool warmup __attribute__ ((unused)), bool Predict)
 {
     FlashCacheLrukClkMachineLearning::Item& item = allObjects[r->kid];
     
@@ -633,7 +633,7 @@ void FlashCacheLrukClkMachineLearning::SVMFunctionCalculation()
 	SVMCalculationRun = true;
 }
 
-void FlashCacheLrukClkMachineLearning::ClockFindItemToErase(const request *r)
+void FlashCacheLrukClkMachineLearning::ClockFindItemToErase(const request *r __attribute__ ((unused)))
 {
 	bool isDeleted = false;
 	dramIt tmpIt, startIt = clockIt;

@@ -252,7 +252,7 @@ size_t lsc_multi::get_bytes_cached() const
   return 0;
 }
 
-void lsc_multi::dump_util(const std::string& filename) {}
+void lsc_multi::dump_util(const std::string& filename __attribute__ ((unused))) {}
 
 void lsc_multi::rollover(double timestamp)
 {

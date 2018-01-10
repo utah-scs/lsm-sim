@@ -273,10 +273,10 @@ double FlashCacheLruk::hitCredit(const Item& item, const double& currTime) const
 }
 
 void FlashCacheLruk::dramAdd(std::vector<uint32_t>& objects,
-		size_t sum,
+		size_t sum __attribute__ ((unused)),
 		size_t k,
-		bool updateWrites,
-		bool warmup) {
+		bool updateWrites __attribute__ ((unused)),
+		bool warmup __attribute__ ((unused))) {
 
 	    for (const uint32_t& elem : objects) {
 				FlashCacheLruk::Item& item = allObjects[elem];

@@ -299,7 +299,7 @@ size_t flashshield::proc(const request* r, bool warmup) {
     return PROC_MISS;
 }
 
-void flashshield::evict_item(flashshield::RItem& victimItem, bool warmup /*uint32_t &victimKid*/,const request *r)
+void flashshield::evict_item(flashshield::RItem& victimItem, bool warmup __attribute__ ((unused)) /*uint32_t &victimKid*/,const request *r __attribute__ ((unused)))
 {
     //globalLru.erase(victimItem.globalLruIt);
     //victimItem.globalLruIt = globalLru.end();
@@ -365,7 +365,7 @@ void flashshield::evict_item(flashshield::RItem& victimItem, bool warmup /*uint3
     }
 }
 
-void flashshield::evict_block(blockIt victim_block, bool warmup,const request *r)
+void flashshield::evict_block(blockIt victim_block, bool warmup __attribute__ ((unused)),const request *r)
 {
     for (keyIt it = victim_block->items.begin(); it != victim_block->items.end(); it++)
     {//For every Item in the evicted block
@@ -539,10 +539,10 @@ void flashshield::allocate_flash_block(bool warmup,const request *r)
 
 void flashshield::dramAdd(
         std::vector<uint32_t>& objects,
-        size_t sum,
+        size_t sum __attribute__ ((unused)),
         size_t k,
-        bool updateWrites,
-        bool warmup,
+        bool updateWrites __attribute__ ((unused)),
+        bool warmup __attribute__ ((unused)),
         bool NewItem) {
     
     for (auto elem : objects)
@@ -640,7 +640,7 @@ void flashshield::dramAddandReorder(
 }
 uint32_t SvictimkId;
 
-uint32_t flashshield::ClockFindItemToErase(const request *r)
+uint32_t flashshield::ClockFindItemToErase(const request *r __attribute__ ((unused)))
 {
     bool isDeleted = false;
     ClockIt tmpIt, startIt = GlobalclockIt;
@@ -701,7 +701,7 @@ uint32_t flashshield::ClockFindItemToErase(const request *r)
     return victimkId;
 }
 
-void flashshield::ColectItemDataAndPredict(const request *r, bool warmup, bool Predict)
+void flashshield::ColectItemDataAndPredict(const request *r, bool warmup __attribute__ ((unused)), bool Predict)
 {
     flashshield::RItem& item = allObjects[r->kid];
     
