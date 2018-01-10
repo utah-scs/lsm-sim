@@ -1,4 +1,4 @@
-#CXX := g++-4.9
+CXX := g++-7
 CXX := g++
 CXXFLAGS := -std=c++14 -Wall -g -pedantic-errors -Werror -O3 \
 						-Wno-unused-parameter -Wextra -Weffc++
