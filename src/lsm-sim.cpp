@@ -32,7 +32,7 @@
 #include "ripq_shield.h"
 #include "lruk.h"
 #include "clock.h"
-// #include "segment_util.h"
+#include "segment_util.h"
 #include "flash_cache_lruk.h"
 #include "ram_shield.h"
 #include "ram_shield_fifo.h"
@@ -62,7 +62,7 @@ const char* policy_names[24] = { "shadowlru"
                                , "clock"
                                , "flashcachelruk"
                                , "flashcachelrukclk"
-                               // , "segment_util"
+                               , "segment_util"
                                , "ramshield"
                                , "ramshield_fifo"
                                , "ramshield_sel"
@@ -89,7 +89,7 @@ enum pol_type {
   , CLOCK
   , FLASHCACHELRUK
   , FLASHCACHELRUKCLK
-  // , SEGMENT_UTIL
+  , SEGMENT_UTIL
   , RAMSHIELD
   , RAMSHIELD_FIFO
   , RAMSHIELD_SEL
@@ -249,8 +249,8 @@ int main(int argc, char *argv[]) {
           policy_type = pol_type(15);
         else if (std::string(optarg) == "flashcachelrukclk")
           policy_type = pol_type(16);
-        /* else if (std::string(optarg) == "segment_util") */
-        /*   policy_type = pol_type(17); */
+        else if (std::string(optarg) == "segment_util")
+          policy_type = pol_type(17);
         else if (std::string(optarg) == "ramshield")
           policy_type = pol_type(18);  
         else if (std::string(optarg) == "ramshield_fifo")
@@ -456,9 +456,9 @@ int main(int argc, char *argv[]) {
     case CLOCK :
         policy.reset(new Clock(sts));
         break;
-    /* case SEGMENT_UTIL: */
-    /*     policy.reset(new SegmentUtil(sts)); */
-    /*     break; */
+    case SEGMENT_UTIL:
+        policy.reset(new SegmentUtil(sts));
+        break;
     case SLAB :
       if (memcachier_classes) {
         sts.gfactor = 2.0;
