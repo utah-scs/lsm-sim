@@ -1,5 +1,5 @@
 #ifndef CLOCK_H
-#define CLOCK_F
+#define CLOCK_H
 
 #include <list>
 #include <unordered_map>
