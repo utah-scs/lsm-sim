@@ -1,5 +1,5 @@
 CXX := g++-7
-CXX := g++
+# CXX := g++
 CXXFLAGS := -std=c++14 -Wall -g -pedantic-errors -Werror -O3 \
 						-Wno-unused-parameter -Wextra -Weffc++
 # REPLAY := yes enables a policy that can feed traces to memcached, but it

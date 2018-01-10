@@ -128,7 +128,7 @@ class ripq : public policy {
         block_ptr active_vir_block;
         int id;
         size_t filled_bytes;
-        const stats &stat;
+        const stats stat;
 
         section(int id, stats &stat)
           : blocks{}
@@ -158,7 +158,7 @@ class ripq : public policy {
           , active_vir_block(obj.active_vir_block)
           , id(obj.id)
           , filled_bytes(obj.filled_bytes)
-          , stat(stat)
+          , stat(obj.stat)
         {}
 
 
