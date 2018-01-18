@@ -158,10 +158,6 @@ enum pol_type {
 
 struct Args {
   
-  Args()
-  {
-  }
-
   std::unordered_map<uint32_t, uint32_t> app_steal_sizes{};
   std::set<uint32_t> apps{};
 
@@ -224,12 +220,14 @@ struct Partition
 };
 
 std::vector<std::unique_ptr<Partition>> global_partitions; 
-std::unique_ptr<policy> create_policy(const pol_type policy_type);
+
+/// Forward declare some utility functions.
+std::unique_ptr<policy> create_policy(Args& args);
 void parse_stdin(Args& args, int argc, char** argv);
+void calculate_global_memory(Args& args);
 
-Args args;
 
-void init_partitions(const pol_type policy_type, const size_t num_partitions)
+void init_partitions(Args& args, const pol_type policy_type, const size_t num_partitions)
 {
   for (size_t p = 0; p < num_partitions; ++p)
   {
@@ -252,17 +250,10 @@ void init_partitions(const pol_type policy_type, const size_t num_partitions)
   }
 }
 
-void calculate_global_memory(Args& args)
+
+int main(int argc, char *argv[]) 
 {
-  for (int i = 0; i < 15; i++)
-    args.global_mem += orig_alloc[i];
-  args.global_mem *= args.lsm_util;
-}
-
-
-
-
-int main(int argc, char *argv[]) {
+  Args args;
 
   // calculate global memory
   calculate_global_memory(args);
@@ -277,7 +268,7 @@ int main(int argc, char *argv[]) {
       args.policy_type == FLASHCACHELRUKCLK ||
       args.policy_type == VICTIMCACHE ||
       args.policy_type == RIPQ ||
-	  args.policy_type == FLASHCACHELRUKCLKMACHINELEARNING ||
+	    args.policy_type == FLASHCACHELRUKCLKMACHINELEARNING ||
       args.policy_type == RIPQ_SHIELD)
   {
     args.global_mem = DRAM_SIZE + FLASH_SIZE;
@@ -293,7 +284,7 @@ int main(int argc, char *argv[]) {
   // hardware instead of actualizing it.
 
   // instantiate a policy
-  std::unique_ptr<policy> policy = create_policy(args.policy_type);
+  std::unique_ptr<policy> policy = create_policy(args);
 
   // List input parameters
   std::cerr << "performing trace analysis on apps " << args.app_str << std::endl
@@ -412,6 +403,24 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
+/// Calculates global memory from the Memcachier data points.
+///
+/// @param Args struct to populate with the global memory value.
+void calculate_global_memory(Args& args)
+{
+  for (int i = 0; i < 15; i++)
+  {
+    args.global_mem += orig_alloc[i];
+  }
+  args.global_mem *= args.lsm_util;
+}
+
+/// Parse arguments from stdin on startup and populate the args struct.
+///
+/// @param args reference to an Args struct.
+/// 
+/// @param argc from main.
+/// @param argv from main.
 void parse_stdin(Args& args, int argc, char** argv)
 {
   // parse cmd args
@@ -620,9 +629,9 @@ void parse_stdin(Args& args, int argc, char** argv)
 /// @param policy_type the type of policy to create
 ///
 /// @return std::unique_ptr<policy> 
-std::unique_ptr<policy> create_policy(const pol_type policy_type)
+std::unique_ptr<policy> create_policy(Args& args)
 {
-  stats sts{policy_names[policy_type], &args.apps, args.global_mem};
+  stats sts{policy_names[args.policy_type], &args.apps, args.global_mem};
   std::unique_ptr<policy> policy{};
    switch(args.policy_type) {
     case SHADOWLRU : policy.reset(new shadowlru(sts)); break;
