@@ -71,7 +71,7 @@ const char* policy_names[24] = { "shadowlru"
 							                 , "flashcachelrukclkmachinelearning"
                               };
 
-  std::unordered_map<size_t, size_t> memcachier_app_size = { {1, 701423104}
+std::unordered_map<size_t, size_t> memcachier_app_size = { {1, 701423104}
                                                           , {2, 118577408}
                                                           , {3, 19450368}
                                                           , {5, 35743872}
@@ -225,6 +225,7 @@ struct Partition
 
 std::vector<std::unique_ptr<Partition>> global_partitions; 
 std::unique_ptr<policy> create_policy(const pol_type policy_type);
+void parse_stdin(Args& args, int argc, char** argv);
 
 Args args;
 
@@ -251,12 +252,168 @@ void init_partitions(const pol_type policy_type, const size_t num_partitions)
   }
 }
 
-int main(int argc, char *argv[]) {
-  // calculate global memory
+void calculate_global_memory(Args& args)
+{
   for (int i = 0; i < 15; i++)
     args.global_mem += orig_alloc[i];
   args.global_mem *= args.lsm_util;
+}
 
+
+
+
+int main(int argc, char *argv[]) {
+
+  // calculate global memory
+  calculate_global_memory(args);
+
+  parse_stdin(args, argc, argv);
+
+  assert(args.apps.size() >= args.app_steal_sizes.size());
+
+  if (args.policy_type == FLASHSHIELD ||
+      args.policy_type == FLASHCACHE ||
+      args.policy_type == FLASHCACHELRUK ||
+      args.policy_type == FLASHCACHELRUKCLK ||
+      args.policy_type == VICTIMCACHE ||
+      args.policy_type == RIPQ ||
+	  args.policy_type == FLASHCACHELRUKCLKMACHINELEARNING ||
+      args.policy_type == RIPQ_SHIELD)
+  {
+    args.global_mem = DRAM_SIZE + FLASH_SIZE;
+  }
+
+  // TODO: Populate partition vector here, instantiate a policy for each
+  // partition.  For normal (previous) operation, global_partitions will 
+  // just be set to 1 and global_partitions will contain a singlt
+  // partition/single policy.  For partitioning > 1, need to implement a
+  // global level dispatch to evenly distribute requests across the partitions.
+  // Questions: Should this be parallelized with threads? Should it be pinned to
+  // cores? Probably not since we only have 8.  This will probably just simulate 
+  // hardware instead of actualizing it.
+
+  // instantiate a policy
+  std::unique_ptr<policy> policy = create_policy(args.policy_type);
+
+  // List input parameters
+  std::cerr << "performing trace analysis on apps " << args.app_str << std::endl
+            << "with steal weights of " << args.app_steal_sizes_str << std::endl
+            << "policy " << policy_names[args.policy_type] << std::endl
+            << "using trace file " << args.trace << std::endl
+            << "rounding " << (args.roundup ? "on" : "off") << std::endl
+            << "utilization rate " << args.lsm_util << std::endl
+            << "start counting hits at t = " << args.hit_start_time << std::endl
+            << "request limit " << args.request_limit << std::endl
+            << "global mem " << args.global_mem << std::endl
+            << "use tax " << args.use_tax << std::endl
+            << "tax rate " << args.tax_rate << std::endl
+            << "cleaning width " << args.cleaning_width << std::endl;
+
+  if (args.policy_type == SHADOWSLAB) 
+  {
+    if (args.memcachier_classes)
+    {
+      std::cerr << "slab growth factor: memcachier" << std::endl;
+    }
+    else
+    {
+      std::cerr << "slab growth factor: " << args.gfactor << std::endl;
+    }
+  }
+
+  // proc file line by line
+  std::ifstream t_stream(args.trace);
+  assert(t_stream.is_open());
+  std::string line;
+
+  int i = 0;
+  auto start = hrc::now();
+  auto last_progress = start;
+  size_t bytes = 0;
+  
+  size_t time_hour = 1; 
+  while (std::getline(t_stream, line) &&
+    (args.request_limit == 0 || i < args.request_limit))
+  {
+  
+  // TODO: Create a dispatch function here to distribute lines evenly aross
+  // partitions.
+
+    request r{line};
+    bytes += line.size();
+
+    if (args.verbose && ((i & ((1 << 18) - 1)) == 0)) {
+      auto now  = hrc::now();
+      double seconds =
+        duration_cast<nanoseconds>(now - last_progress).count() / 1e9;
+
+      // TODO: Report stats for each parition as well as the overall hit rate.
+      if (seconds > 1.0) {
+        stats* stats = policy->get_stats();
+        std::cerr << "Progress: " << std::setprecision(10) << r.time << " "
+                  << "Rate: " << bytes / (1 << 20) / seconds << " MB/s "
+                  << "Hit Rate: " << stats->get_hit_rate() * 100 << "% "
+                  << "Evicted Items: " << stats->evicted_items << " "
+                  << "Evicted Bytes: " << stats->evicted_bytes << " "
+                  << "Utilization: " << stats->get_utilization()
+                  << std::endl;
+        bytes = 0;
+        last_progress = now;
+      }
+    }
+
+    // Only process requests for specified app, of type GET,
+    // and values of size > 0, after time 'hit_start_time'.
+    if (r.type != request::GET)
+    {
+      continue;
+    }
+    if (r.val_sz <= 0)
+    {
+      continue;
+    }
+
+    const bool in_apps =
+      std::find(std::begin(args.apps), std::end(args.apps), r.appid) != std::end(args.apps);
+
+    if (args.all_apps && !in_apps) 
+    {
+      args.apps.insert(r.appid);
+    } 
+    else if (!in_apps) 
+    {
+      continue;
+    }
+
+    policy->proc(&r, r.time < args.hit_start_time);
+    if (args.verbose && ( args.policy_type == FLASHSHIELD || args.policy_type == VICTIMCACHE || 
+          args.policy_type == RIPQ ) && time_hour * 3600 < r.time) 
+    {
+      printf ("Dumping stats for FLASHSHIELD\n");
+	    policy->dump_stats();
+	    time_hour++;
+    }
+    ++i;
+  }
+
+  auto stop = hrc::now();
+
+  // Log curves for shadowlru, shadowslab, and partslab.
+  if (args.policy_type == 0 || args.policy_type == 4 || args.policy_type == 5)
+  {
+    policy->log_curves();
+  }
+ 
+  // Dump stats for all policies. 
+  policy->dump_stats();
+  double seconds = duration_cast<milliseconds>(stop - start).count() / 1000.;
+  std::cerr << "total execution time: " << seconds << std::endl;
+
+  return 0;
+}
+
+void parse_stdin(Args& args, int argc, char** argv)
+{
   // parse cmd args
   int c;
   std::vector<int32_t> ordered_apps{};
@@ -456,148 +613,6 @@ int main(int argc, char *argv[]) {
         args.num_global_partitions = atoi(optarg);
     }
   }
-
-  assert(args.apps.size() >= args.app_steal_sizes.size());
-
-  if (args.policy_type == FLASHSHIELD ||
-      args.policy_type == FLASHCACHE ||
-      args.policy_type == FLASHCACHELRUK ||
-      args.policy_type == FLASHCACHELRUKCLK ||
-      args.policy_type == VICTIMCACHE ||
-      args.policy_type == RIPQ ||
-	  args.policy_type == FLASHCACHELRUKCLKMACHINELEARNING ||
-      args.policy_type == RIPQ_SHIELD)
-  {
-    args.global_mem = DRAM_SIZE + FLASH_SIZE;
-  }
-
-  // TODO: Populate partition vector here, instantiate a policy for each
-  // partition.  For normal (previous) operation, global_partitions will 
-  // just be set to 1 and global_partitions will contain a singlt
-  // partition/single policy.  For partitioning > 1, need to implement a
-  // global level dispatch to evenly distribute requests across the partitions.
-  // Questions: Should this be parallelized with threads? Should it be pinned to
-  // cores? Probably not since we only have 8.  This will probably just simulate 
-  // hardware instead of actualizing it.
-
-  // instantiate a policy
-  std::unique_ptr<policy> policy = create_policy(args.policy_type);
-
-  // List input parameters
-  std::cerr << "performing trace analysis on apps " << args.app_str << std::endl
-            << "with steal weights of " << args.app_steal_sizes_str << std::endl
-            << "policy " << policy_names[args.policy_type] << std::endl
-            << "using trace file " << args.trace << std::endl
-            << "rounding " << (args.roundup ? "on" : "off") << std::endl
-            << "utilization rate " << args.lsm_util << std::endl
-            << "start counting hits at t = " << args.hit_start_time << std::endl
-            << "request limit " << args.request_limit << std::endl
-            << "global mem " << args.global_mem << std::endl
-            << "use tax " << args.use_tax << std::endl
-            << "tax rate " << args.tax_rate << std::endl
-            << "cleaning width " << args.cleaning_width << std::endl;
-
-  if (args.policy_type == SHADOWSLAB) 
-  {
-    if (args.memcachier_classes)
-    {
-      std::cerr << "slab growth factor: memcachier" << std::endl;
-    }
-    else
-    {
-      std::cerr << "slab growth factor: " << args.gfactor << std::endl;
-    }
-  }
-
-  // proc file line by line
-  std::ifstream t_stream(args.trace);
-  assert(t_stream.is_open());
-  std::string line;
-
-  int i = 0;
-  auto start = hrc::now();
-  auto last_progress = start;
-  size_t bytes = 0;
-  
-  size_t time_hour = 1; 
-  while (std::getline(t_stream, line) &&
-    (args.request_limit == 0 || i < args.request_limit))
-  {
-  
-  // TODO: Create a dispatch function here to distribute lines evenly aross
-  // partitions.
-
-    request r{line};
-    bytes += line.size();
-
-    if (args.verbose && ((i & ((1 << 18) - 1)) == 0)) {
-      auto now  = hrc::now();
-      double seconds =
-        duration_cast<nanoseconds>(now - last_progress).count() / 1e9;
-
-      // TODO: Report stats for each parition as well as the overall hit rate.
-      if (seconds > 1.0) {
-        stats* stats = policy->get_stats();
-        std::cerr << "Progress: " << std::setprecision(10) << r.time << " "
-                  << "Rate: " << bytes / (1 << 20) / seconds << " MB/s "
-                  << "Hit Rate: " << stats->get_hit_rate() * 100 << "% "
-                  << "Evicted Items: " << stats->evicted_items << " "
-                  << "Evicted Bytes: " << stats->evicted_bytes << " "
-                  << "Utilization: " << stats->get_utilization()
-                  << std::endl;
-        bytes = 0;
-        last_progress = now;
-      }
-    }
-
-    // Only process requests for specified app, of type GET,
-    // and values of size > 0, after time 'hit_start_time'.
-    if (r.type != request::GET)
-    {
-      continue;
-    }
-    if (r.val_sz <= 0)
-    {
-      continue;
-    }
-
-    const bool in_apps =
-      std::find(std::begin(args.apps), std::end(args.apps), r.appid) != std::end(args.apps);
-
-    if (args.all_apps && !in_apps) 
-    {
-      args.apps.insert(r.appid);
-    } 
-    else if (!in_apps) 
-    {
-      continue;
-    }
-
-    policy->proc(&r, r.time < args.hit_start_time);
-    if (args.verbose && ( args.policy_type == FLASHSHIELD || args.policy_type == VICTIMCACHE || 
-          args.policy_type == RIPQ ) && time_hour * 3600 < r.time) 
-    {
-      printf ("Dumping stats for FLASHSHIELD\n");
-	    policy->dump_stats();
-	    time_hour++;
-    }
-    ++i;
-  }
-
-  auto stop = hrc::now();
-
-  // Log curves for shadowlru, shadowslab, and partslab.
-  if (args.policy_type == 0 || args.policy_type == 4 || args.policy_type == 5)
-  {
-    policy->log_curves();
-  }
- 
-  // Dump stats for all policies. 
-  policy->dump_stats();
-  double seconds = duration_cast<milliseconds>(stop - start).count() / 1000.;
-  std::cerr << "total execution time: " << seconds << std::endl;
-
-  return 0;
 }
 
 /// Factory to create a policy of specified type with stats object included.
