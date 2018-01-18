@@ -42,8 +42,9 @@
 #include "replay.h"
 #include "flash_cache_lruk_clock_machinelearning.h"
 
-namespace ch = std::chrono;
-typedef ch::high_resolution_clock hrc;
+using namespace std::chrono;
+
+typedef std::chrono::high_resolution_clock hrc;
 
 const char* policy_names[24] = { "shadowlru"
                                , "fifo"
@@ -92,7 +93,6 @@ enum pol_type {
   , RAMSHIELD
   , RAMSHIELD_FIFO
   , RAMSHIELD_SEL
-  , REPLAY
   , FLASHSHIELD
   , FLASHCACHELRUKCLKMACHINELEARNING
   };
@@ -141,33 +141,33 @@ lsc_multi::subpolicy  subpolicy;
 std::string           app_steal_sizes_str;
 
 const std::string usage =
-  "-f    specify file path\n"
-  "-a    specify app to eval\n"
-  "-r    enable rounding\n"
-  "-u    specify utilization\n"
-  "-w    specify warmup period\n"
-  "-l    number of requests after warmup\n"
-  "-s    simulated cache size in bytes\n"
-  "-p    policy 0, 1, 2; shadowlru, fifo, lru\n"
-  "-v    incremental output\n"
-  "-g    specify slab growth factor\n"
-  "-M    use memcachier slab classes\n"
-  "-P    number of partitions for partslab\n"
-  "-S    segment size in bytes for lsm\n"
-  "-B    block size in bytes for ripq and ram_shield\n"
-  "-E    eviction subpolicy (for multi)\n"
-  "-m    private mem percentage of target mem\n"
-  "-W    per-application weights\n"
-  "-c    cleaning width\n"
-  "-D    dram size in flashcache, victimcache and ripq_shield policies\n"
-  "-F    flash size in flashcache, victimcache, ripq and ripq_shield policies\n"
-  "-K    number of queues in lruk policy\n"
-  "-L    queue size in lruk policy\n"
-  "-H    hit value in flashcache formula\n"
-  "-n    number of flash sections for ripq and ripq_shield\n" 
-  "-d    number of dram sections for ripq_shield\n"
-  "-C    CLOCK maximum value\n"
-  "-Z    number of cores to partition cache processing by\n";
+"-f    specify file path\n"
+"-a    specify app to eval\n"
+"-r    enable rounding\n"
+"-u    specify utilization\n"
+"-w    specify warmup period\n"
+"-l    number of requests after warmup\n"
+"-s    simulated cache size in bytes\n"
+"-p    policy 0, 1, 2; shadowlru, fifo, lru\n"
+"-v    incremental output\n"
+"-g    specify slab growth factor\n"
+"-M    use memcachier slab classes\n"
+"-P    number of partitions for partslab\n"
+"-S    segment size in bytes for lsm\n"
+"-B    block size in bytes for ripq and ram_shield\n"
+"-E    eviction subpolicy (for multi)\n"
+"-m    private mem percentage of target mem\n"
+"-W    per-application weights\n"
+"-c    cleaning width\n"
+"-D    dram size in flashcache, victimcache and ripq_shield policies\n"
+"-F    flash size in flashcache, victimcache, ripq and ripq_shield policies\n"
+"-K    number of queues in lruk policy\n"
+"-L    queue size in lruk policy\n"
+"-H    hit value in flashcache formula\n"
+"-n    number of flash sections for ripq and ripq_shield\n" 
+"-d    number of dram sections for ripq_shield\n"
+"-C    CLOCK maximum value\n"
+"-Z    number of cores to partition cache processing by\n";
 
 // memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -211,8 +211,6 @@ std::unordered_map<size_t, size_t> memcachier_app_size = { {1, 701423104}
 // to the IX for policy.
 struct Partition
 { 
-  std::unique_ptr<stats> _stats;
-  std::unique_ptr<policy> _policy;
 };
 
 // The number of partitions in which to globally partition the cache.
@@ -221,14 +219,29 @@ uint16_t num_global_partitions = 1;
 // The global cache partitions.
 std::vector<std::unique_ptr<Partition>> global_partitions; 
 
-void init_partitions(const pol_type policy, const size_t num_partitions)
+std::unique_ptr<policy> create_policy(const pol_type policy_type);
+
+void init_partitions(const pol_type policy_type, const size_t num_partitions)
 {
   for (size_t p = 0; p < num_partitions; ++p)
   {
-    
+    // build a stats struct with basic info relevant to every policy.
+    stats sts{policy_names[policy_type], &apps, global_mem};
+    std::unique_ptr<policy> policy{};
+    std::unique_ptr<Partition> part;
+    global_partitions.push_back(std::move(part));
 
+    // TODO: Populate partition vector here, instantiate a policy for each
+    // partition.  For normal (previous) operation, global_partitions will 
+    // just be set to 1 and global_partitions will contain a singlt
+    // partition/single policy.  For partitioning > 1, need to implement a
+    // global level dispatch to evenly distribute requests across the partitions.
+    // Questions: Should this be parallelized with threads? Should it be pinned to
+    // cores? Probably not since we only have 8.  This will probably just simulate 
+    // hardware instead of actualizing it.
+
+    // instantiate a policy
   }
-
 }
 
 int main(int argc, char *argv[]) {
@@ -451,9 +464,6 @@ int main(int argc, char *argv[]) {
     global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 
-  // build a stats struct with basic info relevant to every policy.
-  stats sts{policy_names[policy_type], &apps, global_mem};
-
   // TODO: Populate partition vector here, instantiate a policy for each
   // partition.  For normal (previous) operation, global_partitions will 
   // just be set to 1 and global_partitions will contain a singlt
@@ -464,58 +474,159 @@ int main(int argc, char *argv[]) {
   // hardware instead of actualizing it.
 
   // instantiate a policy
+  std::unique_ptr<policy> policy = create_policy(policy_type);
+
+  // List input parameters
+  std::cerr << "performing trace analysis on apps " << app_str << std::endl
+            << "with steal weights of " << app_steal_sizes_str << std::endl
+            << "policy " << policy_names[policy_type] << std::endl
+            << "using trace file " << trace << std::endl
+            << "rounding " << (roundup ? "on" : "off") << std::endl
+            << "utilization rate " << lsm_util << std::endl
+            << "start counting hits at t = " << hit_start_time << std::endl
+            << "request limit " << request_limit << std::endl
+            << "global mem " << global_mem << std::endl
+            << "use tax " << use_tax << std::endl
+            << "tax rate " << tax_rate << std::endl
+            << "cleaning width " << cleaning_width << std::endl;
+
+  if (policy_type == SHADOWSLAB) 
+  {
+    if (memcachier_classes)
+    {
+      std::cerr << "slab growth factor: memcachier" << std::endl;
+    }
+    else
+    {
+      std::cerr << "slab growth factor: " << gfactor << std::endl;
+    }
+  }
+
+  // proc file line by line
+  std::ifstream t_stream(trace);
+  assert(t_stream.is_open());
+  std::string line;
+
+  int i = 0;
+  auto start = hrc::now();
+  auto last_progress = start;
+  size_t bytes = 0;
+  
+  size_t time_hour = 1; 
+  while (std::getline(t_stream, line) &&
+         (request_limit == 0 || i < request_limit))
+  {
+  
+  // TODO: Create a dispatch function here to distribute lines evenly aross
+  // partitions.
+
+    request r{line};
+    bytes += line.size();
+
+    if (verbose && ((i & ((1 << 18) - 1)) == 0)) {
+      auto now  = hrc::now();
+      double seconds =
+        duration_cast<nanoseconds>(now - last_progress).count() / 1e9;
+
+      // TODO: Report stats for each parition as well as the overall hit rate.
+      if (seconds > 1.0) {
+        stats* stats = policy->get_stats();
+        std::cerr << "Progress: " << std::setprecision(10) << r.time << " "
+                  << "Rate: " << bytes / (1 << 20) / seconds << " MB/s "
+                  << "Hit Rate: " << stats->get_hit_rate() * 100 << "% "
+                  << "Evicted Items: " << stats->evicted_items << " "
+                  << "Evicted Bytes: " << stats->evicted_bytes << " "
+                  << "Utilization: " << stats->get_utilization()
+                  << std::endl;
+        bytes = 0;
+        last_progress = now;
+      }
+    }
+
+    // Only process requests for specified app, of type GET,
+    // and values of size > 0, after time 'hit_start_time'.
+    if (r.type != request::GET)
+    {
+      continue;
+    }
+    if (r.val_sz <= 0)
+    {
+      continue;
+    }
+
+    const bool in_apps =
+      std::find(std::begin(apps), std::end(apps), r.appid) != std::end(apps);
+
+    if (all_apps && !in_apps) 
+    {
+      apps.insert(r.appid);
+    } 
+    else if (!in_apps) 
+    {
+      continue;
+    }
+
+    policy->proc(&r, r.time < hit_start_time);
+    if (verbose && ( policy_type == FLASHSHIELD || policy_type == VICTIMCACHE || 
+          policy_type == RIPQ ) && time_hour * 3600 < r.time) 
+    {
+      printf ("Dumping stats for FLASHSHIELD\n");
+	    policy->dump_stats();
+	    time_hour++;
+    }
+    ++i;
+  }
+
+  auto stop = hrc::now();
+
+  // Log curves for shadowlru, shadowslab, and partslab.
+  if (policy_type == 0 || policy_type == 4 || policy_type == 5)
+  {
+    policy->log_curves();
+  }
+ 
+  // Dump stats for all policies. 
+  policy->dump_stats();
+  double seconds = duration_cast<milliseconds>(stop - start).count() / 1000.;
+  std::cerr << "total execution time: " << seconds << std::endl;
+
+  return 0;
+}
+
+/// Factory to create a policy of specified type with stats object included.
+///
+/// @param policy_type the type of policy to create
+///
+/// @return std::unique_ptr<policy> 
+std::unique_ptr<policy> create_policy(const pol_type policy_type)
+{
+  stats sts{policy_names[policy_type], &apps, global_mem};
   std::unique_ptr<policy> policy{};
-  switch(policy_type) {
-    case SHADOWLRU:
-      policy.reset(new shadowlru(sts));
-      break;
-    case FIFO : 
-      policy.reset(new fifo(sts));
-      break;
-    case LRU : 
-      policy.reset(new lru(sts));
-      break;
-    case FLASHCACHE :
-      policy.reset(new FlashCache(sts));
-      break;
-    case FLASHCACHELRUK :
-        policy.reset(new FlashCacheLruk(sts));
-        break;
-    case FLASHCACHELRUKCLK :
-        policy.reset(new FlashCacheLrukClk(sts));
-        break;
+   switch(policy_type) {
+    case SHADOWLRU : policy.reset(new shadowlru(sts)); break;
+    case FIFO : policy.reset(new fifo(sts)); break;
+    case LRU : policy.reset(new lru(sts)); break;
+    case FLASHCACHE : policy.reset(new FlashCache(sts)); break;
+    case FLASHCACHELRUK : policy.reset(new FlashCacheLruk(sts)); break;
+    case FLASHCACHELRUKCLK : policy.reset(new FlashCacheLrukClk(sts)); break;
     case FLASHCACHELRUKCLKMACHINELEARNING :
         APP_NUMBER = *std::begin(apps);
         ML_SVM_TH = USER_SVM_TH;
         policy.reset(new FlashCacheLrukClkMachineLearning(sts));
         break;
-    case VICTIMCACHE :
-        policy.reset(new VictimCache(sts));
-        break;
-    case LRUK :
-        policy.reset(new Lruk(sts));
-        break;
-    case CLOCK :
-        policy.reset(new Clock(sts));
-        break;
-    case SEGMENT_UTIL:
-        policy.reset(new SegmentUtil(sts));
-        break;
+    case VICTIMCACHE : policy.reset(new VictimCache(sts)); break;
+    case LRUK : policy.reset(new Lruk(sts)); break;
+    case CLOCK : policy.reset(new Clock(sts)); break;
+    case SEGMENT_UTIL : policy.reset(new SegmentUtil(sts)); break;
     case SLAB :
-      if (memcachier_classes) {
-        sts.gfactor = 2.0;
-      } else {
-        sts.gfactor = gfactor;
-      }
+      if (memcachier_classes) { sts.gfactor = 2.0; } 
+      else { sts.gfactor = gfactor; }
       sts.memcachier_classes = memcachier_classes;
       policy.reset(new slab(sts));
       break;
     case SHADOWSLAB:
-      if (memcachier_classes) {
-        sts.gfactor = 2.0;
-      } else {
-        sts.gfactor = gfactor;
-      }
+      if (memcachier_classes) { sts.gfactor = 2.0;} 
+      else { sts.gfactor = gfactor; }
       sts.memcachier_classes = memcachier_classes;
       policy.reset(new shadowslab(sts));
       break;
@@ -534,7 +645,6 @@ int main(int argc, char *argv[]) {
       {
         lsc_multi* multi = new lsc_multi(sts, subpolicy);
         policy.reset(multi);
-
         for (size_t appid : apps) {
           assert(memcachier_app_size[appid] > 0);
           uint32_t app_steal_size = 65536;
@@ -550,12 +660,10 @@ int main(int argc, char *argv[]) {
                          memcachier_app_size[appid],
                          app_steal_size);
         }
-
         if (use_tax) {
           multi->set_tax(tax_rate);
         }
       }
-
       break;
     case MULTISLAB:
     {
@@ -567,7 +675,6 @@ int main(int argc, char *argv[]) {
       sts.memcachier_classes = memcachier_classes;
       slab_multi* slmulti = new slab_multi(sts);
       policy.reset(slmulti);
-
       for (size_t appid : apps) {
         assert(memcachier_app_size[appid] > 0);
         slmulti->add_app(appid, min_mem_pct, memcachier_app_size[appid]);
@@ -609,13 +716,6 @@ int main(int argc, char *argv[]) {
       sts.dram_size = dram_size;
       policy.reset(new RamShield_sel(sts, block_size));
       break;
-    case REPLAY:
-#ifdef NOREPLAY
-      assert("Replay support not compiled in; adjust Makefile." && false);
-#else
-      /* policy.reset(new replay(sts)); */
-#endif
-      break;
     case FLASHSHIELD:
         FLASH_SHILD_APP_NUMBER = *std::begin(apps);
         FLASH_SHILD_TH = USER_SVM_TH;
@@ -625,112 +725,10 @@ int main(int argc, char *argv[]) {
         policy.reset(new flashshield(sts));
         break;
   }
-
-   if (!policy) {
+  if (!policy) {
     std::cerr << "No valid policy selected!" << std::endl;
     exit(-1);
   }
-
-  // List input parameters
-  std::cerr << "performing trace analysis on apps " << app_str << std::endl
-            << "with steal weights of " << app_steal_sizes_str << std::endl
-            << "policy " << policy_names[policy_type] << std::endl
-            << "using trace file " << trace << std::endl
-            << "rounding " << (roundup ? "on" : "off") << std::endl
-            << "utilization rate " << lsm_util << std::endl
-            << "start counting hits at t = " << hit_start_time << std::endl
-            << "request limit " << request_limit << std::endl
-            << "global mem " << global_mem << std::endl
-            << "use tax " << use_tax << std::endl
-            << "tax rate " << tax_rate << std::endl
-            << "cleaning width " << cleaning_width << std::endl;
-  if (policy_type == SHADOWSLAB) {
-    if (memcachier_classes)
-      std::cerr << "slab growth factor: memcachier" << std::endl;
-    else
-      std::cerr << "slab growth factor: " << gfactor << std::endl;
-  }
-
-  // proc file line by line
-  std::ifstream t_stream(trace);
-  assert(t_stream.is_open());
-  std::string line;
-
-  int i = 0;
-  auto start = hrc::now();
-  auto last_progress = start;
-  size_t bytes = 0;
-  
-  size_t time_hour = 1; 
-  while (std::getline(t_stream, line) &&
-         (request_limit == 0 || i < request_limit))
-  {
-  
-  // TODO: Create a dispatch function here to distribute lines evenly aross
-  // partitions.
-
-    request r{line};
-    bytes += line.size();
-
-    if (verbose && ((i & ((1 << 18) - 1)) == 0)) {
-      auto now  = hrc::now();
-      double seconds =
-        ch::duration_cast<ch::nanoseconds>(now - last_progress).count() / 1e9;
-
-      // TODO: Report stats for each parition as well as the overall hit rate.
-      if (seconds > 1.0) {
-        stats* stats = policy->get_stats();
-        std::cerr << "Progress: " << std::setprecision(10) << r.time << " "
-                  << "Rate: " << bytes / (1 << 20) / seconds << " MB/s "
-                  << "Hit Rate: " << stats->get_hit_rate() * 100 << "% "
-                  << "Evicted Items: " << stats->evicted_items << " "
-                  << "Evicted Bytes: " << stats->evicted_bytes << " "
-                  << "Utilization: " << stats->get_utilization()
-                  << std::endl;
-        bytes = 0;
-        last_progress = now;
-      }
-    }
-
-    // Only process requests for specified app, of type GET,
-    // and values of size > 0, after time 'hit_start_time'.
-    if (r.type != request::GET)
-      continue;
-
-    if (r.val_sz <= 0)
-      continue;
-
-    const bool in_apps =
-      std::find(std::begin(apps), std::end(apps), r.appid) != std::end(apps);
-
-    if (all_apps && !in_apps) {
-      apps.insert(r.appid);
-    } else if (!in_apps) {
-      continue;
-    }
-
-    policy->proc(&r, r.time < hit_start_time);
-    if (verbose 
-	&& ( policy_type == FLASHSHIELD || policy_type == VICTIMCACHE || policy_type == RIPQ ) 
-	&& time_hour * 3600 < r.time) {
-    	printf ("Dumping stats for FLASHSHIELD\n");
-	policy->dump_stats();
-	time_hour++;
-    }
-    ++i;
-  }
-  auto stop = hrc::now();
-
-  // Log curves for shadowlru, shadowslab, and partslab.
-  if (policy_type == 0 || policy_type == 4 || policy_type == 5)
-    policy->log_curves();
- 
-  // Dump stats for all policies. 
-  policy->dump_stats();
-
-  double seconds =
-    ch::duration_cast<ch::milliseconds>(stop - start).count() / 1000.;
-  std::cerr << "total execution time: " << seconds << std::endl;
-
-  return 0;
+  return policy; 
 }
+
