@@ -203,65 +203,65 @@ struct Args {
   uint16_t num_global_partitions = 1;
 };
 
-// Partition (high-level partitioning) : A Partition is a logical grouping of
-// cache-related mechanisms and statistical variables that emulates a single
-// parition in high-level partitioning of cache processing.  Parititoning at
-// this level isolates both allocation and eviction of a portion of the cache
-// and delegates processing to a single unique policy object for that partition.
-// A lower-level partitioning will consist of partitioning within the policy.
-//
-// TODO: Policies to be measured with eviction partitioning will need to be
-// modified to partition within the policy and high-level partitioning disabled.
-// A dispaatch object will be added to policy to handle even distribubtion of
-// requests across the specified number of cores. These changes should be added
-// to the IX for policy.
-struct Partition
-{ 
-};
-
-std::vector<std::unique_ptr<Partition>> global_partitions; 
-
 /// Forward declare some utility functions.
 std::unique_ptr<policy> create_policy(Args& args);
 void parse_stdin(Args& args, int argc, char** argv);
 void calculate_global_memory(Args& args);
+void init_partitions(Args& args, const size_t num_partitions);
+/// 
 
+// Partition (high-level partitioning) : A Partition is a logical grouping of
+// cache-related mechanisms and statistical variables that emulates a single
+// parition in high-level partitioning of cache processing.  
+// TODO: Consider making Partition a thread object/functor with a data callback
+//       get results.  Should look into Intel TBB information first and see what
+//       facilities are offered before deciding.
+// TODO: Think about better ways of extracting data than the previous "dump
+//       to the console every x seconds" method.  This will likely become a mess
+//       when partition numbers increase.
+// TODO: Also think about what data will be useful on a per-partition basis and
+//       a global basis.  What patterns will best tease out the comparisons
+//       between globalism and partitioning.
+struct Partition
+{ 
+  std::unique_ptr<policy> _policy;
+  /// Additional stuff can go here as needed.
+  /// i.e. additional stats tracking, concurrency mechanisms, etc.
+  /// ...
+};
 
-void init_partitions(Args& args, const pol_type policy_type, const size_t num_partitions)
+std::vector<std::unique_ptr<Partition>> global_partitions; 
+
+/// Creates a new policy with stats and packs it into a partition struct
+/// for num_partitions partitions and pushes them all into a vector.
+/// 
+/// @param Args struct containing policy info.
+///
+/// @param size_t indicating the number of partitions to create.
+void init_partitions(Args& args)
 {
-  for (size_t p = 0; p < num_partitions; ++p)
+  for (size_t p = 0; p < args.num_global_partitions; ++p)
   {
-    // build a stats struct with basic info relevant to every policy.
-    stats sts{policy_names[policy_type], &args.apps, args.global_mem};
-    std::unique_ptr<policy> policy{};
     std::unique_ptr<Partition> part;
+    part->_policy = create_policy(args);
     global_partitions.push_back(std::move(part));
 
-    // TODO: Populate partition vector here, instantiate a policy for each
-    // partition.  For normal (previous) operation, global_partitions will 
-    // just be set to 1 and global_partitions will contain a singlt
-    // partition/single policy.  For partitioning > 1, need to implement a
-    // global level dispatch to evenly distribute requests across the partitions.
-    // Questions: Should this be parallelized with threads? Should it be pinned to
-    // cores? Probably not since we only have 8.  This will probably just simulate 
-    // hardware instead of actualizing it.
-
-    // instantiate a policy
+    // TODO: This is likely a good place to fire off threads.
+    //       May want to consider making Partitions a functor 
+    //       with some sort of callback to aggregate all of the incoming
+    //       partitions data async.
   }
 }
-
 
 int main(int argc, char *argv[]) 
 {
   Args args;
-
-  // calculate global memory
   calculate_global_memory(args);
-
   parse_stdin(args, argc, argv);
+  init_partitions(args);
 
+  // TODO: Move this somewhere, this is policy specific.
   assert(args.apps.size() >= args.app_steal_sizes.size());
-
   if (args.policy_type == FLASHSHIELD ||
       args.policy_type == FLASHCACHE ||
       args.policy_type == FLASHCACHELRUK ||
@@ -274,17 +274,11 @@ int main(int argc, char *argv[])
     args.global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 
-  // TODO: Populate partition vector here, instantiate a policy for each
-  // partition.  For normal (previous) operation, global_partitions will 
-  // just be set to 1 and global_partitions will contain a singlt
-  // partition/single policy.  For partitioning > 1, need to implement a
-  // global level dispatch to evenly distribute requests across the partitions.
-  // Questions: Should this be parallelized with threads? Should it be pinned to
-  // cores? Probably not since we only have 8.  This will probably just simulate 
-  // hardware instead of actualizing it.
+  // TODO: Create a dispatch meachanism that uniformly assigns requests to a
+  // Partition object for processing.  To ensure legacy operation of other
+  // experiments, dispatch routine will simply dispatch to a single partition.
 
-  // instantiate a policy
-  std::unique_ptr<policy> policy = create_policy(args);
+  std::unique_ptr<policy> policy = create_policy(args); // <<-- replace with parts
 
   // List input parameters
   std::cerr << "performing trace analysis on apps " << args.app_str << std::endl
