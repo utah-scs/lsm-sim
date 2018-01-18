@@ -43,8 +43,7 @@
 #include "flash_cache_lruk_clock_machinelearning.h"
 
 using namespace std::chrono;
-
-typedef std::chrono::high_resolution_clock hrc;
+typedef high_resolution_clock hrc;
 
 const char* policy_names[24] = { "shadowlru"
                                , "fifo"
@@ -71,75 +70,29 @@ const char* policy_names[24] = { "shadowlru"
                                , "flashshield"
 							                 , "flashcachelrukclkmachinelearning"
                               };
-enum pol_type { 
-    SHADOWLRU = 0
-  , FIFO
-  , LRU
-  , SLAB
-  , SHADOWSLAB
-  , PARTSLAB
-  , LSM
-  , MULTI
-  , MULTISLAB
-  , FLASHCACHE
-  , VICTIMCACHE 
-  , LRUK
-  , RIPQ 
-  , RIPQ_SHIELD
-  , CLOCK
-  , FLASHCACHELRUK
-  , FLASHCACHELRUKCLK
-  , SEGMENT_UTIL
-  , RAMSHIELD
-  , RAMSHIELD_FIFO
-  , RAMSHIELD_SEL
-  , FLASHSHIELD
-  , FLASHCACHELRUKCLKMACHINELEARNING
-  };
 
-std::set<uint32_t> apps{}; //< apps to consider
-
-/// How much each app steals per shadow q hit.
-std::unordered_map<uint32_t, uint32_t> app_steal_sizes{};
-
-bool          all_apps             = true;             //< run all by default 
-bool          roundup              = false;            //< no rounding default
-float         lsm_util             = 1.0;              //< default util factor
-std::string   trace                = "data/m.cap.out"; //< default filepath
-double        hit_start_time       = 86400;            //< default warmup time
-size_t        global_mem           = 0;
-bool          verbose              = false;
-double        gfactor              = 1.25;             //< Slab growth factor.
-bool          memcachier_classes   = false;
-size_t        partslab_partitions  = 2;
-size_t        segment_size         = 1 * 1024 * 1024;
-size_t        block_size           = 1 * 1024 * 1024;
-size_t        num_dsections        = 4;
-size_t        min_mem_pct          = 75;
-const size_t  default_steal_size   = 65536;
-bool          use_tax              = false;
-double        tax_rate             = 0.05;
-double        priv_mem_percentage  = 0.25;
-bool          use_percentage       = false;            // specify priv mem %
-size_t        flash_size           = 0;
-size_t        num_sections         = 0;
-double        USER_SVM_TH          = 1;
-bool          debug                = false;
-
-// Only parse this many requests from the CSV file before breaking.
-// Helpful for limiting runtime when playing around.
-int           request_limit        = 0;
-
-/// Amount of dram memory allocated for ripq_shield active_blocks.
-size_t        dram_size            = 0;
-double        threshold            = 0.7;
-size_t        cleaning_width       = 100;
-
-std::string           app_str;                        //< for logging apps
-pol_type              policy_type;
-lsc_multi::subpolicy  subpolicy;
-std::string           app_steal_sizes_str;
-
+  std::unordered_map<size_t, size_t> memcachier_app_size = { {1, 701423104}
+                                                          , {2, 118577408}
+                                                          , {3, 19450368}
+                                                          , {5, 35743872}
+                                                          , {6, 7108608}
+                                                          , {7, 77842880}
+                                                          , {8, 10485760}
+                                                          , {10, 684898304}
+                                                          , {11, 7829952}
+                                                          , {13, 36647040}
+                                                          , {19, 51209600}
+                                                          , {18, 6313216}
+                                                          , {20, 70953344}
+                                                          , {23, 4542897472}
+                                                          , {29, 187378624}
+                                                          , {31, 1409535488}
+                                                          , {53, 11044096}
+                                                          , {59, 1713664}
+                                                          , {94, 23238784}
+                                                          , {227, 20237184}
+                                                          };
+/// String of arguments.
 const std::string usage =
 "-f    specify file path\n"
 "-a    specify app to eval\n"
@@ -169,33 +122,90 @@ const std::string usage =
 "-C    CLOCK maximum value\n"
 "-Z    number of cores to partition cache processing by\n";
 
-// memcachier slab allocations at t=86400 (24 hours)
+/// Memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
   1664, 2304, 512, 17408, 266240, 16384, 73728, 188416, 442368,
   3932160, 11665408, 34340864, 262144, 0 , 0
 };
 
-std::unordered_map<size_t, size_t> memcachier_app_size = { {1, 701423104}
-                                                         , {2, 118577408}
-                                                         , {3, 19450368}
-                                                         , {5, 35743872}
-                                                         , {6, 7108608}
-                                                         , {7, 77842880}
-                                                         , {8, 10485760}
-                                                         , {10, 684898304}
-                                                         , {11, 7829952}
-                                                         , {13, 36647040}
-                                                         , {19, 51209600}
-                                                         , {18, 6313216}
-                                                         , {20, 70953344}
-                                                         , {23, 4542897472}
-                                                         , {29, 187378624}
-                                                         , {31, 1409535488}
-                                                         , {53, 11044096}
-                                                         , {59, 1713664}
-                                                         , {94, 23238784}
-                                                         , {227, 20237184}
-                                                         };
+/// Possible policy types.
+enum pol_type { 
+    SHADOWLRU = 0
+  , FIFO
+  , LRU
+  , SLAB
+  , SHADOWSLAB
+  , PARTSLAB
+  , LSM
+  , MULTI
+  , MULTISLAB
+  , FLASHCACHE
+  , VICTIMCACHE 
+  , LRUK
+  , RIPQ 
+  , RIPQ_SHIELD
+  , CLOCK
+  , FLASHCACHELRUK
+  , FLASHCACHELRUKCLK
+  , SEGMENT_UTIL
+  , RAMSHIELD
+  , RAMSHIELD_FIFO
+  , RAMSHIELD_SEL
+  , FLASHSHIELD
+  , FLASHCACHELRUKCLKMACHINELEARNING
+  , NONE
+  };
+
+struct Args {
+  
+  Args()
+  {
+  }
+
+  std::unordered_map<uint32_t, uint32_t> app_steal_sizes{};
+  std::set<uint32_t> apps{};
+
+  bool          all_apps             = true;             //< run all by default 
+  bool          roundup              = false;            //< no rounding default
+  float         lsm_util             = 1.0;              //< default util factor
+  std::string   trace                = "data/m.cap.out"; //< default filepath
+  double        hit_start_time       = 86400;            //< default warmup time
+  size_t        global_mem           = 0;
+  bool          verbose              = false;
+  double        gfactor              = 1.25;             //< Slab growth factor.
+  bool          memcachier_classes   = false;
+  size_t        partslab_partitions  = 2;
+  size_t        segment_size         = 1 * 1024 * 1024;
+  size_t        block_size           = 1 * 1024 * 1024;
+  size_t        num_dsections        = 4;
+  size_t        min_mem_pct          = 75;
+  const size_t  default_steal_size   = 65536;
+  bool          use_tax              = false;
+  double        tax_rate             = 0.05;
+  double        priv_mem_percentage  = 0.25;
+  bool          use_percentage       = false;            // specify priv mem %
+  size_t        flash_size           = 0;
+  size_t        num_sections         = 0;
+  double        USER_SVM_TH          = 1;
+  bool          debug                = false;
+
+  // Only parse this many requests from the CSV file before breaking.
+  // Helpful for limiting runtime when playing around.
+  int           request_limit        = 0;
+
+  /// Amount of dram memory allocated for ripq_shield active_blocks.
+  size_t        dram_size            = 0;
+  double        threshold            = 0.7;
+  size_t        cleaning_width       = 100;
+
+  std::string           app_str      = "";              //< for logging apps
+  pol_type              policy_type  = NONE;
+  lsc_multi::subpolicy  subpolicy    = lsc_multi::subpolicy(0);
+  std::string           app_steal_sizes_str = "";
+
+  // The number of partitions in which to globally partition the cache.
+  uint16_t num_global_partitions = 1;
+};
 
 // Partition (high-level partitioning) : A Partition is a logical grouping of
 // cache-related mechanisms and statistical variables that emulates a single
@@ -213,20 +223,17 @@ struct Partition
 { 
 };
 
-// The number of partitions in which to globally partition the cache.
-uint16_t num_global_partitions = 1;
-
-// The global cache partitions.
 std::vector<std::unique_ptr<Partition>> global_partitions; 
-
 std::unique_ptr<policy> create_policy(const pol_type policy_type);
+
+Args args;
 
 void init_partitions(const pol_type policy_type, const size_t num_partitions)
 {
   for (size_t p = 0; p < num_partitions; ++p)
   {
     // build a stats struct with basic info relevant to every policy.
-    stats sts{policy_names[policy_type], &apps, global_mem};
+    stats sts{policy_names[policy_type], &args.apps, args.global_mem};
     std::unique_ptr<policy> policy{};
     std::unique_ptr<Partition> part;
     global_partitions.push_back(std::move(part));
@@ -247,8 +254,8 @@ void init_partitions(const pol_type policy_type, const size_t num_partitions)
 int main(int argc, char *argv[]) {
   // calculate global memory
   for (int i = 0; i < 15; i++)
-    global_mem += orig_alloc[i];
-  global_mem *= lsm_util;
+    args.global_mem += orig_alloc[i];
+  args.global_mem *= args.lsm_util;
 
   // parse cmd args
   int c;
@@ -259,57 +266,57 @@ int main(int argc, char *argv[]) {
     switch (c)
     {
       case 'f':
-        trace = optarg;
+        args.trace = optarg;
         break;
       case 'p':
         if (std::string(optarg) == "shadowlru")
-          policy_type = pol_type(0); 
+          args.policy_type = pol_type(0); 
         else if (std::string(optarg) == "fifo")
-          policy_type = pol_type(1); 
+          args.policy_type = pol_type(1); 
         else if (std::string(optarg) == "lru")
-          policy_type = pol_type(2); 
+          args.policy_type = pol_type(2); 
         else if (std::string(optarg) == "slab")
-          policy_type = pol_type(3);
+          args.policy_type = pol_type(3);
         else if (std::string(optarg) == "shadowslab")
-          policy_type = pol_type(4);
+          args.policy_type = pol_type(4);
         else if (std::string(optarg) == "partslab")
-          policy_type = pol_type(5);
+          args.policy_type = pol_type(5);
         else if (std::string(optarg) == "lsm")
-          policy_type = pol_type(6);
+          args.policy_type = pol_type(6);
         else if (std::string(optarg) == "multi")
-          policy_type = pol_type(7);
+          args.policy_type = pol_type(7);
         else if (std::string(optarg) == "multislab")
-          policy_type = pol_type(8);
+          args.policy_type = pol_type(8);
         else if (std::string(optarg) == "flashcache")
-          policy_type = pol_type(9);
+          args.policy_type = pol_type(9);
         else if (std::string(optarg) == "victimcache")
-          policy_type = pol_type(10);
+          args.policy_type = pol_type(10);
         else if (std::string(optarg) == "lruk")
-          policy_type = pol_type(11);
+          args.policy_type = pol_type(11);
         else if (std::string(optarg) == "ripq")
-          policy_type = pol_type(12);
+          args.policy_type = pol_type(12);
         else if (std::string(optarg) == "ripq_shield")
-          policy_type = pol_type(13);
+          args.policy_type = pol_type(13);
         else if (std::string(optarg) == "clock")
-          policy_type = pol_type(14);
+          args.policy_type = pol_type(14);
         else if (std::string(optarg) == "flashcachelruk")
-          policy_type = pol_type(15);
+          args.policy_type = pol_type(15);
         else if (std::string(optarg) == "flashcachelrukclk")
-          policy_type = pol_type(16);
+          args.policy_type = pol_type(16);
         else if (std::string(optarg) == "segment_util")
-          policy_type = pol_type(17);
+          args.policy_type = pol_type(17);
         else if (std::string(optarg) == "ramshield")
-          policy_type = pol_type(18);  
+          args.policy_type = pol_type(18);  
         else if (std::string(optarg) == "ramshield_fifo")
-          policy_type = pol_type(19);
+          args.policy_type = pol_type(19);
         else if (std::string(optarg) == "ramshield_sel")
-          policy_type = pol_type(20);
+          args.policy_type = pol_type(20);
         else if (std::string(optarg) == "replay")
-          policy_type = pol_type(21);
+          args.policy_type = pol_type(21);
         else if (std::string(optarg) == "flashshield")
-          policy_type = pol_type(22);
+          args.policy_type = pol_type(22);
 		    else if (std::string(optarg) == "flashcachelrukclkmachinelearning")
-          policy_type = pol_type(23);
+          args.policy_type = pol_type(23);
         else {
           std::cerr << "Invalid policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -317,68 +324,68 @@ int main(int argc, char *argv[]) {
         break;
       case 'E':
         if (std::string(optarg) == "normal")
-          subpolicy = lsc_multi::subpolicy(0); 
+          args.subpolicy = lsc_multi::subpolicy(0); 
         else if (std::string(optarg) == "greedy")
-          subpolicy = lsc_multi::subpolicy(1); 
+          args.subpolicy = lsc_multi::subpolicy(1); 
         else if (std::string(optarg) == "static")
-          subpolicy = lsc_multi::subpolicy(2); 
+          args.subpolicy = lsc_multi::subpolicy(2); 
         else {
           std::cerr << "Invalid subpolicy specified" << std::endl;
           exit(EXIT_FAILURE);
         }            
         break;
       case 'N':
-        min_mem_pct = atol(optarg);
+        args.min_mem_pct = atol(optarg);
         break;
       case 's':
-        global_mem = atol(optarg);
+        args.global_mem = atol(optarg);
         break;
       case 'S':
-        segment_size = atol(optarg);
+        args.segment_size = atol(optarg);
         break;
       case 'B':
-        block_size = atol(optarg);
+        args.block_size = atol(optarg);
         break;
       case 'l':
-        request_limit = atoi(optarg); 
+        args.request_limit = atoi(optarg); 
         break;
       case 'a':
         {
           string_vec v;
           csv_tokenize(std::string(optarg), &v);
           for (const auto& e : v) {
-            all_apps = false;
+            args.all_apps = false;
             int i = stoi(e);
-            apps.insert(i);
+            args.apps.insert(i);
             ordered_apps.push_back(i);
-            app_str += e;
-            app_str += ",";
+            args.app_str += e;
+            args.app_str += ",";
           }
           break;
         }
       case 'r':
-        roundup = true;
+        args.roundup = true;
         break;
       case 'u':
-        lsm_util = atof(optarg);
+        args.lsm_util = atof(optarg);
         break;   
       case 'w':
-        hit_start_time = atof(optarg);
+        args.hit_start_time = atof(optarg);
         break;
       case 'v':
-        verbose = true;
+        args.verbose = true;
         break;
       case 'h': 
         std::cerr << usage << std::endl;
         break;
       case 'g':
-        gfactor = atof(optarg);  
+        args.gfactor = atof(optarg);  
         break;
       case 'M':
-        memcachier_classes = true;
+        args.memcachier_classes = true;
         break;
       case 'P':
-        partslab_partitions = atoi(optarg); 
+        args.partslab_partitions = atoi(optarg); 
         break;
       case 'W':
         {
@@ -386,36 +393,36 @@ int main(int argc, char *argv[]) {
           csv_tokenize(optarg, &v);
           int i = 0;
           for (const auto& e : v) {
-            app_steal_sizes.insert(std::make_pair(ordered_apps.at(i++), stoi(e)));
-            app_steal_sizes_str += e;
-            app_steal_sizes_str += ",";
+            args.app_steal_sizes.insert(std::make_pair(ordered_apps.at(i++), stoi(e)));
+            args.app_steal_sizes_str += e;
+            args.app_steal_sizes_str += ",";
           }
           break;
         }
       case 'c':
-        cleaning_width = atol(optarg);
+        args.cleaning_width = atol(optarg);
         break;
       case 'T':
-        use_tax = true;
-        tax_rate = atol(optarg) / 100.;
+        args.use_tax = true;
+        args.tax_rate = atol(optarg) / 100.;
         break;
       case 'm':
-        priv_mem_percentage = atof(optarg);
-        use_percentage = true;
+        args.priv_mem_percentage = atof(optarg);
+        args.use_percentage = true;
         break;
       case 'F':
-        FLASH_SIZE = flash_size = atol(optarg);
-        FLASH_SIZE_FC_KLRU = flash_size = atol(optarg);
-        FLASH_SIZE_FC_KLRU_CLK = flash_size = atol(optarg);
-        FLASH_SHILD_FLASH_SIZE = flash_size = atol(optarg);
-		    FLASH_SIZE_FC_KLRU_CLK_ML = flash_size = atol(optarg);
+        FLASH_SIZE = args.flash_size = atol(optarg);
+        FLASH_SIZE_FC_KLRU = args.flash_size = atol(optarg);
+        FLASH_SIZE_FC_KLRU_CLK = args.flash_size = atol(optarg);
+        FLASH_SHILD_FLASH_SIZE = args.flash_size = atol(optarg);
+		    FLASH_SIZE_FC_KLRU_CLK_ML = args.flash_size = atol(optarg);
         break;
       case 'D':
-        DRAM_SIZE = dram_size = atol(optarg);
-        DRAM_SIZE_FC_KLRU = dram_size = atol(optarg);
-        DRAM_SIZE_FC_KLRU_CLK = dram_size = atol(optarg);
-        FLASH_SHILD_DRAM_SIZE = dram_size = atol(optarg);
-		    DRAM_SIZE_FC_KLRU_CLK_ML = dram_size = atol(optarg);
+        DRAM_SIZE = args.dram_size = atol(optarg);
+        DRAM_SIZE_FC_KLRU = args.dram_size = atol(optarg);
+        DRAM_SIZE_FC_KLRU_CLK = args.dram_size = atol(optarg);
+        FLASH_SHILD_DRAM_SIZE = args.dram_size = atol(optarg);
+		    DRAM_SIZE_FC_KLRU_CLK_ML = args.dram_size = atol(optarg);
 	      break;
       case 'K':
         K_LRU = atol(optarg);
@@ -424,10 +431,10 @@ int main(int argc, char *argv[]) {
         KLRU_QUEUE_SIZE = atol(optarg);
         break;  
       case 'n':
-        num_sections =  atol(optarg);
+        args.num_sections =  atol(optarg);
         break;
       case 'd':
-        num_dsections = atol(optarg);
+        args.num_dsections = atol(optarg);
         break;
       case 'k':
         K = atof(optarg);
@@ -436,32 +443,32 @@ int main(int argc, char *argv[]) {
         L_FC = atol(optarg);
         break;
       case 't':
-        threshold = atof(optarg);
+        args.threshold = atof(optarg);
         break;
       case 'C':
         CLOCK_MAX_VALUE = atol(optarg);
         CLOCK_MAX_VALUE_KLRU = atol(optarg);
         break;
       case 'A':
-        USER_SVM_TH = atol(optarg);
+        args.USER_SVM_TH = atol(optarg);
         break;
       case 'Y':
-        num_global_partitions = atoi(optarg);
+        args.num_global_partitions = atoi(optarg);
     }
   }
 
-  assert(apps.size() >= app_steal_sizes.size());
+  assert(args.apps.size() >= args.app_steal_sizes.size());
 
-  if (policy_type == FLASHSHIELD ||
-      policy_type == FLASHCACHE ||
-      policy_type == FLASHCACHELRUK ||
-      policy_type == FLASHCACHELRUKCLK ||
-      policy_type == VICTIMCACHE ||
-      policy_type == RIPQ ||
-	  policy_type == FLASHCACHELRUKCLKMACHINELEARNING ||
-      policy_type == RIPQ_SHIELD)
+  if (args.policy_type == FLASHSHIELD ||
+      args.policy_type == FLASHCACHE ||
+      args.policy_type == FLASHCACHELRUK ||
+      args.policy_type == FLASHCACHELRUKCLK ||
+      args.policy_type == VICTIMCACHE ||
+      args.policy_type == RIPQ ||
+	  args.policy_type == FLASHCACHELRUKCLKMACHINELEARNING ||
+      args.policy_type == RIPQ_SHIELD)
   {
-    global_mem = DRAM_SIZE + FLASH_SIZE;
+    args.global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 
   // TODO: Populate partition vector here, instantiate a policy for each
@@ -474,36 +481,36 @@ int main(int argc, char *argv[]) {
   // hardware instead of actualizing it.
 
   // instantiate a policy
-  std::unique_ptr<policy> policy = create_policy(policy_type);
+  std::unique_ptr<policy> policy = create_policy(args.policy_type);
 
   // List input parameters
-  std::cerr << "performing trace analysis on apps " << app_str << std::endl
-            << "with steal weights of " << app_steal_sizes_str << std::endl
-            << "policy " << policy_names[policy_type] << std::endl
-            << "using trace file " << trace << std::endl
-            << "rounding " << (roundup ? "on" : "off") << std::endl
-            << "utilization rate " << lsm_util << std::endl
-            << "start counting hits at t = " << hit_start_time << std::endl
-            << "request limit " << request_limit << std::endl
-            << "global mem " << global_mem << std::endl
-            << "use tax " << use_tax << std::endl
-            << "tax rate " << tax_rate << std::endl
-            << "cleaning width " << cleaning_width << std::endl;
+  std::cerr << "performing trace analysis on apps " << args.app_str << std::endl
+            << "with steal weights of " << args.app_steal_sizes_str << std::endl
+            << "policy " << policy_names[args.policy_type] << std::endl
+            << "using trace file " << args.trace << std::endl
+            << "rounding " << (args.roundup ? "on" : "off") << std::endl
+            << "utilization rate " << args.lsm_util << std::endl
+            << "start counting hits at t = " << args.hit_start_time << std::endl
+            << "request limit " << args.request_limit << std::endl
+            << "global mem " << args.global_mem << std::endl
+            << "use tax " << args.use_tax << std::endl
+            << "tax rate " << args.tax_rate << std::endl
+            << "cleaning width " << args.cleaning_width << std::endl;
 
-  if (policy_type == SHADOWSLAB) 
+  if (args.policy_type == SHADOWSLAB) 
   {
-    if (memcachier_classes)
+    if (args.memcachier_classes)
     {
       std::cerr << "slab growth factor: memcachier" << std::endl;
     }
     else
     {
-      std::cerr << "slab growth factor: " << gfactor << std::endl;
+      std::cerr << "slab growth factor: " << args.gfactor << std::endl;
     }
   }
 
   // proc file line by line
-  std::ifstream t_stream(trace);
+  std::ifstream t_stream(args.trace);
   assert(t_stream.is_open());
   std::string line;
 
@@ -514,7 +521,7 @@ int main(int argc, char *argv[]) {
   
   size_t time_hour = 1; 
   while (std::getline(t_stream, line) &&
-         (request_limit == 0 || i < request_limit))
+    (args.request_limit == 0 || i < args.request_limit))
   {
   
   // TODO: Create a dispatch function here to distribute lines evenly aross
@@ -523,7 +530,7 @@ int main(int argc, char *argv[]) {
     request r{line};
     bytes += line.size();
 
-    if (verbose && ((i & ((1 << 18) - 1)) == 0)) {
+    if (args.verbose && ((i & ((1 << 18) - 1)) == 0)) {
       auto now  = hrc::now();
       double seconds =
         duration_cast<nanoseconds>(now - last_progress).count() / 1e9;
@@ -555,20 +562,20 @@ int main(int argc, char *argv[]) {
     }
 
     const bool in_apps =
-      std::find(std::begin(apps), std::end(apps), r.appid) != std::end(apps);
+      std::find(std::begin(args.apps), std::end(args.apps), r.appid) != std::end(args.apps);
 
-    if (all_apps && !in_apps) 
+    if (args.all_apps && !in_apps) 
     {
-      apps.insert(r.appid);
+      args.apps.insert(r.appid);
     } 
     else if (!in_apps) 
     {
       continue;
     }
 
-    policy->proc(&r, r.time < hit_start_time);
-    if (verbose && ( policy_type == FLASHSHIELD || policy_type == VICTIMCACHE || 
-          policy_type == RIPQ ) && time_hour * 3600 < r.time) 
+    policy->proc(&r, r.time < args.hit_start_time);
+    if (args.verbose && ( args.policy_type == FLASHSHIELD || args.policy_type == VICTIMCACHE || 
+          args.policy_type == RIPQ ) && time_hour * 3600 < r.time) 
     {
       printf ("Dumping stats for FLASHSHIELD\n");
 	    policy->dump_stats();
@@ -580,7 +587,7 @@ int main(int argc, char *argv[]) {
   auto stop = hrc::now();
 
   // Log curves for shadowlru, shadowslab, and partslab.
-  if (policy_type == 0 || policy_type == 4 || policy_type == 5)
+  if (args.policy_type == 0 || args.policy_type == 4 || args.policy_type == 5)
   {
     policy->log_curves();
   }
@@ -600,9 +607,9 @@ int main(int argc, char *argv[]) {
 /// @return std::unique_ptr<policy> 
 std::unique_ptr<policy> create_policy(const pol_type policy_type)
 {
-  stats sts{policy_names[policy_type], &apps, global_mem};
+  stats sts{policy_names[policy_type], &args.apps, args.global_mem};
   std::unique_ptr<policy> policy{};
-   switch(policy_type) {
+   switch(args.policy_type) {
     case SHADOWLRU : policy.reset(new shadowlru(sts)); break;
     case FIFO : policy.reset(new fifo(sts)); break;
     case LRU : policy.reset(new lru(sts)); break;
@@ -610,8 +617,8 @@ std::unique_ptr<policy> create_policy(const pol_type policy_type)
     case FLASHCACHELRUK : policy.reset(new FlashCacheLruk(sts)); break;
     case FLASHCACHELRUKCLK : policy.reset(new FlashCacheLrukClk(sts)); break;
     case FLASHCACHELRUKCLKMACHINELEARNING :
-        APP_NUMBER = *std::begin(apps);
-        ML_SVM_TH = USER_SVM_TH;
+        APP_NUMBER = *std::begin(args.apps);
+        ML_SVM_TH = args.USER_SVM_TH;
         policy.reset(new FlashCacheLrukClkMachineLearning(sts));
         break;
     case VICTIMCACHE : policy.reset(new VictimCache(sts)); break;
@@ -619,110 +626,112 @@ std::unique_ptr<policy> create_policy(const pol_type policy_type)
     case CLOCK : policy.reset(new Clock(sts)); break;
     case SEGMENT_UTIL : policy.reset(new SegmentUtil(sts)); break;
     case SLAB :
-      if (memcachier_classes) { sts.gfactor = 2.0; } 
-      else { sts.gfactor = gfactor; }
-      sts.memcachier_classes = memcachier_classes;
+      if (args.memcachier_classes) { sts.gfactor = 2.0; } 
+      else { sts.gfactor = args.gfactor; }
+      sts.memcachier_classes = args.memcachier_classes;
       policy.reset(new slab(sts));
       break;
     case SHADOWSLAB:
-      if (memcachier_classes) { sts.gfactor = 2.0;} 
-      else { sts.gfactor = gfactor; }
-      sts.memcachier_classes = memcachier_classes;
+      if (args.memcachier_classes) { sts.gfactor = 2.0;} 
+      else { sts.gfactor = args.gfactor; }
+      sts.memcachier_classes = args.memcachier_classes;
       policy.reset(new shadowslab(sts));
       break;
     case PARTSLAB:
-      sts.partitions = partslab_partitions;
+      sts.partitions = args.partslab_partitions;
       policy.reset(new partslab(sts));
       break;
     case LSM:
-      sts.segment_size = segment_size;
-      sts.cleaning_width = cleaning_width;
+      sts.segment_size = args.segment_size;
+      sts.cleaning_width = args.cleaning_width;
       policy.reset(new lsm(sts));
       break;
     case MULTI:
-      sts.segment_size = segment_size;
-      sts.cleaning_width = cleaning_width;
+      sts.segment_size = args.segment_size;
+      sts.cleaning_width = args.cleaning_width;
       {
-        lsc_multi* multi = new lsc_multi(sts, subpolicy);
+        lsc_multi* multi = new lsc_multi(sts, args.subpolicy);
         policy.reset(multi);
-        for (size_t appid : apps) {
+        for (size_t appid : args.apps) {
           assert(memcachier_app_size[appid] > 0);
           uint32_t app_steal_size = 65536;
-          auto it = app_steal_sizes.find(appid);
-          if (it != app_steal_sizes.end()) {
+          auto it = args.app_steal_sizes.find(appid);
+          if (it != args.app_steal_sizes.end()) {
             app_steal_size = it->second;
           } 
-          size_t private_mem = use_percentage ? 
-            (size_t)(memcachier_app_size[appid] * priv_mem_percentage) :
-            min_mem_pct;         
+          size_t private_mem = args.use_percentage ? 
+            (size_t)(memcachier_app_size[appid] * args.priv_mem_percentage) :
+            args.min_mem_pct;         
           multi->add_app(appid,
                          private_mem ,
                          memcachier_app_size[appid],
                          app_steal_size);
         }
-        if (use_tax) {
-          multi->set_tax(tax_rate);
+        if (args.use_tax) {
+          multi->set_tax(args.tax_rate);
         }
       }
       break;
     case MULTISLAB:
     {
-      if (memcachier_classes) {
+      if (args.memcachier_classes) {
         sts.gfactor = 2.0;
       } else {
-        sts.gfactor = gfactor;
+        sts.gfactor = args.gfactor;
       }
-      sts.memcachier_classes = memcachier_classes;
+      sts.memcachier_classes = args.memcachier_classes;
       slab_multi* slmulti = new slab_multi(sts);
       policy.reset(slmulti);
-      for (size_t appid : apps) {
+      for (size_t appid : args.apps) {
         assert(memcachier_app_size[appid] > 0);
-        slmulti->add_app(appid, min_mem_pct, memcachier_app_size[appid]);
+        slmulti->add_app(appid, args.min_mem_pct, memcachier_app_size[appid]);
       }
       break;
     }
     case RIPQ:
-      sts.block_size = block_size;
-      sts.flash_size = flash_size;
-      sts.num_sections = num_sections;
-      policy.reset(new ripq(sts, block_size, num_sections, flash_size));
+      sts.block_size = args.block_size;
+      sts.flash_size = args.flash_size;
+      sts.num_sections = args.num_sections;
+      policy.reset(new ripq(sts, args.block_size, args.num_sections, args.flash_size));
       break;
     case RIPQ_SHIELD:
-      sts.block_size = block_size;
-      sts.flash_size = flash_size;
-      sts.dram_size = dram_size;
-      sts.num_sections = num_sections;
-      sts.num_dsections = num_dsections;
-      policy.reset(new ripq_shield(sts, block_size, num_sections,
-                                   dram_size, num_dsections, flash_size));
+      sts.block_size = args.block_size;
+      sts.flash_size = args.flash_size;
+      sts.dram_size = args.dram_size;
+      sts.num_sections = args.num_sections;
+      sts.num_dsections = args.num_dsections;
+      policy.reset(new ripq_shield(sts, args.block_size, args.num_sections,
+                                   args.dram_size, args.num_dsections, args.flash_size));
       break;
     case RAMSHIELD:
-      sts.threshold = threshold;
-      sts.flash_size = flash_size;
-      sts.dram_size = dram_size;
-      policy.reset(new RamShield(sts, block_size));
+      sts.threshold = args.threshold;
+      sts.flash_size = args.flash_size;
+      sts.dram_size = args.dram_size;
+      policy.reset(new RamShield(sts, args.block_size));
       break;
     case RAMSHIELD_FIFO:
-      sts.threshold = threshold;
-      sts.block_size = block_size;
-      sts.flash_size = flash_size;
-      sts.dram_size = dram_size;
-      policy.reset(new RamShield_fifo(sts, block_size));
+      sts.threshold = args.threshold;
+      sts.block_size = args.block_size;
+      sts.flash_size = args.flash_size;
+      sts.dram_size = args.dram_size;
+      policy.reset(new RamShield_fifo(sts, args.block_size));
       break;
     case RAMSHIELD_SEL:
-      sts.threshold = threshold;
-      sts.block_size = block_size;
-      sts.flash_size = flash_size;
-      sts.dram_size = dram_size;
-      policy.reset(new RamShield_sel(sts, block_size));
+      sts.threshold = args.threshold;
+      sts.block_size = args.block_size;
+      sts.flash_size = args.flash_size;
+      sts.dram_size = args.dram_size;
+      policy.reset(new RamShield_sel(sts, args.block_size));
       break;
     case FLASHSHIELD:
-        FLASH_SHILD_APP_NUMBER = *std::begin(apps);
-        FLASH_SHILD_TH = USER_SVM_TH;
-        sts.threshold = threshold;
-        sts.flash_size = flash_size;
-        sts.dram_size = dram_size;
+        FLASH_SHILD_APP_NUMBER = *std::begin(args.apps);
+        FLASH_SHILD_TH = args.USER_SVM_TH;
+        sts.threshold = args.threshold;
+        sts.flash_size = args.flash_size;
+        sts.dram_size = args.dram_size;
         policy.reset(new flashshield(sts));
+        break;
+    case NONE:
         break;
   }
   if (!policy) {
