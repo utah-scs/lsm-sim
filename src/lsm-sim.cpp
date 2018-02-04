@@ -224,6 +224,11 @@ void init_partitions(Args& args, const size_t num_partitions);
 //       between globalism and partitioning.
 struct Partition
 { 
+  Partition(std::unique_ptr<policy> p)
+    : _policy(std::move(p))
+  {
+  }
+    
   std::unique_ptr<policy> _policy;
   /// Additional stuff can go here as needed.
   /// i.e. additional stats tracking, concurrency mechanisms, etc.
@@ -242,9 +247,10 @@ void init_partitions(Args& args)
 {
   for (size_t p = 0; p < args.num_global_partitions; ++p)
   {
-    std::unique_ptr<Partition> part;
-    part->_policy = create_policy(args);
-    global_partitions.push_back(std::move(part));
+    std::unique_ptr<policy> pol = create_policy(args);
+    std::unique_ptr<Partition> part 
+      = std::make_unique<Partition>(std::move(pol));
+    global_partitions.push_back(std::move(part)); 
 
     // TODO: This is likely a good place to fire off threads.
     //       May want to consider making Partitions a functor 
@@ -630,7 +636,9 @@ std::unique_ptr<policy> create_policy(Args& args)
    switch(args.policy_type) {
     case SHADOWLRU : policy.reset(new shadowlru(sts)); break;
     case FIFO : policy.reset(new fifo(sts)); break;
-    case LRU : policy.reset(new lru(sts)); break;
+    case LRU : 
+      policy.reset(new lru(sts)); 
+      break;
     case FLASHCACHE : policy.reset(new FlashCache(sts)); break;
     case FLASHCACHELRUK : policy.reset(new FlashCacheLruk(sts)); break;
     case FLASHCACHELRUKCLK : policy.reset(new FlashCacheLrukClk(sts)); break;
@@ -755,6 +763,10 @@ std::unique_ptr<policy> create_policy(Args& args)
   if (!policy) {
     std::cerr << "No valid policy selected!" << std::endl;
     exit(-1);
+  }
+  else
+  {
+    std::cout << "Policy created."  << std::endl;
   }
   return policy; 
 }
