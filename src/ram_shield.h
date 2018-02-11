@@ -19,7 +19,7 @@ protected:
                 bool isGhost;
 
 		RItem() : FlashCache::Item(), flashIt{}, isGhost(false) {}
-		RItem(const request *r, size_t counter) : FlashCache::Item(), flashIt{}, isGhost(false) {
+		RItem(const Request *r, size_t counter) : FlashCache::Item(), flashIt{}, isGhost(false) {
 		        kId = r->kid;
 		        size = r->size();
 		        isInDram = true;
@@ -46,7 +46,7 @@ protected:
 public:
 	RamShield(stats stat, size_t block_size);
 	~RamShield();
-	size_t proc(const request *r, bool warmup);
+	size_t proc(const Request *r, bool warmup);
 	void dump_stats(void);
 
 };

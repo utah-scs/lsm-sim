@@ -5,7 +5,7 @@
 #include "lru.h"
 
 lru::lru()
-  : policy{stats{"",{},0}}
+  : Policy{stats{"",{},0}}
   , map{}
   , queue{}
 {
@@ -13,7 +13,7 @@ lru::lru()
 }  
 
 lru::lru(stats stat)
-  : policy{stat}
+  : Policy{stat}
   , map{}
   , queue{}
 {
@@ -29,18 +29,18 @@ size_t lru::get_bytes_cached() const { return stat.bytes_cached; }
 size_t lru::get_hits() { return stat.hits; }
 size_t lru::get_accs() { return stat.accesses; }
 
-// Removes a request with matching key from the chain and
+// Removes a Request with matching key from the chain and
 // updates bytes_cached accordingly.
 // Returns the 'stack distance' which is calc's by summing
-// the bytes for all requests in the chain until 'r' is reached.
-int64_t lru::remove (const request *r) {
+// the bytes for all Requests in the chain until 'r' is reached.
+int64_t lru::remove (const Request *r) {
 
   // If r is not in the map something weird has happened.
   auto it = map.find(r->kid); 
   if(it == map.end())
     return -1; 
 
-  // Sum the sizes of all requests up until we reach 'r'.
+  // Sum the sizes of all Requests up until we reach 'r'.
   size_t stack_dist  = 0;
   for ( const auto &i : queue ) {
     if (i.kid != r->kid)
@@ -63,17 +63,17 @@ void lru::expand(size_t bytes) {
   stat.global_mem += bytes;
 }
 
-bool lru::would_cause_eviction(const request* r) {
+bool lru::would_cause_eviction(const Request* r) {
   return (map.find(r->kid) == map.end()) &&
          (stat.bytes_cached + size_t(r->size()) > stat.global_mem);
 }
 
-bool lru::would_hit(const request *r) {
+bool lru::would_hit(const Request *r) {
   auto it = map.find(r->kid);
   return it != map.end();
 }
 
-void lru::add(const request *r) {
+void lru::add(const Request *r) {
   auto it = map.find(r->kid);
   assert(it == map.end());
 
@@ -90,7 +90,7 @@ void lru::add(const request *r) {
     if (queue.empty())
       return;
 
-    request* victim = &queue.back();
+    Request* victim = &queue.back();
     stat.bytes_cached -= victim->size();
     ++stat.evicted_items;
     stat.evicted_bytes += victim->size();
@@ -98,20 +98,20 @@ void lru::add(const request *r) {
     queue.pop_back();
   }
 
-  // Add the new request.
+  // Add the new Request.
   queue.emplace_front(*r);
   map[r->kid] = queue.begin();
   stat.bytes_cached += r->size();
 }
 
-bool lru::try_add_tail(const request *r) {
+bool lru::try_add_tail(const Request *r) {
   auto it = map.find(r->kid);
   assert(it == map.end());
 
   if (stat.bytes_cached + size_t(r->size()) > stat.global_mem)
     return false;
 
-  // Add the new request.
+  // Add the new Request.
   queue.emplace_back(*r);
   auto back_it = queue.end();
   --back_it;
@@ -125,7 +125,7 @@ bool lru::try_add_tail(const request *r) {
 // returns a hit, otherwise the key is added to the map
 // and to the LRU queue and returns a miss. Returns absolute
 // number of bytes added to the cache.
-size_t lru::proc(const request *r, bool warmup) {
+size_t lru::process_request(const Request *r, bool warmup) {
   assert(r->size() > 0);
 
   if (stat.apps->empty())
@@ -138,10 +138,10 @@ size_t lru::proc(const request *r, bool warmup) {
   auto it = map.find(r->kid);
   if (it != map.end()) {
     auto list_it = it->second;
-    request& prior_request = *list_it;
+    Request& prior_Request = *list_it;
 
-    if (prior_request.size() == r->size() &&
-        prior_request.frag_sz == r->frag_sz) {
+    if (prior_Request.size() == r->size() &&
+        prior_Request.frag_sz == r->frag_sz) {
       // Promote this item to the front.
       queue.erase(list_it);
       queue.emplace_front(*r);
@@ -160,8 +160,8 @@ size_t lru::proc(const request *r, bool warmup) {
       // that don't detect these size changes.
 
       queue.erase(list_it);
-      map.erase(prior_request.kid);
-      stat.bytes_cached -= prior_request.size();
+      map.erase(prior_Request.kid);
+      stat.bytes_cached -= prior_Request.size();
     }
   } else {
     // If miss in hash table, then count a miss. This get will count
@@ -179,8 +179,8 @@ double lru::get_running_hit_rate() {
 
 double lru::get_running_utilization() {
   size_t in_use = 0;
-  for (auto& request : queue)
-    in_use += request.size();
+  for (auto& Request : queue)
+    in_use += Request.size();
 
   assert(in_use == stat.bytes_cached);
 
@@ -190,8 +190,8 @@ double lru::get_running_utilization() {
 std::unordered_map<int32_t, size_t> lru::get_per_app_bytes_in_use() const
 {
   std::unordered_map<int32_t, size_t> result{};
-  for (auto& request : queue)
-    result[request.appid] += request.size();
+  for (auto& Request : queue)
+    result[Request.appid] += Request.size();
 
   return result;
 }

@@ -8,7 +8,7 @@
 
 extern size_t CLOCK_MAX_VALUE;
 
-class Clock : public policy {
+class Clock : public Policy {
 
 private:
 	typedef  std::list< std::pair<uint32_t, size_t> > ClockLru;
@@ -34,7 +34,7 @@ private:
 public:
 	Clock(stats stat);
 	~Clock();
-	size_t proc(const request* r, bool warmup);
+	size_t process_request(const Request* r, bool warmup);
 	size_t get_bytes_cached() const;
 	void dump_stats(void);
 };

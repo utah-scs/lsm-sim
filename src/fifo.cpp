@@ -4,7 +4,7 @@
 #include "common.h"
 
 fifo::fifo(stats stat)
-  : policy{stat}
+  : Policy{stat}
   , current_size{}
   , hash{}
   , queue{}
@@ -17,7 +17,7 @@ fifo::~fifo () {
 // checks the hashmap for membership, if the key is found
 // returns a hit, otherwise the key is added to the hash
 // and to the FIFO queue and returns a miss.
-size_t fifo::proc(const request *r, bool warmup) {
+size_t fifo::process_request(const Request *r, bool warmup) {
   if (!warmup)
     ++stat.accesses;
   
@@ -26,7 +26,7 @@ size_t fifo::proc(const request *r, bool warmup) {
 
   auto it = hash.find(r->kid);
   if (it != hash.end()) {
-    request* prior_request = it->second;
+    Request* prior_request = it->second;
     if (prior_request->size() == r->size()) {
       if (!warmup)
         ++stat.hits;
@@ -36,10 +36,10 @@ size_t fifo::proc(const request *r, bool warmup) {
       // evicted or shotdown. Since then it must have already been replaced as
       // well. This means that there must have been some intervening get miss
       // for it. So we need to count an extra access here (but not an extra
-      // hit). We do need to remove prior_request from the hash table, but
+      // hit). We do need to remove prior_Request from the hash table, but
       // it gets overwritten below anyway when r gets put in the cache.
 
-      // Count the get miss that came between r and prior_request.
+      // Count the get miss that came between r and prior_Request.
       if (!warmup)
         ++stat.accesses;
       // Finally, we need to really put the correct sized value somewhere
@@ -56,18 +56,18 @@ size_t fifo::proc(const request *r, bool warmup) {
     if (queue.empty())
       return 0;
 
-    request* victim = &queue.back();
+    Request* victim = &queue.back();
     current_size -= victim->size();
     hash.erase(victim->kid);
     queue.pop_back();
   }
 
-  // Add the new request.
+  // Add the new Request.
   queue.emplace_front(*r);
   hash[r->kid] = &queue.front();
   current_size += r->size();
  
-  // Count this request as a hit.
+  // Count this Request as a hit.
   if (!warmup)
     ++stat.hits;
 
@@ -81,5 +81,3 @@ size_t fifo::get_bytes_cached() const {
     cached += r.size();
   return cached;
 }
-
-

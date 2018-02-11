@@ -6,15 +6,15 @@
 #include "hit_rate_curve.h"
 #include "policy.h"
 
-// policy derived from Cliffhanger paper
-class shadowlru : public policy {
+// Policy derived from Cliffhanger paper
+class shadowlru : public Policy {
   public:
     shadowlru();
     shadowlru(const stats& stat);
     ~shadowlru();
 
-    size_t proc(const request *r, bool warmup);
-    size_t remove(const request *r);
+    size_t process_request(const Request *r, bool warmup);
+    size_t remove(const Request *r);
      
     size_t get_bytes_cached() const;
     std::vector<size_t> get_class_frags(size_t slab_size) const;
@@ -28,7 +28,7 @@ class shadowlru : public policy {
   private:    
     size_t class_size;
     hit_rate_curve size_curve;
-    std::list<request> queue;
+    std::list<Request> queue;
     bool part_of_slab_allocator;
 };
 

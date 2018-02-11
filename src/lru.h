@@ -5,9 +5,9 @@
 #include <list>
 #include "policy.h"
 
-class lru : public policy {
+class lru : public Policy {
 
-  typedef std::list<request> lru_queue; 
+  typedef std::list<Request> lru_queue; 
   typedef std::unordered_map<uint32_t, lru_queue::iterator> hash_map;
 
   public:
@@ -16,13 +16,13 @@ class lru : public policy {
    ~lru();
 
     // Modifiers.
-    size_t proc (const request *r, bool warmup);
-    int64_t remove (const request *r);
-    bool would_cause_eviction(const request *r);
+    size_t process_request(const Request* r, bool warmup);
+    int64_t remove (const Request *r);
+    bool would_cause_eviction(const Request *r);
     void expand(size_t bytes);
-    bool would_hit(const request *r);
-    void add(const request *r);
-    bool try_add_tail(const request *r);
+    bool would_hit(const Request *r);
+    void add(const Request *r);
+    bool try_add_tail(const Request *r);
   
     // Accessors.
     size_t get_bytes_cached() const;

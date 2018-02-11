@@ -11,7 +11,7 @@
 
 static int global_bid; //Used for debugging
 
-class ripq : public policy {
+class ripq : public Policy {
     protected:
     class item; 
     class block;
@@ -35,7 +35,7 @@ class ripq : public policy {
 
     class item : public std::enable_shared_from_this<item> {
       public:
-        item(const request req, block_ptr blk)
+        item(const Request req, block_ptr blk)
           : req(req)
           , physical_block(blk) 
           , virtual_block(blk)
@@ -65,7 +65,7 @@ class ripq : public policy {
           , in_dram(obj.in_dram)
           {}
 
-        request req;
+        Request req;
         block_ptr physical_block;
         block_ptr virtual_block;
         bool is_ghost;
@@ -117,7 +117,7 @@ class ripq : public policy {
         int num_items;
         int id; //Used for debugging
 
-        item_ptr add(const request *req);
+        item_ptr add(const Request *req);
         void remove(item_ptr victim);
     };
 
@@ -164,7 +164,7 @@ class ripq : public policy {
 
         void seal_phy_block();
 
-        item_ptr add(const request *req);
+        item_ptr add(const Request *req);
         void seal_vir_block();
         void add_virtual(item_ptr it);
         void add_block(block_ptr new_block);
@@ -178,8 +178,8 @@ class ripq : public policy {
     ripq(stats stat, size_t block_size, size_t dram_size, size_t flash_size);
     virtual ~ripq();
 
-    virtual size_t proc (const request *r, bool warmup);
-    void add(const request *r, int section_id);
+    virtual size_t process_request(const Request *r, bool warmup);
+    void add(const Request *r, int section_id);
     void add_virtual(item_ptr it, int section_id);
   
     // Accessors.

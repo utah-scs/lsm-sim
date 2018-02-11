@@ -29,7 +29,7 @@ slab_multi::application::application(
 slab_multi::application::~application() {}
 
 slab_multi::slab_multi(stats stat)
-  : policy{stat}
+  : Policy{stat}
   , last_dump{}
   , apps{}
   , slabs{}
@@ -87,10 +87,10 @@ void slab_multi::dump_app_stats(double time) {
   }
 }
 
-size_t slab_multi::proc(const request *r, bool warmup) {
+size_t slab_multi::process_request(const Request *r, bool warmup) {
   assert(r->size() > 0);
   if (r->size() > int32_t(MAX_SIZE)) {
-    std::cerr << "Can't process large request of size " << r->size()
+    std::cerr << "Can't process large Request of size " << r->size()
               << std::endl;
     return 1;
   }
@@ -143,9 +143,9 @@ size_t slab_multi::proc(const request *r, bool warmup) {
  
   lru& slab_class = slabs.at(klass);
 
-  // Round up the request size so the per-class LRU holds the right
+  // Round up the Request size so the per-class LRU holds the right
   // size.
-  request copy{*r};
+  Request copy{*r};
   copy.key_sz   = 0;
   copy.val_sz   = class_size;
   copy.frag_sz  = class_size - r->size();
@@ -158,7 +158,7 @@ size_t slab_multi::proc(const request *r, bool warmup) {
       mem_in_use += SLABSIZE;
   }
 
-  size_t outcome = slab_class.proc(&copy, warmup);
+  size_t outcome = slab_class.process_request(&copy, warmup);
 
   // Trace the move of the key into its new slab class.
   slab_for_key.insert(std::pair<uint32_t,uint32_t>(r->kid, klass));

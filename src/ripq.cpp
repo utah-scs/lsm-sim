@@ -4,7 +4,7 @@ static bool file_defined = false;
 static double lastRequest = 0;
 
 ripq::ripq(stats stat,size_t block_size,size_t num_sections,size_t flash_size)
-  : policy{stat}
+  : Policy{stat}
   , sections{}
   , num_sections(num_sections)
   , section_size{}
@@ -41,8 +41,8 @@ size_t ripq::get_bytes_cached() const { return stat.bytes_cached; }
 size_t ripq::get_hits() { return stat.hits; }
 size_t ripq::get_accs() { return stat.accesses; }
 
-//add new request to section_id
-void ripq::add(const request *r, int section_id) {
+//add new Request to section_id
+void ripq::add(const Request *r, int section_id) {
 
   //First make enough space in the target active physical block, then write
   section_ptr target_section = sections[section_id];
@@ -156,7 +156,7 @@ void ripq::evict() {
   balance();
 }
 
-size_t ripq::proc(const request *r, bool warmup) {
+size_t ripq::process_request(const Request *r, bool warmup) {
   assert(r->size() > 0);
   lastRequest = r->time;
   this->warmup = warmup;
@@ -217,7 +217,7 @@ size_t ripq::proc(const request *r, bool warmup) {
   return PROC_MISS;
 }
 
-ripq::item_ptr ripq::block::add(const request *req) {
+ripq::item_ptr ripq::block::add(const Request *req) {
   assert(active);
   filled_bytes += req->size();
   num_items++;
@@ -238,7 +238,7 @@ void ripq::block::remove(item_ptr victim) {
     items.erase(iter);
   }
 
-  if (!active) { //decrease section size only if the request belongs to a sealed block
+  if (!active) { //decrease section size only if the Request belongs to a sealed block
     assert((int)s->filled_bytes >= (int)victim->req.size());
     s->filled_bytes -= victim->req.size();
   }
@@ -260,13 +260,13 @@ void ripq::section::seal_vir_block() {
   active_vir_block = new_vir_block;
 }
 
-ripq::item_ptr ripq::section::add(const request *req) {
+ripq::item_ptr ripq::section::add(const Request *req) {
   //If physical block is big enough, seal it together with the virtual block and commit to section block list
   assert(active_phy_block && active_vir_block && active_vir_block->is_virtual);
   assert(active_phy_block->filled_bytes <= stat.block_size);
   assert(active_phy_block->filled_bytes + (uint32_t)req->size() <= stat.block_size);
 
-  //Add request to physical block
+  //Add Request to physical block
   return active_phy_block->add(req);
 }
 
@@ -305,7 +305,7 @@ void ripq::dump_stats(void) {
 		out.open(filename);
 		file_defined = true;
 	}
-	out << "Last request was at :" << lastRequest << std::endl;
+	out << "Last Request was at :" << lastRequest << std::endl;
 	stat.dump(out);
 	out << std::endl;
 }

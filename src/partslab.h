@@ -9,13 +9,13 @@
 #include "mc.h"
 
 // policy derived from Cliffhanger paper
-class partslab : public policy {
+class partslab : public Policy {
   public:
  
     partslab(stats stat);
     ~partslab();
 
-    size_t proc(const request *r, bool warmup);
+    size_t process_request(const Request *r, bool warmup);
     size_t get_bytes_cached() const;
     void log_curves();
 

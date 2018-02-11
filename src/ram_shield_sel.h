@@ -15,7 +15,7 @@ class RamShield_sel : public RamShield {
 public:
 	RamShield_sel(stats stat, size_t block_size);
 	~RamShield_sel();
-	size_t proc(const request *r, bool warmup);
+	size_t proc(const Request *r, bool warmup);
 };
 
 #endif

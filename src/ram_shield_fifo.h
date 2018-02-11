@@ -15,7 +15,7 @@ class RamShield_fifo : public RamShield {
 public:
 	RamShield_fifo(stats stat, size_t block_size);
 	~RamShield_fifo();
-	size_t proc(const request *r, bool warmup);
+	size_t proc(const Request *r, bool warmup);
 };
 
 #endif

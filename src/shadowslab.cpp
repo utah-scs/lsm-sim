@@ -9,7 +9,7 @@
 
 
 shadowslab::shadowslab(stats stat)
-  : policy{stat}
+  : Policy{stat}
   , slabs{}
   , slabids{}
   , slab_for_key{}
@@ -36,7 +36,7 @@ shadowslab::shadowslab(stats stat)
 shadowslab::~shadowslab() {
 } 
 
-size_t shadowslab::proc(const request *r, bool warmup) {
+size_t shadowslab::process_request(const Request *r, bool warmup) {
   assert(r->size() > 0);
 
   if (!warmup) {
@@ -69,14 +69,14 @@ size_t shadowslab::proc(const request *r, bool warmup) {
  
   shadowlru& slab_class = slabs.at(klass);
 
-  // Round up the request size so the per-class LRU holds the right
+  // Round up the Request size so the per-class LRU holds the right
   // size.
-  request copy{*r};
+  Request copy{*r};
   copy.key_sz   = 0;
   copy.val_sz   = class_size;
   copy.frag_sz  = class_size - r->size();
 
-  size_t size_distance = slab_class.proc(&copy, warmup);
+  size_t size_distance = slab_class.process_request(&copy, warmup);
   if (size_distance == PROC_MISS) {
     // Count compulsory misses.
     if (!warmup)

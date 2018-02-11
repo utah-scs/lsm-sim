@@ -1,13 +1,11 @@
 #include <cassert>
 #include "lruk.h"
 
-
 size_t K_LRU = 8;
 size_t KLRU_QUEUE_SIZE = 1024;
 
-
 Lruk::Lruk(stats stat) 
-	: policy(stat)
+	: Policy(stat)
 	, kLruSizes(K_LRU, 0)
 	, kLru(K_LRU)
 	, allObjects()
@@ -27,7 +25,7 @@ size_t Lruk::get_bytes_cached() const {
 	return bytesCached;
 }
 
-size_t Lruk::proc(const request *r, bool warmup) {
+size_t Lruk::process_request(const Request *r, bool warmup) {
 	if (!warmup) {stat.accesses++;}
 
 	bool updateWrites = true;

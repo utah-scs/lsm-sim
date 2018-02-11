@@ -1,10 +1,18 @@
-#ifndef REQUEST_H
-#define REQUEST_H
+#ifndef Request_H
+#define Request_H
 
 #include <cinttypes>
 #include <string>
 
-struct request {
+struct Request {
+
+  Request(const std::string& s);
+  void parse(const std::string& s);
+  void dump() const;
+  int32_t size() const;
+  int32_t get_frag() const;
+  bool operator<(const Request& other);
+
   enum req_type { GET = 1
                 , SET = 2
                 , DEL = 3
@@ -21,31 +29,6 @@ struct request {
   uint32_t  appid;
   req_type  type;
   uint8_t   hit;
-  
-  
-
-  void dump() const;
-  void parse(const std::string& s);
-  int32_t size() const { return key_sz + val_sz; }
-  int32_t get_frag() const { return frag_sz; }
-
-  request(const std::string& s)
-    : time{}
-    , key_sz{}
-    , val_sz{}
-    , frag_sz{}
-    , kid{}
-    , appid{}
-    , type{}
-    , hit{}
-  { parse(s); }
-
-  bool operator<(const request& other) {
-    return time < other.time;
-  }
 };
 
-
-
 #endif
-

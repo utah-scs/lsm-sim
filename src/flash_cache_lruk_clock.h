@@ -20,7 +20,7 @@ extern size_t CLOCK_MAX_VALUE_KLRU;
 const size_t LRUK_FLASH_RATE_CLK = 1024 * 1024;
 const size_t CLOCK_START_VAL = 3;
 
-class FlashCacheLrukClk : public policy {
+class FlashCacheLrukClk : public Policy {
 private:
 	typedef std::list<std::pair<uint32_t, size_t> >::iterator dramIt;
 	typedef std::list<uint32_t>::iterator keyIt;
@@ -80,7 +80,7 @@ private:
 public:
 	FlashCacheLrukClk(stats stat);
 	~FlashCacheLrukClk();
-	size_t proc(const request *r, bool warmup);
+	size_t process_request(const Request *r, bool warmup);
 	size_t get_bytes_cached() const;
 	void dump_stats(void);
 };

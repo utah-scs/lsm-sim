@@ -25,7 +25,7 @@ extern double P_FC_KLRU;
 typedef std::list<std::pair<uint32_t, double> >::iterator dramIt;
 typedef std::list<uint32_t>::iterator keyIt;
 
-class FlashCacheLruk : public policy {
+class FlashCacheLruk : public Policy {
 private:
 	struct Item {
 		uint32_t kId;
@@ -83,7 +83,7 @@ private:
 public:
 	FlashCacheLruk(stats stat);
 	~FlashCacheLruk();
-	size_t proc(const request *r, bool warmup);
+	size_t process_request(const Request *r, bool warmup);
 	size_t get_bytes_cached() const;
 	void dump_stats(void);
 };

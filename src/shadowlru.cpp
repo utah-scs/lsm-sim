@@ -3,7 +3,7 @@
 #include "shadowlru.h"
 
 shadowlru::shadowlru()
-  : policy{{"", {}, 0}}
+  : Policy{{"", {}, 0}}
   , class_size{}
   , size_curve{}
   , queue{}
@@ -12,7 +12,7 @@ shadowlru::shadowlru()
 }
 
 shadowlru::shadowlru(const stats& stat)
-  : policy{stat}
+  : Policy{stat}
   , class_size{}
   , size_curve{}
   , queue{}
@@ -25,9 +25,9 @@ shadowlru::~shadowlru() {
 
 // Removes an item from the chain and returns its
 // distance in the chain (bytes).
-size_t shadowlru::remove(const request *r) {
+size_t shadowlru::remove(const Request *r) {
 
-  // Sum the sizes of all requests up until we reach 'r'.
+  // Sum the sizes of all Requests up until we reach 'r'.
   size_t stack_dist = 0;
 
   auto it = queue.begin();
@@ -43,12 +43,12 @@ size_t shadowlru::remove(const request *r) {
 }
 
  
-size_t shadowlru::proc(const request *r, bool warmup) {
+size_t shadowlru::process_request(const Request *r, bool warmup) {
   assert(r->size() > 0);
 
   size_t size_distance = PROC_MISS;
   for (auto it = queue.begin(); it != queue.end(); ++it) {
-    request& item = *it;
+    Request& item = *it;
     size_distance += item.size();
     if (item.kid == r->kid) {
       stat.bytes_cached -= item.size();
@@ -77,13 +77,13 @@ size_t shadowlru::get_bytes_cached() const {
   return stat.bytes_cached;
 }
 
-// Iterate over requests summing the associated overhead
-// with each request. Upon reaching the end of each 1MB 
+// Iterate over Requests summing the associated overhead
+// with each Request. Upon reaching the end of each 1MB 
 // page, stash the total page overhead into the vector.
 std::vector<size_t> shadowlru::get_class_frags(size_t slab_size) const {
   size_t page_dist = 0, frag_sum = 0;
   std::vector<size_t> frags{};
-  for (const request& r : queue) {
+  for (const Request& r : queue) {
     // If within the current page just sum.
     // otherwise record OH for this page and reset sums
     // to reflect sums at first element of new page. 

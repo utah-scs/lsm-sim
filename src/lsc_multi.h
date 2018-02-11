@@ -11,10 +11,10 @@
 #ifndef LSC_MULTI_H
 #define LSC_MULTI_H
 
-class lsc_multi : public policy {
+class lsc_multi : public Policy {
   public:
-    enum class cleaning_policy { RANDOM, RUMBLE, ROUND_ROBIN, OLDEST_ITEM, LOW_NEED };
-    enum class subpolicy { NORMAL, GREEDY, STATIC };
+    enum class Cleaning_policy { RANDOM, RUMBLE, ROUND_ROBIN, OLDEST_ITEM, LOW_NEED };
+    enum class Subpolicy { NORMAL, GREEDY, STATIC };
 
     static constexpr size_t idle_mem_secs = 5 * 60 * 60;
 
@@ -23,13 +23,13 @@ class lsc_multi : public policy {
 
     class item {
       public:
-        item(segment* seg, const request& req)
+        item(segment* seg, const Request& req)
           : seg{seg}
           , req{req}
         {}
 
-        // Sorting by request timestamp is ok, because we also
-        // store the request object even when the access is a
+        // Sorting by Request timestamp is ok, because we also
+        // store the Request object even when the access is a
         // hit to an existing object. That is, timestamps
         // represent access times as a result.
         static bool rcmp(const item* left, const item* right) {
@@ -37,7 +37,7 @@ class lsc_multi : public policy {
         }
 
         segment* seg;
-        request req;
+        Request req;
     };
 
     typedef std::list<item> lru_queue; 
@@ -91,7 +91,7 @@ class lsc_multi : public policy {
           return true;
         }
 
-        bool would_hit(const request *r) {
+        bool would_hit(const Request *r) {
           return shadow_q.would_hit(r);
         }
 
@@ -109,7 +109,7 @@ class lsc_multi : public policy {
         static void dump_stats_header() {
           std::cout << "time "
                     << "app "
-                    << "subpolicy "
+                    << "Subpolicy "
                     << "target_mem "
                     << "credit_bytes "
                     << "share "
@@ -129,14 +129,14 @@ class lsc_multi : public policy {
                     << std::endl;
         }
 
-        void dump_stats(double time, subpolicy policy) {
-          const char* policy_name[3] = { "normal"
+        void dump_stats(double time, Subpolicy Policy) {
+          const char* Policy_name[3] = { "normal"
                                        , "greedy"
                                        , "static"
                                        };
           std::cout << int64_t(time) << " "
                     << appid << " "
-                    << policy_name[uint32_t(policy)] << " "
+                    << Policy_name[uint32_t(Policy)] << " "
                     << target_mem << " "
                     << credit_bytes << " "
                     << target_mem + credit_bytes << " "
@@ -185,7 +185,7 @@ class lsc_multi : public policy {
     };
 
   public:
-    lsc_multi(stats sts, subpolicy eviction_policy);
+    lsc_multi(stats sts, Subpolicy eviction_policy);
     ~lsc_multi();
 
     void add_app(size_t appid,
@@ -199,7 +199,7 @@ class lsc_multi : public policy {
       this->tax_rate = tax_rate;
     }
 
-    size_t proc(const request *r, bool warmup);
+    size_t process_request(const Request *r, bool warmup);
     size_t get_bytes_cached() const;
    
     double get_running_hit_rate();
@@ -238,8 +238,8 @@ class lsc_multi : public policy {
     bool use_tax;
     double tax_rate;
 
-    subpolicy eviction_policy;
-    cleaning_policy cleaner;
+    Subpolicy eviction_policy;
+    Cleaning_policy cleaner;
 
     std::unordered_map<size_t, application> apps;
 

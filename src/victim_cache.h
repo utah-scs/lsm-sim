@@ -8,7 +8,7 @@
 #include "policy.h"
 #include "flash_cache.h"
 
-class VictimCache : public policy {
+class VictimCache : public Policy {
 private:
 	typedef std::list<uint32_t>::iterator keyIt;
 
@@ -27,7 +27,7 @@ private:
 public:
 	VictimCache(stats stat);
 	~VictimCache();
-	size_t proc(const request *r, bool warmup);
+	size_t process_request(const Request *r, bool warmup);
 	size_t get_bytes_cached() const;
 	void dump_stats(void);
 };

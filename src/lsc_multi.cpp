@@ -34,16 +34,16 @@ lsc_multi::application::application(
 
 lsc_multi::application::~application() {}
 
-lsc_multi::lsc_multi(stats stat, subpolicy eviction_policy)
-  : policy{stat}
+lsc_multi::lsc_multi(stats stat, Subpolicy eviction_policy)
+  : Policy{stat}
   , last_idle_check{0.}
   , last_dump{0.}
   , use_tax{}
   , tax_rate{}
   , eviction_policy{eviction_policy}
-  , cleaner{eviction_policy == subpolicy::GREEDY ? cleaning_policy::RANDOM
-                                                 : cleaning_policy::LOW_NEED}
-  //, cleaner{cleaning_policy::LOW_NEED}
+  , cleaner{eviction_policy == Subpolicy::GREEDY ? Cleaning_policy::RANDOM
+                                                 : Cleaning_policy::LOW_NEED}
+  //, cleaner{Cleaning_policy::LOW_NEED}
   , apps{}
   , map{}
   , head{nullptr}
@@ -132,10 +132,10 @@ void lsc_multi::compute_idle_mem(double time) {
   //std::cout << std::endl;
 }
 
-size_t lsc_multi::proc(const request *r, bool warmup) {
+size_t lsc_multi::process_request(const Request *r, bool warmup) {
   assert(r->size() > 0);
   if (r->size() > int32_t(stat.segment_size)) {
-    std::cerr << "Can't process large request of size " << r->size()
+    std::cerr << "Can't process large Request of size " << r->size()
               << std::endl;
     return 1;
   }
@@ -174,8 +174,8 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
   if (it != map.end()) {
     auto list_it = it->second;
     segment* old_segment = list_it->seg;
-    int32_t old_request_size = list_it->req.size();
-    if (old_request_size  == r->size()) {
+    int32_t old_Request_size = list_it->req.size();
+    if (old_Request_size  == r->size()) {
       // Promote this item to the front.
       old_segment->queue.erase(list_it);
       old_segment->queue.emplace_front(old_segment, *r);
@@ -206,7 +206,7 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
     rollover(r->time);
     //assert(head->filled_bytes + r->size() <= stat.segment_size);
 
-  // Add the new request.
+  // Add the new Request.
   head->queue.emplace_front(head, *r);
   map[r->kid] = head->queue.begin();
   head->filled_bytes += r->size();
@@ -231,7 +231,7 @@ size_t lsc_multi::proc(const request *r, bool warmup) {
     ++app.shadow_q_hits;
     // Hit in shadow Q! We get to steal!
     size_t steal_size = 0;
-    if (!use_tax && eviction_policy == subpolicy::NORMAL)
+    if (!use_tax && eviction_policy == Subpolicy::NORMAL)
         steal_size = app.steal_size ;
     for (int i = 0; i < 10; ++i) {
       size_t victim = appids.at(rand() % appids.size());
@@ -289,15 +289,15 @@ double lsc_multi::get_running_hit_rate() {
 auto lsc_multi::choose_cleaning_sources() -> std::vector<segment*>
 {
   switch (cleaner) {
-    case cleaning_policy::OLDEST_ITEM:
+    case Cleaning_policy::OLDEST_ITEM:
       return choose_cleaning_sources_oldest_item();
-    case cleaning_policy::ROUND_ROBIN:
+    case Cleaning_policy::ROUND_ROBIN:
       return choose_cleaning_sources_round_robin();
-    case cleaning_policy::RUMBLE:
+    case Cleaning_policy::RUMBLE:
       return choose_cleaning_sources_rumble();
-    case cleaning_policy::LOW_NEED:
+    case Cleaning_policy::LOW_NEED:
       return choose_cleaning_sources_low_need();
-    case cleaning_policy::RANDOM:
+    case Cleaning_policy::RANDOM:
     default:
       return choose_cleaning_sources_random();
   }
@@ -584,7 +584,7 @@ next:
 auto lsc_multi::choose_survivor() -> application* {
   application* r = nullptr;
 
-  if (eviction_policy == subpolicy::NORMAL) {
+  if (eviction_policy == Subpolicy::NORMAL) {
     // Choose app most in need.
     // Those at/below min_mem get priority.
     for (auto& p : apps) {
@@ -607,7 +607,7 @@ auto lsc_multi::choose_survivor() -> application* {
         r = &app;
     }
     return r;
-  } else if (eviction_policy == subpolicy::GREEDY) {
+  } else if (eviction_policy == Subpolicy::GREEDY) {
     // Choose app with newest uncleaned item.
     double newest = 0.;
     for (auto& p : apps) {
@@ -619,7 +619,7 @@ auto lsc_multi::choose_survivor() -> application* {
         r = &app;
       }
     }
-  } else if (eviction_policy == subpolicy::STATIC) {
+  } else if (eviction_policy == Subpolicy::STATIC) {
     for (auto& p : apps) {
       application& app = p.second;
       if (app.cleaning_it == app.cleaning_q.end())
@@ -869,7 +869,7 @@ void lsc_multi::clean()
       stored_in_whole_cache += bytes;
     }
 
-    // Sanity check - the sum of all of the requests active in the hash table
+    // Sanity check - the sum of all of the Requests active in the hash table
     // should not be greater than the combined space in all of the in use
     // segments.
     size_t reachable_from_map = 0;

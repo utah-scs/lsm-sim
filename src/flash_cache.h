@@ -20,7 +20,7 @@ extern double K;
 extern size_t L_FC;
 extern double P_FC;
 
-class FlashCache : public policy {
+class FlashCache : public Policy {
 protected:
 	typedef std::list<std::pair<uint32_t, double> >::iterator dramIt;
 	typedef std::list<uint32_t>::iterator keyIt;
@@ -74,7 +74,7 @@ protected:
 public:
 	FlashCache(stats stat);
 	~FlashCache();
-	size_t proc(const request *r, bool warmup);
+	size_t process_request(const Request *r, bool warmup);
 	size_t get_bytes_cached() const;
 	void dump_stats(void);
 };

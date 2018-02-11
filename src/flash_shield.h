@@ -58,7 +58,7 @@ protected:
         RItem() : flashIt{}, isGhost(false), kId(0), size(0), isInDram(true), queueNumber(0),hasItem(false),LastAction(0),
                 dramLocation(), dramlruIt(), DramItemListLocation(), clockIt() {}
         
-//        RItem(const request *r, size_t counter) : FlashCache::Item(), flashIt{}, isGhost(false) {
+//        RItem(const Request *r, size_t counter) : FlashCache::Item(), flashIt{}, isGhost(false) {
 //            kId = r->kid;
 //            size = r->size();
 //            isInDram = true;
@@ -94,11 +94,11 @@ protected:
    
     
     void add_item(RItem &newItem);
-    virtual void evict_item(RItem& victimItem, bool warmup,const request *r);
-    void evict_block(blockIt victim_block, bool warmup,const request *r);
-    uint32_t ClockFindItemToErase(const request *r);
-    void ColectItemDataAndPredict(const request *r, bool warmup, bool Predict);
-    void allocate_flash_block(bool warmup,const request *r);
+    virtual void evict_item(RItem& victimItem, bool warmup,const Request *r);
+    void evict_block(blockIt victim_block, bool warmup,const Request *r);
+    uint32_t ClockFindItemToErase(const Request *r);
+    void ColectItemDataAndPredict(const Request *r, bool warmup, bool Predict);
+    void allocate_flash_block(bool warmup,const Request *r);
     
     void dramAddandReorder(
          std::vector<uint32_t>& objects,
@@ -119,7 +119,7 @@ protected:
 public:
     flashshield(stats stat);
     ~flashshield();
-    size_t proc(const request *r, bool warmup);
+    size_t proc(const Request *r, bool warmup);
     void dump_stats(void);
     
 };

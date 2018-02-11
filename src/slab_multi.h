@@ -8,7 +8,7 @@
 #include <memory>
 #include <unordered_map>
 
-class slab_multi : public policy {
+class slab_multi : public Policy {
   public:
     static constexpr uint8_t  MIN_CHUNK=48;       // Memcached min chunk bytes
     static constexpr double   DEF_GFACT=1.25;     // Memcached growth factor
@@ -45,7 +45,7 @@ class slab_multi : public policy {
         static void dump_stats_header() {
           std::cout << "time "
                     << "app "
-                    << "subpolicy "
+                    << "subPolicy "
                     << "target_mem "
                     << "credit_bytes "
                     << "share "
@@ -116,7 +116,7 @@ class slab_multi : public policy {
     void add_app(size_t appid, size_t min_mem_pct, size_t target_memory);
     void dump_app_stats(double time);
 
-    size_t proc(const request *r, bool warmup); 
+    size_t process_request(const Request *r, bool warmup); 
     size_t get_bytes_cached() const;
 
 

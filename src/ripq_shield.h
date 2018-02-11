@@ -32,7 +32,7 @@ class ripq_shield : public ripq {
 
     class item : public ripq::item {
       public:
-        item(const request req, dsection_ptr ds)
+        item(const Request req, dsection_ptr ds)
           : ripq::item(req,NULL)
 //          , in_dram(true)
           , ds(ds)
@@ -59,9 +59,9 @@ class ripq_shield : public ripq {
         {
         }
 
-//        item_ptr add(const request *req);
-        const request* evict();
-        item_ptr add(const request *req);
+//        item_ptr add(const Request *req);
+        const Request* evict();
+        item_ptr add(const Request *req);
         void remove(item_ptr curr_item);
     };
       
@@ -70,11 +70,11 @@ class ripq_shield : public ripq {
     virtual ~ripq_shield();
 
     // Modifiers.
-    size_t proc (const request *r, bool warmup);
-    void dram_add(const request *r, int section_id);
+    size_t proc (const Request *r, bool warmup);
+    void dram_add(const Request *r, int section_id);
     void dram_evict();    
     
-//    void add(const request *r, int section_id);
+//    void add(const Request *r, int section_id);
 //    void add_virtual(item_ptr it, int section_id);
   
     // Accessors.

@@ -4,7 +4,7 @@ static bool file_defined = false;
 static double lastRequest = 0;
 
 VictimCache::VictimCache(stats stat) :
-	policy(stat),
+	Policy(stat),
         dram(),
         flash(),
 	allObjects(),
@@ -19,7 +19,7 @@ VictimCache::~VictimCache() {}
 
 size_t VictimCache::get_bytes_cached() const {return dramSize + flashSize;}
 
-size_t VictimCache::proc(const request* r, bool warmup) {
+size_t VictimCache::process_request(const Request* r, bool warmup) {
 	if (!warmup) {stat.accesses++;}	
 	lastRequest = r->time;
 
@@ -108,7 +108,7 @@ void VictimCache::dump_stats(void) {
 		out.open(filename);
 		file_defined = true;
 	}
-	out << "Last request was at :" << lastRequest << std::endl;
+	out << "Last Request was at :" << lastRequest << std::endl;
 	out << "dram size " << DRAM_SIZE << std::endl;
 	out << "flash size " << FLASH_SIZE << std::endl;
 	out << "#accesses "  << stat.accesses << std::endl;

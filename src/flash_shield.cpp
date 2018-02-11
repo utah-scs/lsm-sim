@@ -87,7 +87,7 @@ double S_TIME=0;
 
 flashshield::~flashshield() {}
 
-size_t flashshield::proc(const request* r, bool warmup) {
+size_t flashshield::proc(const Request* r, bool warmup) {
 
     lastRequest = r->time; 
    
@@ -104,8 +104,8 @@ size_t flashshield::proc(const request* r, bool warmup) {
     if (searchRKId != allObjects.end()) {
         /*
          * The object exists in system. If the sizes of the
-         * current request and previous request differ then the previous
-         * request is removed. Otherwise, one
+         * current Request and previous Request differ then the previous
+         * Request is removed. Otherwise, one
          * needs to update the hitrate and its place in the globalLru.
          * If it is in the cache, one needs also to update the
          * 'flashiness' value and its place in the dram MFU and dram LRU
@@ -238,7 +238,7 @@ size_t flashshield::proc(const request* r, bool warmup) {
     //MISS
     
     /*
-     * The request doesn't exist in the system. We always insert new requests
+     * The Request doesn't exist in the system. We always insert new Requests
      * to the DRAM.
      */
     
@@ -299,7 +299,7 @@ size_t flashshield::proc(const request* r, bool warmup) {
     return PROC_MISS;
 }
 
-void flashshield::evict_item(flashshield::RItem& victimItem, bool warmup __attribute__ ((unused)) /*uint32_t &victimKid*/,const request *r __attribute__ ((unused)))
+void flashshield::evict_item(flashshield::RItem& victimItem, bool warmup __attribute__ ((unused)) /*uint32_t &victimKid*/,const Request *r __attribute__ ((unused)))
 {
     //globalLru.erase(victimItem.globalLruIt);
     //victimItem.globalLruIt = globalLru.end();
@@ -365,7 +365,7 @@ void flashshield::evict_item(flashshield::RItem& victimItem, bool warmup __attri
     }
 }
 
-void flashshield::evict_block(blockIt victim_block, bool warmup __attribute__ ((unused)),const request *r)
+void flashshield::evict_block(blockIt victim_block, bool warmup __attribute__ ((unused)),const Request *r)
 {
     for (keyIt it = victim_block->items.begin(); it != victim_block->items.end(); it++)
     {//For every Item in the evicted block
@@ -404,7 +404,7 @@ void flashshield::evict_block(blockIt victim_block, bool warmup __attribute__ ((
 }
 
 
-void flashshield::allocate_flash_block(bool warmup,const request *r)
+void flashshield::allocate_flash_block(bool warmup,const Request *r)
 {//For every item in the sent list need to evict from dram and
     assert(flashSize <= FLASH_SHILD_FLASH_SIZE);
     
@@ -640,7 +640,7 @@ void flashshield::dramAddandReorder(
 }
 uint32_t SvictimkId;
 
-uint32_t flashshield::ClockFindItemToErase(const request *r __attribute__ ((unused)))
+uint32_t flashshield::ClockFindItemToErase(const Request *r __attribute__ ((unused)))
 {
     bool isDeleted = false;
     ClockIt tmpIt, startIt = GlobalclockIt;
@@ -701,7 +701,7 @@ uint32_t flashshield::ClockFindItemToErase(const request *r __attribute__ ((unus
     return victimkId;
 }
 
-void flashshield::ColectItemDataAndPredict(const request *r, bool warmup __attribute__ ((unused)), bool Predict)
+void flashshield::ColectItemDataAndPredict(const Request *r, bool warmup __attribute__ ((unused)), bool Predict)
 {
     flashshield::RItem& item = allObjects[r->kid];
     
@@ -753,7 +753,7 @@ void flashshield::dump_stats(void) {
 	out.open(filename);
 	file_defined = true;
     }
-    out << "Last request was at :" << std::setprecision(5) << lastRequest << std::endl;
+    out << "Last Request was at :" << std::setprecision(5) << lastRequest << std::endl;
  
     out << "dram size " << FLASH_SHILD_DRAM_SIZE << std::endl;
     out << "flash size " << FLASH_SHILD_FLASH_SIZE << std::endl;

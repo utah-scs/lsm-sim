@@ -7,7 +7,7 @@
 #include "lsm.h"
 
 lsm::lsm(stats stat)
-  : policy{stat}
+  : Policy{stat}
   , cleaner{cleaning_policy::OLDEST_ITEM}
   , map{}
   , head{nullptr}
@@ -36,7 +36,7 @@ lsm::lsm(stats stat)
 
 lsm::~lsm() {}
 
-size_t lsm::proc(const request *r, bool warmup) {
+size_t lsm::process_request(const Request *r, bool warmup) {
   assert(r->size() > 0);
 
   if (!warmup)
@@ -49,8 +49,8 @@ size_t lsm::proc(const request *r, bool warmup) {
 
     auto list_it = it->second;
     segment* old_segment = list_it->seg;
-    int32_t old_request_size = list_it->req.size();
-    if (old_request_size  == r->size()) {
+    int32_t old_Request_size = list_it->req.size();
+    if (old_Request_size  == r->size()) {
       // Promote this item to the front.
       old_segment->queue.erase(list_it);
       old_segment->queue.emplace_front(old_segment, *r);
@@ -76,7 +76,7 @@ size_t lsm::proc(const request *r, bool warmup) {
     rollover(r->time);
     //assert(head->filled_bytes + r->size() <= stat.segment_size);
 
-  // Add the new request.
+  // Add the new Request.
   head->queue.emplace_front(head, *r);
   map[r->kid] = head->queue.begin();
   head->filled_bytes += r->size();
@@ -478,7 +478,7 @@ void lsm::clean()
       stored_in_whole_cache += bytes;
     }
 
-    // Sanity check - the sum of all of the requests active in the hash table
+    // Sanity check - the sum of all of the Requests active in the hash table
     // should not be greater than the combined space in all of the in use
     // segments.
     size_t reachable_from_map = 0;

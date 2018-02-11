@@ -7,7 +7,7 @@
 #include "mc.h"
 
 slab::slab(stats stat)
-  : policy{stat}
+  : Policy{stat}
   , slabs{}
   , slab_for_key{}
   , slab_count{}
@@ -30,7 +30,7 @@ slab::slab(stats stat)
 slab::~slab () {
 }
 
-size_t slab::proc(const request *r, bool warmup) {
+size_t slab::process_request(const Request *r, bool warmup) {
   assert(r->size() > 0);
 
   if (!warmup)
@@ -62,9 +62,9 @@ size_t slab::proc(const request *r, bool warmup) {
  
   lru& slab_class = slabs.at(klass);
 
-  // Round up the request size so the per-class LRU holds the right
+  // Round up the Request size so the per-class LRU holds the right
   // size.
-  request copy{*r};
+  Request copy{*r};
   copy.key_sz   = 0;
   copy.val_sz   = class_size;
   copy.frag_sz  = class_size - r->size();
@@ -77,7 +77,7 @@ size_t slab::proc(const request *r, bool warmup) {
       mem_in_use += SLABSIZE;
   }
 
-  size_t outcome = slab_class.proc(&copy, warmup);
+  size_t outcome = slab_class.process_request(&copy, warmup);
 
   // Trace the move of the key into its new slab class.
   slab_for_key.insert(std::pair<uint32_t,uint32_t>(r->kid, klass));

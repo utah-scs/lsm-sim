@@ -10,7 +10,7 @@
 extern size_t K_LRU;
 extern size_t KLRU_QUEUE_SIZE;
 
-class Lruk : public policy {
+class Lruk : public Policy {
 private:
 	typedef std::list<uint32_t>::iterator keyIt;
 
@@ -37,7 +37,7 @@ private:
 public:
 	Lruk(stats stat);
 	~Lruk();
-	size_t proc(const request *r, bool warmup);
+	size_t process_request(const Request *r, bool warmup);
 	size_t get_bytes_cached() const;
 	void dump_stats(void);
 };

@@ -4,7 +4,7 @@
 size_t CLOCK_MAX_VALUE = 15;
 
 Clock::Clock(stats stat) : 
-		policy(stat), 
+		Policy(stat), 
 		clockLru(), 
 		allObjects(),
 		lruSize(0),
@@ -18,7 +18,7 @@ Clock::~Clock() {}
 
 size_t Clock::get_bytes_cached() const { return lruSize; }
 
-size_t Clock::proc(const request* r, bool warmup) {
+size_t Clock::process_request(const Request* r, bool warmup) {
 	if (!warmup) {stat.accesses++;}
 
 	auto searchRKId = allObjects.find(r->kid);

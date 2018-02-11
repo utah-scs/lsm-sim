@@ -9,7 +9,7 @@
 #include "mc.h"
 
 // policy derived from Cliffhanger paper
-class shadowslab : public policy {
+class shadowslab : public Policy {
   public:
  
     static constexpr size_t SLABSIZE = 1024 * 1024;
@@ -17,7 +17,7 @@ class shadowslab : public policy {
     shadowslab(stats stat);
     ~shadowslab();
 
-    size_t proc(const request *r, bool warmup);
+    size_t process_request(const Request *r, bool warmup);
     size_t get_bytes_cached() const;
     void log_curves();
     void dump_util(const std::string& filename);

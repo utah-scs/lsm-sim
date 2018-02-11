@@ -27,7 +27,7 @@ PyObject* ML_SVMFitFunction = NULL;
 PyObject* ML_SVMLoadFitFunction = NULL;
 
 FlashCacheLrukClkMachineLearning::FlashCacheLrukClkMachineLearning(stats stat) :
-	policy(stat),
+	Policy(stat),
 	dram(FC_K_LRU_CLK_ML),
     dramItemList(),
     SVMCalculationItemList(),
@@ -70,7 +70,7 @@ size_t FlashCacheLrukClkMachineLearning::get_bytes_cached() const {
 	return dramSize + flashSize;
 }
 
-size_t FlashCacheLrukClkMachineLearning::proc(const request* r, bool warmup) {
+size_t FlashCacheLrukClkMachineLearning::process_request(const Request* r, bool warmup) {
      
 	if (!warmup) {stat.accesses++;}
 	bool updateWrites = true;
@@ -87,8 +87,8 @@ size_t FlashCacheLrukClkMachineLearning::proc(const request* r, bool warmup) {
 	}
 
 
-	/* 1. When request is being inserted to the system, it being looked for
-	 * if the request is in the DRAM or in the flash then the system returns 1,
+	/* 1. When Request is being inserted to the system, it being looked for
+	 * if the Request is in the DRAM or in the flash then the system returns 1,
 	 * else return 0 and inserting it
 	 */
 	auto searchRKId = allObjects.find(r->kid);
@@ -195,8 +195,8 @@ size_t FlashCacheLrukClkMachineLearning::proc(const request* r, bool warmup) {
 	}
 
 	/*
-	* The request doesn't exist in the system or it's size was updated.
-	* The new request will be inseret to the DRAM at the beginning of the last dram queue.
+	* The Request doesn't exist in the system or it's size was updated.
+	* The new Request will be inseret to the DRAM at the beginning of the last dram queue.
 	*
 	* 2. While (object not inserted to the DRAM)
 	*	2.1  if (item.size() + dramSize <= DRAM_SIZE_FC_KLRU) - //queue 0 is not bound by size
@@ -469,19 +469,19 @@ void FlashCacheLrukClkMachineLearning::deleteItem(uint32_t keyId) {
 	allObjects.erase(keyId);
 }
 
-bool FlashCacheLrukClkMachineLearning::inTimesforinsert(const request *r){
+bool FlashCacheLrukClkMachineLearning::inTimesforinsert(const Request *r){
 	if (r->time > ML_START_TIME && r->time < ML_END_TIME)
 		return true;
 	return false;
 }
 
-bool FlashCacheLrukClkMachineLearning::inTimesforupdate(const request *r){
+bool FlashCacheLrukClkMachineLearning::inTimesforupdate(const Request *r){
 	if (r->time > ML_START_TIME && r->time < ML_END_TIME + 3600)
 		return true;
 	return false;
 }
 
-void FlashCacheLrukClkMachineLearning::SVMWarmUPCalculation(const request *r,double v1, bool warmup __attribute__ ((unused)))
+void FlashCacheLrukClkMachineLearning::SVMWarmUPCalculation(const Request *r,double v1, bool warmup __attribute__ ((unused)))
 {
 	FlashCacheLrukClkMachineLearning::Item& item = allObjects[r->kid];
 
@@ -535,7 +535,7 @@ void FlashCacheLrukClkMachineLearning::SVMWarmUPCalculation(const request *r,dou
 	//------------------------------------------------------------
 }
 
-void FlashCacheLrukClkMachineLearning::ColectItemDataAndPredict(const request *r, bool warmup __attribute__ ((unused)), bool Predict)
+void FlashCacheLrukClkMachineLearning::ColectItemDataAndPredict(const Request *r, bool warmup __attribute__ ((unused)), bool Predict)
 {
     FlashCacheLrukClkMachineLearning::Item& item = allObjects[r->kid];
     
@@ -633,7 +633,7 @@ void FlashCacheLrukClkMachineLearning::SVMFunctionCalculation()
 	SVMCalculationRun = true;
 }
 
-void FlashCacheLrukClkMachineLearning::ClockFindItemToErase(const request *r __attribute__ ((unused)))
+void FlashCacheLrukClkMachineLearning::ClockFindItemToErase(const Request *r __attribute__ ((unused)))
 {
 	bool isDeleted = false;
 	dramIt tmpIt, startIt = clockIt;

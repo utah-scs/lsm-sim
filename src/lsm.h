@@ -9,19 +9,19 @@
 #ifndef LSM_H
 #define LSM_H
 
-class lsm : public policy {
+class lsm : public Policy {
   private:
     class segment;
 
     class item {
       public:
-        item(segment* seg, const request& req)
+        item(segment* seg, const Request& req)
           : seg{seg}
           , req{req}
         {}
 
         segment* seg;
-        request req;
+        Request req;
     };
 
     typedef std::list<item> lru_queue; 
@@ -49,7 +49,7 @@ class lsm : public policy {
     lsm(stats sts);
     ~lsm();
 
-    size_t proc(const request *r, bool warmup);
+    size_t process_request(const Request *r, bool warmup);
     size_t get_bytes_cached() const;
    
 

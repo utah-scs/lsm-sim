@@ -17,7 +17,7 @@ static const size_t bits_for_page = log2(number_of_pages);
 
 typedef __uint128_t uint128_t;
 
-class SegmentUtil  : public policy {
+class SegmentUtil  : public Policy {
 private:
 
 	struct SUItem {
@@ -58,7 +58,7 @@ private:
 public:
 	SegmentUtil(stats stat);
 	~SegmentUtil();
-	size_t proc(const request *r, bool warmup);
+	size_t process_request(const Request *r, bool warmup);
 	size_t get_bytes_cached() const;
 	void dump_stats(void);
 };

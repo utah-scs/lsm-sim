@@ -15,7 +15,7 @@ double P_FC_KLRU = 0.3;
 // #define RELATIVE
 
 FlashCacheLruk::FlashCacheLruk(stats stat) :
-	policy(stat),
+	Policy(stat),
 	dram(FC_K_LRU),
 	kLruSizes(FC_K_LRU, 0),
 	flash(),
@@ -35,7 +35,7 @@ size_t FlashCacheLruk::get_bytes_cached() const {
 	return dramSize + flashSize;
 }
 
-size_t FlashCacheLruk::proc(const request* r, bool warmup) {
+size_t FlashCacheLruk::process_request(const Request* r, bool warmup) {
 	if (!warmup) {stat.accesses++;}
 	counter++;
 
@@ -54,8 +54,8 @@ size_t FlashCacheLruk::proc(const request* r, bool warmup) {
 	if (searchRKId != allObjects.end()) {
 		/*
 		* The object exists in flashCache system. If the sizes of the 
-		* current request and previous request differ then the previous
-		* request is removed from the flashcache system. Otherwise, one 
+		* current Request and previous Request differ then the previous
+		* Request is removed from the flashcache system. Otherwise, one 
 		* needs to update the hitrate and its place in the globalLru.
 		* If it is in the cache, one needs as well to update the 
 		* 'flashiness' value and its place in the dram MFU and dram LRU 
@@ -119,7 +119,7 @@ size_t FlashCacheLruk::proc(const request* r, bool warmup) {
 		}
 	}
 	/*
-	* The request doesn't exist in the system. We always insert new requests
+	* The Request doesn't exist in the system. We always insert new Requests
 	* to the DRAM at the beginning of the last queue.
 	*
 	* 2. While (object not inserted to the DRAM)

@@ -1,5 +1,5 @@
-#ifndef POLICY_H
-#define POLICY_H
+#ifndef Policy_H
+#define Policy_H
 
 #include <cassert>
 #include <string>
@@ -10,8 +10,9 @@
 #include <iostream>
 
 // abstract base class for plug-and-play policies
-class policy {
-  struct dump {
+class Policy {
+  struct dump 
+  {
     // let k = size of key in bytes
     // let v = size of value in bytes
     // let m = size of metadata in bytes
@@ -28,21 +29,22 @@ class policy {
     bool all_apps;
     
   public:
-    policy(stats stat)
+    Policy(stats stat)
       : stat{stat}
       , all_apps{!stat.apps ? false : stat.apps->empty()}
     {}
 
-    virtual ~policy() {}
+    virtual ~Policy() {}
 
     enum { PROC_MISS = ~0lu };
-    virtual size_t proc(const request *r, bool warmup) = 0;
+
+    virtual size_t process_request(const Request* request, bool warmup) = 0;
 
     virtual size_t get_bytes_cached() const = 0; 
 
     virtual void log_curves() 
     { 
-      std::cout << "Not enabled for this policy" << std::endl; 
+      std::cout << "Not enabled for this Policy" << std::endl; 
     }
 
     stats* get_stats() { return &stat; }

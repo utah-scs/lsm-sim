@@ -20,7 +20,7 @@ extern size_t CLOCK_MAX_VALUE_KLRU_ML;
 extern uint32_t APP_NUMBER;
 extern double ML_SVM_TH;
 
-class FlashCacheLrukClkMachineLearning : public policy {
+class FlashCacheLrukClkMachineLearning : public Policy {
 private:
 	typedef std::list<std::pair<uint32_t, size_t> >::iterator dramIt;
 	typedef std::list<uint32_t>::iterator keyIt;
@@ -120,18 +120,18 @@ private:
            bool warmup);
 
 	void deleteItem(uint32_t keyId);
-	bool inTimesforinsert(const request *r);
-	bool inTimesforupdate(const request *r);
-	void SVMWarmUPCalculation(const request *r,double v1, bool warmup);
-	void ClockFindItemToErase(const request *r);
+	bool inTimesforinsert(const Request *r);
+	bool inTimesforupdate(const Request *r);
+	void SVMWarmUPCalculation(const Request *r,double v1, bool warmup);
+	void ClockFindItemToErase(const Request *r);
 	void SVMFunctionCalculation();
-    void ColectItemDataAndPredict(const request *r, bool warmup, bool Predict);
+    void ColectItemDataAndPredict(const Request *r, bool warmup, bool Predict);
 	friend class VictimCache;
 
 public:
 	FlashCacheLrukClkMachineLearning(stats stat);
 	~FlashCacheLrukClkMachineLearning();
-	size_t proc(const request *r, bool warmup);
+	size_t process_request(const Request *r, bool warmup);
 	size_t get_bytes_cached() const;
 	void dump_stats(void);
 };

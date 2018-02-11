@@ -19,7 +19,7 @@ RamShield::RamShield(stats stat, size_t block_size):
 RamShield::~RamShield() {}
 
 
-size_t RamShield::proc(const request* r, bool warmup) {
+size_t RamShield::proc(const Request* r, bool warmup) {
 	if (!warmup) {stat.accesses++;}
 	counter++;
 
@@ -30,8 +30,8 @@ size_t RamShield::proc(const request* r, bool warmup) {
 	if (searchRKId != allObjects.end()) {
 		/*
 		* The object exists in system. If the sizes of the 
-		* current request and previous request differ then the previous
-		* request is removed. Otherwise, one 
+		* current Request and previous Request differ then the previous
+		* Request is removed. Otherwise, one 
 		* needs to update the hitrate and its place in the globalLru.
 		* If it is in the cache, one needs also to update the 
 		* 'flashiness' value and its place in the dram MFU and dram LRU 
@@ -92,7 +92,7 @@ size_t RamShield::proc(const request* r, bool warmup) {
 	//MISS
 
 	/*
-	* The request doesn't exist in the system. We always insert new requests
+	* The Request doesn't exist in the system. We always insert new Requests
 	* to the DRAM. 
 	*/
 	RamShield::RItem newItem(r, counter);
@@ -224,5 +224,5 @@ void RamShield::allocate_flash_block(bool warmup) {
 }
 
 void RamShield::dump_stats(void) {
-	policy::dump_stats();
+	Policy::dump_stats();
 }

@@ -2,7 +2,7 @@
 #include <math.h>
 #include "segment_util.h"
 
-SegmentUtil::SegmentUtil(stats stat) :	policy(stat),
+SegmentUtil::SegmentUtil(stats stat) :	Policy(stat),
 					objects(), 
 					allObjects(),
 					dataSize(0), 
@@ -16,7 +16,7 @@ SegmentUtil::SegmentUtil(stats stat) :	policy(stat),
 
 SegmentUtil::~SegmentUtil() {}
 
-size_t SegmentUtil::proc(const request *r, bool woormup __attribute__ ((unused))) {
+size_t SegmentUtil::process_request(const Request *r, bool woormup __attribute__ ((unused))) {
 	if (r->size() + dataSize > top_data_bound) {
 		std::sort(objects.begin(),objects.end(), compareSizes);
 		std::vector<size_t> pageSizes(number_of_pages, 0);

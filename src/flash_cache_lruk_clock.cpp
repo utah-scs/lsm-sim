@@ -12,7 +12,7 @@ size_t CLOCK_JUMP = 2;
 int MIN_QUEUE_TO_MOVE_TO_FLASH = 6;
 
 FlashCacheLrukClk::FlashCacheLrukClk(stats stat) :
-	policy(stat),
+	Policy(stat),
 	dram(FC_K_LRU_CLK),
 	dramLru(0),
 	clockLru(),
@@ -33,7 +33,7 @@ size_t FlashCacheLrukClk::get_bytes_cached() const {
 	return dramSize + flashSize;
 }
 
-size_t FlashCacheLrukClk::proc(const request* r, bool warmup) {
+size_t FlashCacheLrukClk::process_request(const Request* r, bool warmup) {
 	if (!warmup) {stat.accesses++;}
 
 	bool updateWrites = true;
@@ -105,8 +105,8 @@ size_t FlashCacheLrukClk::proc(const request* r, bool warmup) {
 	}
 
 	/*
-	* The request doesn't exist in the system or was updated. We always insert
-	* new requests to the DRAM at the beginning of the last queue.
+	* The Request doesn't exist in the system or was updated. We always insert
+	* new Requests to the DRAM at the beginning of the last queue.
 	*
 	* 2. While (object not inserted to the DRAM)
 	*	2.1  if (item.size() + dramSize <= DRAM_SIZE_FC_KLRU) -

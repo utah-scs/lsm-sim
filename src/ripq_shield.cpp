@@ -20,8 +20,8 @@ ripq_shield::ripq_shield(stats stat,size_t block_size,size_t num_sections, size_
 ripq_shield::~ripq_shield () {
 }
 
-//add new request to dsection_id
-void ripq_shield::dram_add(const request *r, int dsection_id) {
+//add new Request to dsection_id
+void ripq_shield::dram_add(const Request *r, int dsection_id) {
   assert(uint32_t(r->size()) < dsection_size);
   auto it = dram_map.find(r->kid);  //FIXME delete
   assert(it == dram_map.end());
@@ -36,7 +36,7 @@ void ripq_shield::dram_add(const request *r, int dsection_id) {
   dram_map[r->kid] = new_item;
 }
 
-ripq_shield::item_ptr ripq_shield::dram_section::add(const request *req) {
+ripq_shield::item_ptr ripq_shield::dram_section::add(const Request *req) {
   filled_bytes += req->size();
   num_items++;
   item_ptr new_item(new item(*req, shared_from_this()));
@@ -48,7 +48,7 @@ ripq_shield::item_ptr ripq_shield::dram_section::add(const request *req) {
 void ripq_shield::dbalance(int start) {
   for (uint32_t i = start; i < num_dsections-1; i++) {
     while (dsections[i]->filled_bytes > dsection_size) {
-      const request *evicted_req = dsections[i]->evict();
+      const Request *evicted_req = dsections[i]->evict();
       assert(evicted_req);
       dram_map[evicted_req->kid] = dsections[i+1]->add(evicted_req);
     }
@@ -64,7 +64,7 @@ void ripq_shield::dram_section::remove(item_ptr curr_item) {
   items.erase(curr_item->dram_it);
 }
 
-const request* ripq_shield::dram_section::evict() {
+const Request* ripq_shield::dram_section::evict() {
   assert(!items.empty());
   item_ptr last_item = items.back();
   assert (filled_bytes >= (uint32_t)last_item->req.size());
@@ -75,7 +75,7 @@ const request* ripq_shield::dram_section::evict() {
 }
 
 void ripq_shield::dram_evict() {
-  const request *curr_req = dsections[num_dsections-1]->evict();
+  const Request *curr_req = dsections[num_dsections-1]->evict();
   stat.bytes_cached -= curr_req->size();
   dram_map.erase(curr_req->kid);
 }
@@ -138,7 +138,7 @@ void ripq_shield::evict() {
   balance();
 }
 
-size_t ripq_shield::proc(const request *r, bool warmup) {
+size_t ripq_shield::proc(const Request *r, bool warmup) {
 
   assert(r->size() > 0);
 

@@ -14,11 +14,11 @@ static const uint32_t PAGE_SIZE=1000000;  // Memcached page bytes
 static const uint16_t MAX_CLASSES=256;    // Memcached max no of slabs   
 static const size_t   MAX_SIZE=5000000;   // Largest KV pair allowed 
 
-class slab : public policy {
+class slab : public Policy {
   public:
     slab(stats stat);
    ~slab();
-    size_t proc(const request *r, bool warmup); 
+    size_t process_request(const Request *r, bool warmup); 
     size_t get_bytes_cached() const;
 
 

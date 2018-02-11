@@ -7,7 +7,7 @@
 #include "mc.h"
 
 partslab::partslab(stats stat)
-  : policy{stat}
+  : Policy{stat}
   , slabs{}
   , size_curve{}
 {
@@ -19,13 +19,13 @@ partslab::partslab(stats stat)
 partslab::~partslab() {
 } 
 
-size_t partslab::proc(const request *r, bool warmup) {
+size_t partslab::process_request(const Request *r, bool warmup) {
   assert(r->size() > 0);
 
   size_t klass = std::hash<decltype(r->kid)>{}(r->kid) % stat.partitions;
   shadowlru& slab_class = slabs.at(klass);
 
-  size_t size_distance = slab_class.proc(r, warmup);
+  size_t size_distance = slab_class.process_request(r, warmup);
   if (size_distance == PROC_MISS) {
     // Don't count compulsory misses.
     //if (!warmup)
