@@ -6,8 +6,8 @@
 #include "policy.h"
 
 class lru : public policy {
-  typedef std::list<request> lru_queue; 
 
+  typedef std::list<request> lru_queue; 
   typedef std::unordered_map<uint32_t, lru_queue::iterator> hash_map;
 
   public:

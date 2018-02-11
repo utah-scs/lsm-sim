@@ -41,6 +41,7 @@
 #include "flash_cache_lruk_clock.h"
 #include "replay.h"
 #include "flash_cache_lruk_clock_machinelearning.h"
+#include "partitioned_LRU.h"
 
 using namespace std::chrono;
 typedef high_resolution_clock hrc;
@@ -153,6 +154,7 @@ enum pol_type {
   , RAMSHIELD_SEL
   , FLASHSHIELD
   , FLASHCACHELRUKCLKMACHINELEARNING
+  , PARTITIONED_LRU
   , NONE
   };
 
@@ -208,7 +210,6 @@ std::unique_ptr<policy> create_policy(Args& args);
 void parse_stdin(Args& args, int argc, char** argv);
 void calculate_global_memory(Args& args);
 void init_partitions(Args& args, const size_t num_partitions);
-/// 
 
 // Partition (high-level partitioning) : A Partition is a logical grouping of
 // cache-related mechanisms and statistical variables that emulates a single
@@ -222,20 +223,20 @@ void init_partitions(Args& args, const size_t num_partitions);
 // TODO: Also think about what data will be useful on a per-partition basis and
 //       a global basis.  What patterns will best tease out the comparisons
 //       between globalism and partitioning.
-struct Partition
-{ 
-  Partition(std::unique_ptr<policy> p)
-    : _policy(std::move(p))
-  {
-  }
+/* struct Partition */
+/* { */ 
+/*   Partition(std::unique_ptr<policy> p) */
+/*     : _policy(std::move(p)) */
+/*   { */
+/*   } */
     
-  std::unique_ptr<policy> _policy;
-  /// Additional stuff can go here as needed.
-  /// i.e. additional stats tracking, concurrency mechanisms, etc.
-  /// ...
-};
+/*   std::unique_ptr<policy> _policy; */
+/*   /// Additional stuff can go here as needed. */
+/*   /// i.e. additional stats tracking, concurrency mechanisms, etc. */
+/*   /// ... */
+/* }; */
 
-std::vector<std::unique_ptr<Partition>> global_partitions; 
+/* std::vector<std::unique_ptr<Partition>> global_partitions; */ 
 
 /// Creates a new policy with stats and packs it into a partition struct
 /// for num_partitions partitions and pushes them all into a vector.
@@ -243,28 +244,28 @@ std::vector<std::unique_ptr<Partition>> global_partitions;
 /// @param Args struct containing policy info.
 ///
 /// @param size_t indicating the number of partitions to create.
-void init_partitions(Args& args)
-{
-  for (size_t p = 0; p < args.num_global_partitions; ++p)
-  {
-    std::unique_ptr<policy> pol = create_policy(args);
-    std::unique_ptr<Partition> part 
-      = std::make_unique<Partition>(std::move(pol));
-    global_partitions.push_back(std::move(part)); 
+/* void init_partitions(Args& args) */
+/* { */
+/*   for (size_t p = 0; p < args.num_global_partitions; ++p) */
+/*   { */
+/*     std::unique_ptr<policy> pol = create_policy(args); */
+/*     std::unique_ptr<Partition> part */ 
+/*       = std::make_unique<Partition>(std::move(pol)); */
+/*     global_partitions.push_back(std::move(part)); */ 
 
-    // TODO: This is likely a good place to fire off threads.
-    //       May want to consider making Partitions a functor 
-    //       with some sort of callback to aggregate all of the incoming
-    //       partitions data async.
-  }
-}
+/*     // TODO: This is likely a good place to fire off threads. */
+/*     //       May want to consider making Partitions a functor */ 
+/*     //       with some sort of callback to aggregate all of the incoming */
+/*     //       partitions data async. */
+/*   } */
+/* } */
 
 int main(int argc, char *argv[]) 
 {
   Args args;
   calculate_global_memory(args);
   parse_stdin(args, argc, argv);
-  init_partitions(args);
+  /* init_partitions(args); */
 
   // TODO: Move this somewhere, this is policy specific.
   assert(args.apps.size() >= args.app_steal_sizes.size());
@@ -758,6 +759,9 @@ std::unique_ptr<policy> create_policy(Args& args)
         policy.reset(new flashshield(sts));
         break;
     case NONE:
+        break;
+    case PARTITIONED_LRU:
+        policy.reset(new Partitioned_LRU(sts, 1));
         break;
   }
   if (!policy) {

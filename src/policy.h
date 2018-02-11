@@ -23,7 +23,6 @@ class policy {
     double hit_rate;    // sum of hits in hits vect over size of hits vector
   };
   
-  
   protected:  
     stats stat; 
     bool all_apps;
@@ -41,8 +40,10 @@ class policy {
 
     virtual size_t get_bytes_cached() const = 0; 
 
-    virtual void log_curves() { std::cout << "Not enabled for this policy" 
-      << std::endl; }
+    virtual void log_curves() 
+    { 
+      std::cout << "Not enabled for this policy" << std::endl; 
+    }
 
     stats* get_stats() { return &stat; }
 
