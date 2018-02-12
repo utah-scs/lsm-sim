@@ -21,6 +21,7 @@ public:
   size_t get_bytes_cached() const;
 
 private:
+  size_t m_num_partitions;
   /// Maps a request to a partition.
   std::vector<std::unique_ptr<Partition>> m_p_partitions;
 };

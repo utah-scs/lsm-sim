@@ -52,9 +52,10 @@ struct Partitioned_LRU::Partition
 
 Partitioned_LRU::Partitioned_LRU(stats stat, const size_t& num_partitions)
   : Policy{stat}
+  , m_num_partitions{num_partitions}
   , m_p_partitions{}
 {
-  size_t partition_size = stat.global_mem / num_partitions;
+  size_t partition_size = stat.global_mem / m_num_partitions;
   m_p_partitions.reserve(num_partitions);
   for (size_t i = 0; i < num_partitions; ++i)
   {
@@ -71,10 +72,7 @@ Partitioned_LRU::~Partitioned_LRU ()
 // in the internal partition map.
 size_t Partitioned_LRU::process_request(const Request* request, bool warmup) 
 {
-  size_t hash = request->hash_key(16);
-
-  std::cout << "key: " << request->kid << " hash: " << hash << std::endl;
-
+  size_t hash = request->hash_key(m_num_partitions);
 
   return PROC_MISS;
 }

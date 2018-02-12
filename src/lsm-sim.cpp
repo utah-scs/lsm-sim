@@ -203,7 +203,7 @@ struct Args {
   std::string           app_steal_sizes_str = "";
 
   // The number of partitions in which to globally partition the cache.
-  uint16_t num_global_partitions = 1;
+  uint16_t num_partitions = 1;
 };
 
 /// Forward declare some utility functions.
@@ -563,7 +563,7 @@ void parse_stdin(Args& args, int argc, char** argv)
         args.USER_SVM_TH = atol(optarg);
         break;
       case 'Y':
-        args.num_global_partitions = atoi(optarg);
+        args.num_partitions = atoi(optarg);
     }
   }
 }
@@ -704,7 +704,7 @@ std::unique_ptr<Policy> create_Policy(Args& args)
     case NONE:
         break;
     case PARTITIONED_LRU:
-        Policy.reset(new Partitioned_LRU(sts, 1));
+        Policy.reset(new Partitioned_LRU(sts, args.num_partitions));
         break;
   }
   if (!Policy) {
