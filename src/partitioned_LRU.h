@@ -17,12 +17,7 @@ public:
   ~Partitioned_LRU();
 
   size_t process_request(const Request* process_request, bool warmup);
-  void add(const Request* request);
-  int64_t remove(const Request* request);
-
   size_t get_bytes_cached() const;
-  size_t get_num_hits(); 
-  size_t get_num_accesses();
 
 protected:
   /// Maps a request to a partition.
