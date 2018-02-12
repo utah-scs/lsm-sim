@@ -6,6 +6,8 @@
 #include "common.h"
 #include "request.h"
 
+#include "openssl/sha.h"
+
 Request::Request(const std::string& s)
   : time{}
   , key_sz{}
@@ -69,4 +71,28 @@ int32_t Request::get_frag() const
 bool Request::operator<(const Request& other)
 {
   return time < other.time;
+}
+
+size_t Request::hash_key(const size_t modulus) const
+{
+  union Int_to_unsigned_char 
+  {
+    uint32_t int_value;                         
+    unsigned char char_value[sizeof(uint32_t)]; 
+  };
+
+  union Unsigned_char_to_size_t
+  {
+    unsigned char char_value[SHA_DIGEST_LENGTH];  // 20 bytes.
+    size_t   size_t_value;                        // 8 bytes on x86.
+  };
+  
+  Int_to_unsigned_char input;
+  input.int_value = this->kid;
+  Unsigned_char_to_size_t output;
+  SHA_CTX context;
+  SHA1_Init(&context);
+  SHA1_Update(&context, input.char_value, sizeof(uint32_t));
+  SHA1_Final(output.char_value, &context);
+  return output.size_t_value % modulus;
 }

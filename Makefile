@@ -7,10 +7,10 @@ CXXFLAGS := -std=c++14 -Wall -g -pedantic-errors -Werror -O3 \
 # have the library and headers installed.
 REPLAY ?= no
 
-LDFLAGS :=
+LDFLAGS := -lcrypto -lssl -lpython2.7
 
 ifeq ($(REPLAY),yes)
-LDFLAGS += -lmemcached
+LDFLAGS += -lmemcached 
 else
 CXXFLAGS += -DNOREPLAY
 endif
@@ -25,7 +25,7 @@ all: lsm-sim
 	$(CXX) $(CXXFLAGS) -c $<
 
 lsm-sim: $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $^ -lpython2.7
+	$(CXX) $(LDFLAGS) -o $@ $^ 
 
 clean:
 	-rm lsm-sim src/*.o
