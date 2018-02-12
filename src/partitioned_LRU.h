@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <list>
 #include <memory>
+#include <vector>
+
 #include "policy.h"
 
 class Partitioned_LRU : public Policy 
@@ -15,16 +17,12 @@ public:
   Partitioned_LRU();
   Partitioned_LRU(stats stat, const size_t& num_partitions);
   ~Partitioned_LRU();
-
   size_t process_request(const Request* process_request, bool warmup);
   size_t get_bytes_cached() const;
 
-protected:
+private:
   /// Maps a request to a partition.
-  std::unordered_map<uint32_t, std::unique_ptr<Partition>> partitions;
-
-  std::unordered_map<uint32_t, std::list<Request>::iterator> map;
-  std::list<Request> queue;
+  std::vector<std::unique_ptr<Partition>> m_p_partitions;
 };
 
 #endif

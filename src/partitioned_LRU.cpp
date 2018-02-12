@@ -3,13 +3,14 @@
 #include <cassert>
 
 #include "partitioned_LRU.h"
+#include "openssl/sha.h"
 
 struct Partitioned_LRU::Partition
 {
   Partition(const size_t& partition_size, stats& r_stat)
     : m_r_stats(r_stat)
     , m_partition_size(partition_size)
-    , m_bytes_cached(0)
+    , m_partition_bytes_cached(0)
     , m_partition_map{}
     , m_partition_queue{}
   {
@@ -44,27 +45,37 @@ struct Partitioned_LRU::Partition
   private:
   stats& m_r_stats;
   const size_t m_partition_size;
-  size_t m_bytes_cached;
+  size_t m_partition_bytes_cached;
   std::unordered_map<uint32_t, std::list<Request>::iterator> m_partition_map;
   std::list<Request> m_partition_queue;
 };
 
 Partitioned_LRU::Partitioned_LRU(stats stat, const size_t& num_partitions)
   : Policy{stat}
-  , partitions{}
-  , map{}
-  , queue{}
+  , m_p_partitions{}
 {
+  size_t partition_size = stat.global_mem / num_partitions;
+  m_p_partitions.reserve(num_partitions);
+  for (size_t i = 0; i < num_partitions; ++i)
+  {
+    m_p_partitions[i] = std::make_unique<Partition>(partition_size, stat);
+  }
 }
 
 Partitioned_LRU::~Partitioned_LRU () 
 {
 }
 
-// Performs lookup in the partitions map for request key and retrieves the
-// appropriate partition if found. If not found, puts key,value into parition.
+// Performs request key lookup in partitions map. If found, retrieves the
+// partition that potentially contains the matching request and performs lookup
+// in the internal partition map.
 size_t Partitioned_LRU::process_request(const Request* request, bool warmup) 
 {
+  size_t hash = request->hash_key(16);
+
+  std::cout << "key: " << request->kid << " hash: " << hash << std::endl;
+
+
   return PROC_MISS;
 }
 

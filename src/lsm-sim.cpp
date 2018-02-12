@@ -130,7 +130,8 @@ const int orig_alloc[15] = {
 };
 
 /// Possible Policy types.
-enum pol_type { 
+enum Pol_type 
+{ 
     SHADOWLRU = 0
   , FIFO
   , LRU
@@ -156,7 +157,7 @@ enum pol_type {
   , FLASHCACHELRUKCLKMACHINELEARNING
   , PARTITIONED_LRU
   , NONE
-  };
+};
 
 struct Args {
   
@@ -197,7 +198,7 @@ struct Args {
   size_t        cleaning_width       = 100;
 
   std::string           app_str      = "";              //< for logging apps
-  pol_type              Policy_type  = NONE;
+  Pol_type              policy_type  = NONE;
   lsc_multi::Subpolicy  Subpolicy    = lsc_multi::Subpolicy(0);
   std::string           app_steal_sizes_str = "";
 
@@ -209,88 +210,33 @@ struct Args {
 std::unique_ptr<Policy> create_Policy(Args& args);
 void parse_stdin(Args& args, int argc, char** argv);
 void calculate_global_memory(Args& args);
-void init_partitions(Args& args, const size_t num_partitions);
-
-// Partition (high-level partitioning) : A Partition is a logical grouping of
-// cache-related mechanisms and statistical variables that emulates a single
-// parition in high-level partitioning of cache processing.  
-// TODO: Consider making Partition a thread object/functor with a data callback
-//       get results.  Should look into Intel TBB information first and see what
-//       facilities are offered before deciding.
-// TODO: Think about better ways of extracting data than the previous "dump
-//       to the console every x seconds" method.  This will likely become a mess
-//       when partition numbers increase.
-// TODO: Also think about what data will be useful on a per-partition basis and
-//       a global basis.  What patterns will best tease out the comparisons
-//       between globalism and partitioning.
-/* struct Partition */
-/* { */ 
-/*   Partition(std::unique_ptr<Policy> p) */
-/*     : _Policy(std::move(p)) */
-/*   { */
-/*   } */
-    
-/*   std::unique_ptr<Policy> _Policy; */
-/*   /// Additional stuff can go here as needed. */
-/*   /// i.e. additional stats tracking, concurrency mechanisms, etc. */
-/*   /// ... */
-/* }; */
-
-/* std::vector<std::unique_ptr<Partition>> global_partitions; */ 
-
-/// Creates a new Policy with stats and packs it into a partition struct
-/// for num_partitions partitions and pushes them all into a vector.
-/// 
-/// @param Args struct containing Policy info.
-///
-/// @param size_t indicating the number of partitions to create.
-/* void init_partitions(Args& args) */
-/* { */
-/*   for (size_t p = 0; p < args.num_global_partitions; ++p) */
-/*   { */
-/*     std::unique_ptr<Policy> pol = create_Policy(args); */
-/*     std::unique_ptr<Partition> part */ 
-/*       = std::make_unique<Partition>(std::move(pol)); */
-/*     global_partitions.push_back(std::move(part)); */ 
-
-/*     // TODO: This is likely a good place to fire off threads. */
-/*     //       May want to consider making Partitions a functor */ 
-/*     //       with some sort of callback to aggregate all of the incoming */
-/*     //       partitions data async. */
-/*   } */
-/* } */
 
 int main(int argc, char *argv[]) 
 {
   Args args;
   calculate_global_memory(args);
   parse_stdin(args, argc, argv);
-  /* init_partitions(args); */
 
   // TODO: Move this somewhere, this is Policy specific.
   assert(args.apps.size() >= args.app_steal_sizes.size());
-  if (args.Policy_type == FLASHSHIELD ||
-      args.Policy_type == FLASHCACHE ||
-      args.Policy_type == FLASHCACHELRUK ||
-      args.Policy_type == FLASHCACHELRUKCLK ||
-      args.Policy_type == VICTIMCACHE ||
-      args.Policy_type == RIPQ ||
-	    args.Policy_type == FLASHCACHELRUKCLKMACHINELEARNING ||
-      args.Policy_type == RIPQ_SHIELD)
+  if (args.policy_type == FLASHSHIELD ||
+      args.policy_type == FLASHCACHE ||
+      args.policy_type == FLASHCACHELRUK ||
+      args.policy_type == FLASHCACHELRUKCLK ||
+      args.policy_type == VICTIMCACHE ||
+      args.policy_type == RIPQ ||
+	    args.policy_type == FLASHCACHELRUKCLKMACHINELEARNING ||
+      args.policy_type == RIPQ_SHIELD)
   {
     args.global_mem = DRAM_SIZE + FLASH_SIZE;
   }
 
-  // TODO: Create a dispatch meachanism that uniformly assigns Requests to a
-  // Partition object for processing.  To ensure legacy operation of other
-  // experiments, dispatch routine will simply dispatch to a single partition.
-
-  std::unique_ptr<Policy> Policy = create_Policy(args); // <<-- replace with parts
+  std::unique_ptr<Policy> Policy = create_Policy(args);
 
   // List input parameters
   std::cerr << "performing trace analysis on apps " << args.app_str << std::endl
             << "with steal weights of " << args.app_steal_sizes_str << std::endl
-            << "Policy " << Policy_names[args.Policy_type] << std::endl
+            << "Policy " << Policy_names[args.policy_type] << std::endl
             << "using trace file " << args.trace << std::endl
             << "rounding " << (args.roundup ? "on" : "off") << std::endl
             << "utilization rate " << args.lsm_util << std::endl
@@ -301,7 +247,7 @@ int main(int argc, char *argv[])
             << "tax rate " << args.tax_rate << std::endl
             << "cleaning width " << args.cleaning_width << std::endl;
 
-  if (args.Policy_type == SHADOWSLAB) 
+  if (args.policy_type == SHADOWSLAB) 
   {
     if (args.memcachier_classes)
     {
@@ -327,10 +273,6 @@ int main(int argc, char *argv[])
   while (std::getline(t_stream, line) &&
     (args.Request_limit == 0 || i < args.Request_limit))
   {
-  
-  // TODO: Create a dispatch function here to distribute lines evenly aross
-  // partitions.
-
     Request r{line};
     bytes += line.size();
 
@@ -339,7 +281,6 @@ int main(int argc, char *argv[])
       double seconds =
         duration_cast<nanoseconds>(now - last_progress).count() / 1e9;
 
-      // TODO: Report stats for each parition as well as the overall hit rate.
       if (seconds > 1.0) {
         stats* stats = Policy->get_stats();
         std::cerr << "Progress: " << std::setprecision(10) << r.time << " "
@@ -378,8 +319,8 @@ int main(int argc, char *argv[])
     }
 
     Policy->process_request(&r, r.time < args.hit_start_time);
-    if (args.verbose && ( args.Policy_type == FLASHSHIELD || args.Policy_type == VICTIMCACHE || 
-          args.Policy_type == RIPQ ) && time_hour * 3600 < r.time) 
+    if (args.verbose && ( args.policy_type == FLASHSHIELD || args.policy_type == VICTIMCACHE || 
+          args.policy_type == RIPQ ) && time_hour * 3600 < r.time) 
     {
       printf ("Dumping stats for FLASHSHIELD\n");
 	    Policy->dump_stats();
@@ -391,7 +332,7 @@ int main(int argc, char *argv[])
   auto stop = hrc::now();
 
   // Log curves for shadowlru, shadowslab, and partslab.
-  if (args.Policy_type == 0 || args.Policy_type == 4 || args.Policy_type == 5)
+  if (args.policy_type == 0 || args.policy_type == 4 || args.policy_type == 5)
   {
     Policy->log_curves();
   }
@@ -437,53 +378,55 @@ void parse_stdin(Args& args, int argc, char** argv)
         break;
       case 'p':
         if (std::string(optarg) == "shadowlru")
-          args.Policy_type = pol_type(0); 
+          args.policy_type = Pol_type(Pol_type::SHADOWLRU); 
         else if (std::string(optarg) == "fifo")
-          args.Policy_type = pol_type(1); 
+          args.policy_type = Pol_type(Pol_type::FIFO); 
         else if (std::string(optarg) == "lru")
-          args.Policy_type = pol_type(2); 
+          args.policy_type = Pol_type(Pol_type::LRU); 
         else if (std::string(optarg) == "slab")
-          args.Policy_type = pol_type(3);
+          args.policy_type = Pol_type(Pol_type::SLAB);
         else if (std::string(optarg) == "shadowslab")
-          args.Policy_type = pol_type(4);
+          args.policy_type = Pol_type(Pol_type::SHADOWSLAB);
         else if (std::string(optarg) == "partslab")
-          args.Policy_type = pol_type(5);
+          args.policy_type = Pol_type(Pol_type::PARTSLAB);
         else if (std::string(optarg) == "lsm")
-          args.Policy_type = pol_type(6);
+          args.policy_type = Pol_type(Pol_type::LSM);
         else if (std::string(optarg) == "multi")
-          args.Policy_type = pol_type(7);
+          args.policy_type = Pol_type(Pol_type::MULTI);
         else if (std::string(optarg) == "multislab")
-          args.Policy_type = pol_type(8);
+          args.policy_type = Pol_type(Pol_type::MULTISLAB);
         else if (std::string(optarg) == "flashcache")
-          args.Policy_type = pol_type(9);
+          args.policy_type = Pol_type(Pol_type::FLASHCACHE);
         else if (std::string(optarg) == "victimcache")
-          args.Policy_type = pol_type(10);
+          args.policy_type = Pol_type(Pol_type::VICTIMCACHE);
         else if (std::string(optarg) == "lruk")
-          args.Policy_type = pol_type(11);
+          args.policy_type = Pol_type(Pol_type::LRUK);
         else if (std::string(optarg) == "ripq")
-          args.Policy_type = pol_type(12);
+          args.policy_type = Pol_type(Pol_type::RIPQ);
         else if (std::string(optarg) == "ripq_shield")
-          args.Policy_type = pol_type(13);
+          args.policy_type = Pol_type(Pol_type::RIPQ_SHIELD);
         else if (std::string(optarg) == "clock")
-          args.Policy_type = pol_type(14);
+          args.policy_type = Pol_type(Pol_type::CLOCK);
         else if (std::string(optarg) == "flashcachelruk")
-          args.Policy_type = pol_type(15);
+          args.policy_type = Pol_type(Pol_type::FLASHCACHELRUK);
         else if (std::string(optarg) == "flashcachelrukclk")
-          args.Policy_type = pol_type(16);
+          args.policy_type = Pol_type(Pol_type::FLASHCACHELRUKCLK);
         else if (std::string(optarg) == "segment_util")
-          args.Policy_type = pol_type(17);
+          args.policy_type = Pol_type(Pol_type::SEGMENT_UTIL);
         else if (std::string(optarg) == "ramshield")
-          args.Policy_type = pol_type(18);  
+          args.policy_type = Pol_type(Pol_type::RAMSHIELD);  
         else if (std::string(optarg) == "ramshield_fifo")
-          args.Policy_type = pol_type(19);
+          args.policy_type = Pol_type(Pol_type::RAMSHIELD_FIFO);
         else if (std::string(optarg) == "ramshield_sel")
-          args.Policy_type = pol_type(20);
+          args.policy_type = Pol_type(Pol_type::RAMSHIELD_SEL);
         else if (std::string(optarg) == "replay")
-          args.Policy_type = pol_type(21);
+          args.policy_type = Pol_type(21);
         else if (std::string(optarg) == "flashshield")
-          args.Policy_type = pol_type(22);
+          args.policy_type = Pol_type(Pol_type::FLASHSHIELD);
 		    else if (std::string(optarg) == "flashcachelrukclkmachinelearning")
-          args.Policy_type = pol_type(23);
+          args.policy_type = Pol_type(Pol_type::FLASHCACHELRUKCLKMACHINELEARNING);
+        else if (std::string(optarg) == "partitioned_LRU")
+          args.policy_type = Pol_type(Pol_type::PARTITIONED_LRU);
         else {
           std::cerr << "Invalid Policy specified" << std::endl;
           exit(EXIT_FAILURE);
@@ -627,14 +570,14 @@ void parse_stdin(Args& args, int argc, char** argv)
 
 /// Factory to create a Policy of specified type with stats object included.
 ///
-/// @param Policy_type the type of Policy to create
+/// @param policy_type the type of Policy to create
 ///
 /// @return std::unique_ptr<Policy> 
 std::unique_ptr<Policy> create_Policy(Args& args)
 {
-  stats sts{Policy_names[args.Policy_type], &args.apps, args.global_mem};
+  stats sts{Policy_names[args.policy_type], &args.apps, args.global_mem};
   std::unique_ptr<Policy> Policy{};
-   switch(args.Policy_type) {
+   switch(args.policy_type) {
     case SHADOWLRU : Policy.reset(new shadowlru(sts)); break;
     case FIFO : Policy.reset(new fifo(sts)); break;
     case LRU : 
