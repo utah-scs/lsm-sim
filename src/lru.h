@@ -5,41 +5,85 @@
 #include <list>
 #include "policy.h"
 
-class lru : public Policy {
+class LRU : public Policy 
+{
 
-  typedef std::list<Request> lru_queue; 
-  typedef std::unordered_map<uint32_t, lru_queue::iterator> hash_map;
-
-  public:
-    lru();
-    lru(stats stat);
-   ~lru();
-
-    // Modifiers.
-    size_t process_request(const Request* r, bool warmup);
-    int64_t remove (const Request *r);
-    bool would_cause_eviction(const Request *r);
-    void expand(size_t bytes);
-    bool would_hit(const Request *r);
-    void add(const Request *r);
-    bool try_add_tail(const Request *r);
+public:
+  LRU();
+  LRU(stats stat);
+  ~LRU();
   
-    // Accessors.
-    size_t get_bytes_cached() const;
-    size_t get_hits(); 
-    size_t get_accs();
+  // Performs lookup of request. 
+  // (Conforms to Policy.h interface)
+  //
+  // If request already exists in cache and the existing request size is the
+  // same with respect to the new request size, the existing request request is
+  // promoted to the front of the LRU chain and the cache remains unchanged.
+  //
+  // If the size has changed, the existing request is removed and the new
+  // request request is added to the cache and placed at the front of the LRU
+  // chain.
+  //
+  // If the request request does not already exist in the cache, it is added and
+  // placed at the fron of the LRU queue.
+  //
+  // @param r - a Request object to be added to the queue.
+  // @param warmup - Flag to indicate if we are still in the warmup period.
+  //
+  // @reutrn - The absolute value of change in bytes due to processing this
+  //           request. i.e. bytes evicted - new bytes cached
+  size_t process_request(const Request* r, bool warmup); 
 
-    double get_running_hit_rate();
-    double get_running_utilization();
-    size_t get_evicted_bytes() { return stat.evicted_bytes; }
-    size_t get_evicted_items() { return stat.evicted_items; }
+  /// Constant Accessors. ///
 
-    std::unordered_map<int32_t, size_t> get_per_app_bytes_in_use() const;
+  // Reports the current number of bytes utilized by cached request requests.
+  // (Conforms to Policy.h interface)
+  //
+  // @return - Number of bytes utilized by cached request requests.
+  size_t get_bytes_cached() const;                        
 
-  protected:
-    hash_map map; 
-    lru_queue queue; 
+  // Used by policies that aggregate LRUs i.e. slab_multi, slab to report if 
+  // adding a request would result in an eviction. The operation of actually
+  // adding the request is not performed by this function and the cache remains
+  // unchanged.
+  bool would_cause_eviction(const Request& request) const;
 
+  // Used by policies that aggregate LRUs i.e. lsc_multi to report if adding a
+  // request would result in a hit. The operations of actually adding the
+  // request is not performed by this function and the cache remains unchanged.
+  bool would_hit(const Request& request) const;
+
+  // Used by policies that aggreagte LRUs i.e. lsc_multi, to report the number
+  // of bytes cached for each application that is utilizing the cache. 
+  std::unordered_map<int32_t, size_t> get_per_app_bytes_in_use() const;
+
+  /// Public Modifiers. ///
+
+  // Used by policies that aggregate LRUs i.e. lsc_multi.
+  bool try_add_tail(const Request *r);
+
+  // Used by policies that aggreagte LRUs i.e. slab_multi.
+  int64_t remove (const Request *r);
+
+  // Used by policies that aggreagte LRUs i.e. slab, slab_multi.
+  // Specifically, this is used to expand the size of a particular slab class.
+  //
+  // @param bytes - number of bytes by which to increase the size of the slab.
+  void expand(const size_t bytes);
+
+private:
+  // Adds a request to the cache.
+  //
+  // If adequate space to add the request does not exist, existing requests are
+  // evicted from the cache until adequate space is obtained. If the cache
+  // becomes empty before adequate space is obtained, the request fails to be
+  // added to the cache.
+  // 
+  // @param request - A request to be added to the queue.
+  size_t add_request(const Request& request);
+
+  std::unordered_map<uint32_t, std::list<Request>::iterator> map;
+  std::list<Request> queue; 
 };
 
 #endif

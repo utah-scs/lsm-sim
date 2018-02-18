@@ -69,7 +69,7 @@ void slab_multi::dump_app_stats(double time) {
     app.bytes_in_use = 0;
   }
 
-  for (const lru& klass : slabs) {
+  for (const LRU& klass : slabs) {
     std::unordered_map<int32_t, size_t> per_app_use =
                                           klass.get_per_app_bytes_in_use();
     for (auto& pr : per_app_use) {
@@ -136,12 +136,12 @@ size_t slab_multi::process_request(const Request *r, bool warmup) {
   auto csit = slab_for_key.find(r->kid);
 
   if (csit != slab_for_key.end() && csit->second != klass) { 
-    lru& sclass = slabs.at(csit->second);
+    LRU& sclass = slabs.at(csit->second);
     sclass.remove(r);
     slab_for_key.erase(r->kid);
   }
  
-  lru& slab_class = slabs.at(klass);
+  LRU& slab_class = slabs.at(klass);
 
   // Round up the Request size so the per-class LRU holds the right
   // size.
@@ -152,7 +152,7 @@ size_t slab_multi::process_request(const Request *r, bool warmup) {
 
   // If the LRU has used all of its allocated space up, try to expand it.
   while (mem_in_use < stat.global_mem &&
-         slab_class.would_cause_eviction(&copy))
+         slab_class.would_cause_eviction(copy))
   {
       slab_class.expand(SLABSIZE);
       mem_in_use += SLABSIZE;

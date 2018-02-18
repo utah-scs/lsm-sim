@@ -40,8 +40,8 @@ class lsc_multi : public Policy {
         Request req;
     };
 
-    typedef std::list<item> lru_queue; 
-    typedef std::unordered_map<uint32_t, lru_queue::iterator> hash_map;
+    typedef std::list<item> LRU_queue; 
+    typedef std::unordered_map<uint32_t, LRU_queue::iterator> hash_map;
 
     class segment {
       public:
@@ -53,7 +53,7 @@ class lsc_multi : public Policy {
           , low_timestamp{}
         {}
 
-        lru_queue queue;
+        LRU_queue queue;
         std::unordered_map<int32_t, size_t> app_bytes;
 
         size_t filled_bytes;
@@ -92,7 +92,7 @@ class lsc_multi : public Policy {
         }
 
         bool would_hit(const Request *r) {
-          return shadow_q.would_hit(r);
+          return shadow_q.would_hit(*r);
         }
 
         void add_to_cleaning_queue(item* item) {
@@ -178,7 +178,7 @@ class lsc_multi : public Policy {
         size_t evicted_items;
         size_t evicted_bytes;
 
-        lru shadow_q;
+        LRU shadow_q;
 
         std::deque<item*> cleaning_q;
         std::deque<item*>::iterator cleaning_it;

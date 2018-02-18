@@ -134,7 +134,7 @@ enum Pol_type
 { 
     SHADOWLRU = 0
   , FIFO
-  , LRU
+  , LEAST_RECENTLY_USED 
   , SLAB
   , SHADOWSLAB
   , PARTSLAB
@@ -382,7 +382,7 @@ void parse_stdin(Args& args, int argc, char** argv)
         else if (std::string(optarg) == "fifo")
           args.policy_type = Pol_type(Pol_type::FIFO); 
         else if (std::string(optarg) == "lru")
-          args.policy_type = Pol_type(Pol_type::LRU); 
+          args.policy_type = Pol_type(Pol_type::LEAST_RECENTLY_USED); 
         else if (std::string(optarg) == "slab")
           args.policy_type = Pol_type(Pol_type::SLAB);
         else if (std::string(optarg) == "shadowslab")
@@ -580,8 +580,8 @@ std::unique_ptr<Policy> create_Policy(Args& args)
    switch(args.policy_type) {
     case SHADOWLRU : Policy.reset(new shadowlru(sts)); break;
     case FIFO : Policy.reset(new fifo(sts)); break;
-    case LRU : 
-      Policy.reset(new lru(sts)); 
+    case LEAST_RECENTLY_USED : 
+      Policy.reset(new LRU(sts)); 
       break;
     case FLASHCACHE : Policy.reset(new FlashCache(sts)); break;
     case FLASHCACHELRUK : Policy.reset(new FlashCacheLruk(sts)); break;

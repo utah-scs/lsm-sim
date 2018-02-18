@@ -27,7 +27,7 @@ class slab : public Policy {
 
     static constexpr size_t SLABSIZE = 1024 * 1024;
 
-    std::vector<lru> slabs; 
+    std::vector<LRU> slabs; 
 
     // Simple mapping of existing keys to their respective slab.
     std::unordered_map<uint32_t, uint32_t> slab_for_key;
