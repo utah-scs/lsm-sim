@@ -17,21 +17,22 @@ public:
   // (Conforms to Policy.h interface)
   //
   // If request already exists in cache and the existing request size is the
-  // same with respect to the new request size, the existing request request is
-  // promoted to the front of the LRU chain and the cache remains unchanged.
+  // same with respect to the new request size, the existing request is promoted
+  // to the front of the LRU chain and the cache remains otherwise unchanged.
   //
   // If the size has changed, the existing request is removed and the new
   // request request is added to the cache and placed at the front of the LRU
   // chain.
   //
-  // If the request request does not already exist in the cache, it is added and
-  // placed at the fron of the LRU queue.
+  // If the request does not already exist in the cache, it is added and placed
+  // at the fron of the LRU queue.
   //
-  // @param r - a Request object to be added to the queue.
-  // @param warmup - Flag to indicate if we are still in the warmup period.
+  // @param r - a request object to be added to the queue.
+  // @param warmup - boolean flag to indicate if warmup period is still active. 
   //
-  // @reutrn - The absolute value of change in bytes due to processing this
-  //           request. i.e. bytes evicted - new bytes cached
+  // @return - an unsigned value representing the absolute value of change in
+  //           bytes due to processing this request. i.e. bytes evicted - 
+  //           bytes cached
   size_t process_request(const Request* r, bool warmup); 
 
   /// Constant Accessors. ///

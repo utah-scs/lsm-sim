@@ -41,9 +41,9 @@ size_t LRU::process_request(const Request *r, bool warmup)
   if (map_iterator != map.end()) 
   {
     auto queue_iterator = map_iterator->second;
-    Request& prior_Request = *queue_iterator;
-    if (prior_Request.size() == request.size() && 
-        prior_Request.frag_sz == request.frag_sz) 
+    Request& existing_request = *queue_iterator;
+    if (existing_request.size() == request.size() && 
+        existing_request.frag_sz == request.frag_sz) 
     {
       queue.erase(queue_iterator);
       queue.emplace_front(request);
@@ -56,8 +56,8 @@ size_t LRU::process_request(const Request *r, bool warmup)
     else 
     {
       queue.erase(queue_iterator);
-      map.erase(prior_Request.kid);
-      stat.bytes_cached -= prior_Request.size();
+      map.erase(existing_request.kid);
+      stat.bytes_cached -= existing_request.size();
       absolute_bytes_added = add_request(request);
     }
   } 
