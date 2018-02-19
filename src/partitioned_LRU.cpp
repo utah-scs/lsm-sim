@@ -86,26 +86,33 @@ struct Partitioned_LRU::Partition
   // space is obtained. If the cache becomes empty before adequate space is
   // obtained, the request fails to be added to the cache.
   //
-  // @param request - a request objbect to be added to the queue.
+  // @param request - a request object to be added to the queue.
   size_t add_request(const Request& request)
   {
     size_t bytes_evicted  = 0;
     size_t bytes_added    = 0;
-    while (m_partition_bytes_cached + request.size() > m_partition_size 
-        && !m_partition_queue.empty())
+    if (static_cast<size_t>(request.size()) <= m_partition_size)
     {
-      Request* eviction_candidate = &m_partition_queue.back();
-      m_partition_queue.pop_back();
-      m_partition_map.erase(eviction_candidate->kid);
-      m_partition_bytes_cached  -= eviction_candidate->size();
-      m_r_stats.bytes_cached    -= eviction_candidate->size();
-      m_r_stats.evicted_bytes   += eviction_candidate->size();
-      m_r_stats.evicted_items++;
+      while (m_partition_bytes_cached + request.size() > m_partition_size 
+          && !m_partition_queue.empty())
+      {
+        Request* eviction_candidate = &m_partition_queue.back();
+        m_partition_queue.pop_back();
+        m_partition_map.erase(eviction_candidate->kid);
+        m_partition_bytes_cached  -= eviction_candidate->size();
+        m_r_stats.bytes_cached    -= eviction_candidate->size();
+        m_r_stats.evicted_bytes   += eviction_candidate->size();
+        m_r_stats.evicted_items++;
+      }
+      if (m_partition_bytes_cached + request.size() <= m_partition_size)
+      {
+        m_partition_queue.emplace_front(request);
+        m_partition_map[request.kid] = m_partition_queue.begin();
+        m_partition_bytes_cached  += request.size();
+        m_r_stats.bytes_cached    += request.size();
+      }
+      assert(m_partition_bytes_cached <= m_partition_size);
     }
-    m_partition_queue.emplace_front(request);
-    m_partition_map[request.kid] = m_partition_queue.begin();
-    m_partition_bytes_cached  += request.size();
-    m_r_stats.bytes_cached    += request.size();
     return bytes_evicted - bytes_added;
   }
 
