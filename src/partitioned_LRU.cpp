@@ -67,8 +67,9 @@ struct Partitioned_LRU::Partition
       {
         m_partition_queue.erase(queue_iterator); 
         m_partition_map.erase(existing_request.kid);
-        m_r_stats.bytes_cached -= existing_request.size();
-        absolute_bytes_added    = add_request(request);
+        m_r_stats.bytes_cached    -= existing_request.size();
+        m_partition_bytes_cached  -= existing_request.size();
+        absolute_bytes_added      = add_request(request);
       }
     }
     else
