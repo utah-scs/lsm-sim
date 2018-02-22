@@ -33,6 +33,8 @@ slab-based allocators with proposed log-structured allocators such as LSC.
 
   -M force memcachier slab class configuration
 
+  -Y number of cache partitions
+
 ### Output
 
 ## Trace Format Protocol
@@ -138,4 +140,8 @@ Application in Trace	Application in Cliffhanger Paper
 13										19
 31										20
 ```
+# Experiments
 
+If you used LSM-SIM to conduct experiments and must store your
+scripts/experiments in the LSM-SIM repo, please create a folder for
+them within the lsm-sim/experiments folder.
