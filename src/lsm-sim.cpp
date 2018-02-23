@@ -46,7 +46,7 @@
 using namespace std::chrono;
 typedef high_resolution_clock hrc;
 
-const char* Policy_names[24] = { "shadowlru"
+const char* Policy_names[25] = { "shadowlru"
                                , "fifo"
                                , "lru"
                                , "slab"
@@ -70,6 +70,7 @@ const char* Policy_names[24] = { "shadowlru"
                                , "replay"
                                , "flashshield"
 							                 , "flashcachelrukclkmachinelearning"
+                               , "partitioned_LRU"
                               };
 
 std::unordered_map<size_t, size_t> memcachier_app_size = { {1, 701423104}
@@ -154,6 +155,7 @@ enum Pol_type
   , RAMSHIELD_FIFO
   , RAMSHIELD_SEL
   , FLASHSHIELD
+  , REPLAY
   , FLASHCACHELRUKCLKMACHINELEARNING
   , PARTITIONED_LRU
   , NONE
@@ -420,7 +422,7 @@ void parse_stdin(Args& args, int argc, char** argv)
         else if (std::string(optarg) == "ramshield_sel")
           args.policy_type = Pol_type(Pol_type::RAMSHIELD_SEL);
         else if (std::string(optarg) == "replay")
-          args.policy_type = Pol_type(21);
+          args.policy_type = Pol_type(Pol_type::REPLAY);
         else if (std::string(optarg) == "flashshield")
           args.policy_type = Pol_type(Pol_type::FLASHSHIELD);
 		    else if (std::string(optarg) == "flashcachelrukclkmachinelearning")
@@ -700,6 +702,8 @@ std::unique_ptr<Policy> create_Policy(Args& args)
         sts.flash_size = args.flash_size;
         sts.dram_size = args.dram_size;
         Policy.reset(new flashshield(sts));
+        break;
+    case REPLAY:
         break;
     case NONE:
         break;
