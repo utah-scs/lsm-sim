@@ -8,3 +8,4 @@ results
 *.data
 /trace_script/output
 *.log
+*.txt
