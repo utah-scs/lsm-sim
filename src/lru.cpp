@@ -65,6 +65,7 @@ size_t LRU::process_request(const Request *r, bool warmup)
   {
     absolute_bytes_added = add_request(request);
   }
+
   return absolute_bytes_added;
 }
 

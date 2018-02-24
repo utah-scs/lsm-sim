@@ -122,7 +122,9 @@ const std::string usage =
 "-n    number of flash sections for ripq and ripq_shield\n" 
 "-d    number of dram sections for ripq_shield\n"
 "-C    CLOCK maximum value\n"
-"-Z    number of cores to partition cache processing by\n";
+"-Z    number of cores to partition cache processing by\n"
+"-Y    number of partitions\n"
+"-O    maximum size of object that can be cached\n";
 
 /// Memcachier slab allocations at t=86400 (24 hours)
 const int orig_alloc[15] = {
@@ -189,6 +191,7 @@ struct Args {
   size_t        num_sections         = 0;
   double        USER_SVM_TH          = 1;
   bool          debug                = false;
+  size_t        max_overall_request_size      = 1048576; // key + value
 
   // Only parse this many Requests from the CSV file before breaking.
   // Helpful for limiting runtime when playing around.
@@ -210,56 +213,17 @@ struct Args {
 
 /// Forward declare some utility functions.
 std::unique_ptr<Policy> create_Policy(Args& args);
-void parse_stdin(Args& args, int argc, char** argv);
 void calculate_global_memory(Args& args);
+void parse_stdin(Args& args, int argc, char** argv);
+void list_input_parameters(const Args& args);
 
 int main(int argc, char *argv[]) 
 {
   Args args;
   calculate_global_memory(args);
   parse_stdin(args, argc, argv);
-
-  // TODO: Move this somewhere, this is Policy specific.
-  assert(args.apps.size() >= args.app_steal_sizes.size());
-  if (args.policy_type == FLASHSHIELD ||
-      args.policy_type == FLASHCACHE ||
-      args.policy_type == FLASHCACHELRUK ||
-      args.policy_type == FLASHCACHELRUKCLK ||
-      args.policy_type == VICTIMCACHE ||
-      args.policy_type == RIPQ ||
-	    args.policy_type == FLASHCACHELRUKCLKMACHINELEARNING ||
-      args.policy_type == RIPQ_SHIELD)
-  {
-    args.global_mem = DRAM_SIZE + FLASH_SIZE;
-  }
-
   std::unique_ptr<Policy> Policy = create_Policy(args);
-
-  // List input parameters
-  std::cerr << "performing trace analysis on apps " << args.app_str << std::endl
-            << "with steal weights of " << args.app_steal_sizes_str << std::endl
-            << "Policy " << Policy_names[args.policy_type] << std::endl
-            << "using trace file " << args.trace << std::endl
-            << "rounding " << (args.roundup ? "on" : "off") << std::endl
-            << "utilization rate " << args.lsm_util << std::endl
-            << "start counting hits at t = " << args.hit_start_time << std::endl
-            << "Request limit " << args.Request_limit << std::endl
-            << "global mem " << args.global_mem << std::endl
-            << "use tax " << args.use_tax << std::endl
-            << "tax rate " << args.tax_rate << std::endl
-            << "cleaning width " << args.cleaning_width << std::endl;
-
-  if (args.policy_type == SHADOWSLAB) 
-  {
-    if (args.memcachier_classes)
-    {
-      std::cerr << "slab growth factor: memcachier" << std::endl;
-    }
-    else
-    {
-      std::cerr << "slab growth factor: " << args.gfactor << std::endl;
-    }
-  }
+  list_input_parameters(args);
 
   // proc file line by line
   std::ifstream t_stream(args.trace);
@@ -270,20 +234,22 @@ int main(int argc, char *argv[])
   auto start = hrc::now();
   auto last_progress = start;
   size_t bytes = 0;
-  
   size_t time_hour = 1; 
+
+  Policy->write_statistics_header();
+
   while (std::getline(t_stream, line) &&
-    (args.Request_limit == 0 || i < args.Request_limit))
+        (args.Request_limit == 0 || i < args.Request_limit))
   {
     Request r{line};
     bytes += line.size();
-
-    if (args.verbose && ((i & ((1 << 18) - 1)) == 0)) {
+    if (args.verbose && ((i & ((1 << 18) - 1)) == 0)) 
+    {
       auto now  = hrc::now();
-      double seconds =
-        duration_cast<nanoseconds>(now - last_progress).count() / 1e9;
-
-      if (seconds > 1.0) {
+      double seconds 
+        = duration_cast<nanoseconds>(now - last_progress).count() / 1e9;
+      if (seconds > 1.0) 
+      {
         stats* stats = Policy->get_stats();
         std::cerr << "Progress: " << std::setprecision(10) << r.time << " "
                   << "Rate: " << bytes / (1 << 20) / seconds << " MB/s "
@@ -297,20 +263,17 @@ int main(int argc, char *argv[])
       }
     }
 
-    // Only process Requests for specified app, of type GET,
-    // and values of size > 0, after time 'hit_start_time'.
-    if (r.type != Request::GET)
+    if (r.type != Request::GET || r.val_sz <= 0 )
     {
       continue;
     }
-    if (r.val_sz <= 0)
+    if(static_cast<size_t>(r.key_sz + r.val_sz) > args.max_overall_request_size)
     {
       continue;
     }
-
     const bool in_apps =
-      std::find(std::begin(args.apps), std::end(args.apps), r.appid) != std::end(args.apps);
-
+      std::find(std::begin(args.apps), std::end(args.apps), r.appid) 
+      != std::end(args.apps);
     if (args.all_apps && !in_apps) 
     {
       args.apps.insert(r.appid);
@@ -320,7 +283,23 @@ int main(int argc, char *argv[])
       continue;
     }
 
-    Policy->process_request(&r, r.time < args.hit_start_time);
+    bool warmup_period_active = r.time < args.hit_start_time;
+    Policy->process_request(&r, warmup_period_active);
+    assert(r.key_sz + r.val_sz < 3200);
+
+    /// This is used to measure the number of requests with overall size greater
+    /// than some number, in this case he smallest cache size parittioned 16384
+    /// ways resulting in max object sizes of 3200.
+    /* if (r.key_sz + r.val_sz > 3200) */
+    /* { */
+    /*   std::cout << r.time << std::endl; */
+    /* } */
+
+    if (!warmup_period_active && static_cast<size_t>(r.time*1000000) % 1000 == 0)
+    {
+      Policy->log_statistics_sample_point(r.time);
+    }
+
     if (args.verbose && ( args.policy_type == FLASHSHIELD || args.policy_type == VICTIMCACHE || 
           args.policy_type == RIPQ ) && time_hour * 3600 < r.time) 
     {
@@ -342,7 +321,8 @@ int main(int argc, char *argv[])
   // Dump stats for all policies. 
   Policy->dump_stats();
   double seconds = duration_cast<milliseconds>(stop - start).count() / 1000.;
-  std::cerr << "total execution time: " << seconds << std::endl;
+  (void)seconds;
+  // std::cerr << "total execution time: " << seconds << std::endl;
 
   return 0;
 }
@@ -371,7 +351,7 @@ void parse_stdin(Args& args, int argc, char** argv)
   int c;
   std::vector<int32_t> ordered_apps{};
   while ((c = getopt(argc, argv, "p:s:l:f:a:ru:w:vhg:MP:S:B:E:N:W:T:t:m:d:F:n:"
-                                 "D:L:K:k:C:c:A:C:Y:Z:")) != -1)
+                                 "D:L:K:k:C:c:A:C:Y:Z:R:G:")) != -1)
   {
     switch (c)
     {
@@ -398,21 +378,39 @@ void parse_stdin(Args& args, int argc, char** argv)
         else if (std::string(optarg) == "multislab")
           args.policy_type = Pol_type(Pol_type::MULTISLAB);
         else if (std::string(optarg) == "flashcache")
+        {
           args.policy_type = Pol_type(Pol_type::FLASHCACHE);
+          args.global_mem = DRAM_SIZE + FLASH_SIZE;
+        }
         else if (std::string(optarg) == "victimcache")
+        {
           args.policy_type = Pol_type(Pol_type::VICTIMCACHE);
+          args.global_mem = DRAM_SIZE + FLASH_SIZE;
+        }
         else if (std::string(optarg) == "lruk")
           args.policy_type = Pol_type(Pol_type::LRUK);
         else if (std::string(optarg) == "ripq")
+        {
           args.policy_type = Pol_type(Pol_type::RIPQ);
+          args.global_mem = DRAM_SIZE + FLASH_SIZE;
+        }
         else if (std::string(optarg) == "ripq_shield")
+        {
           args.policy_type = Pol_type(Pol_type::RIPQ_SHIELD);
+          args.global_mem = DRAM_SIZE + FLASH_SIZE;
+        }
         else if (std::string(optarg) == "clock")
           args.policy_type = Pol_type(Pol_type::CLOCK);
         else if (std::string(optarg) == "flashcachelruk")
+        {
           args.policy_type = Pol_type(Pol_type::FLASHCACHELRUK);
+          args.global_mem = DRAM_SIZE + FLASH_SIZE;
+        }
         else if (std::string(optarg) == "flashcachelrukclk")
+        {
           args.policy_type = Pol_type(Pol_type::FLASHCACHELRUKCLK);
+          args.global_mem = DRAM_SIZE + FLASH_SIZE;
+        }
         else if (std::string(optarg) == "segment_util")
           args.policy_type = Pol_type(Pol_type::SEGMENT_UTIL);
         else if (std::string(optarg) == "ramshield")
@@ -423,10 +421,16 @@ void parse_stdin(Args& args, int argc, char** argv)
           args.policy_type = Pol_type(Pol_type::RAMSHIELD_SEL);
         else if (std::string(optarg) == "replay")
           args.policy_type = Pol_type(Pol_type::REPLAY);
-        else if (std::string(optarg) == "flashshield")
+        else if (std::string(optarg) == "flashshield") 
+        {
           args.policy_type = Pol_type(Pol_type::FLASHSHIELD);
+          args.global_mem = DRAM_SIZE + FLASH_SIZE;
+        }
 		    else if (std::string(optarg) == "flashcachelrukclkmachinelearning")
+        {
           args.policy_type = Pol_type(Pol_type::FLASHCACHELRUKCLKMACHINELEARNING);
+          args.global_mem = DRAM_SIZE + FLASH_SIZE;
+        }
         else if (std::string(optarg) == "partitioned_LRU")
           args.policy_type = Pol_type(Pol_type::PARTITIONED_LRU);
         else {
@@ -566,9 +570,49 @@ void parse_stdin(Args& args, int argc, char** argv)
         break;
       case 'Y':
         args.num_partitions = atoi(optarg);
+        break;
+      case 'R':
+        args.max_overall_request_size = atol(optarg);
+        break;
+      case 'G':
+        args.global_mem = 1048576 * atol(optarg);
+        break;
     }
   }
 }
+
+void list_input_parameters(const Args& args)
+{
+  // List input parameters
+  std::cerr << "performing trace analysis on apps " << args.app_str << std::endl
+            << "with steal weights of " << args.app_steal_sizes_str << std::endl
+            << "Policy " << Policy_names[args.policy_type] << std::endl
+            << "using trace file " << args.trace << std::endl
+            << "rounding " << (args.roundup ? "on" : "off") << std::endl
+            << "utilization rate " << args.lsm_util << std::endl
+            << "start counting hits at t = " << args.hit_start_time << std::endl
+            << "Request limit " << args.Request_limit << std::endl
+            << "global mem " << args.global_mem << std::endl
+            << "use tax " << args.use_tax << std::endl
+            << "tax rate " << args.tax_rate << std::endl
+            << "cleaning width " << args.cleaning_width << std::endl
+            << "max overall request size " << args.max_overall_request_size 
+            << std::endl;
+
+  if (args.policy_type == SHADOWSLAB) 
+  {
+    if (args.memcachier_classes)
+    {
+      std::cerr << "slab growth factor: memcachier" << std::endl;
+    }
+    else
+    {
+      std::cerr << "slab growth factor: " << args.gfactor << std::endl;
+    }
+  }
+
+}
+
 
 /// Factory to create a Policy of specified type with stats object included.
 ///
@@ -708,7 +752,9 @@ std::unique_ptr<Policy> create_Policy(Args& args)
     case NONE:
         break;
     case PARTITIONED_LRU:
-        Policy.reset(new Partitioned_LRU(sts, args.num_partitions));
+        Policy.reset(new Partitioned_LRU(sts, 
+                                         args.num_partitions, 
+                                         args.max_overall_request_size));
         break;
   }
   if (!Policy) {
@@ -717,7 +763,7 @@ std::unique_ptr<Policy> create_Policy(Args& args)
   }
   else
   {
-    std::cout << "Policy created."  << std::endl;
+    //std::cout << "Policy created."  << std::endl;
   }
   return Policy; 
 }

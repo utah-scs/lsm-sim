@@ -124,9 +124,12 @@ private:
   std::list<Request> m_partition_queue;
 };
 
-Partitioned_LRU::Partitioned_LRU(stats stat, const size_t& num_partitions)
+Partitioned_LRU::Partitioned_LRU(stats stat, 
+                                 const size_t& num_partitions,
+                                 const size_t& max_overall_request_size)
   : Policy{stat}
   , m_num_partitions{num_partitions}
+  , m_max_overall_request_size(max_overall_request_size)
   , m_p_partitions{}
 {
   size_t partition_size = stat.global_mem / m_num_partitions;

@@ -10,7 +10,8 @@
 #include <iostream>
 
 // abstract base class for plug-and-play policies
-class Policy {
+class Policy 
+{
   struct dump 
   {
     // let k = size of key in bytes
@@ -27,11 +28,19 @@ class Policy {
   protected:  
     stats stat; 
     bool all_apps;
+    std::string m_file_name;
     
   public:
     Policy(stats stat)
       : stat{stat}
       , all_apps{!stat.apps ? false : stat.apps->empty()}
+      , m_file_name("")
+    {}
+
+    Policy(stats stat, const std::string& file_name)
+      : stat{stat}
+      , all_apps{!stat.apps ? false : stat.apps->empty()}
+      , m_file_name(file_name)
     {}
 
     virtual ~Policy() {}
@@ -48,6 +57,19 @@ class Policy {
     }
 
     stats* get_stats() { return &stat; }
+
+    virtual void write_statistics_header()
+    {
+      std::cout << "hit_rate utilization" << std::endl;
+    }
+
+    virtual void log_statistics_sample_point(const double& trace_time)
+    {
+      std::cout << std::setprecision(10) << trace_time << " "
+                << stat.get_hit_rate() << " "
+                << stat.get_utilization() << " "
+                << std::endl;
+    }
 
     virtual void dump_stats(void) {
       std::string appids{};

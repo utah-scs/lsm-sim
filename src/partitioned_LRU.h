@@ -15,7 +15,9 @@ class Partitioned_LRU : public Policy
  
 public:
   Partitioned_LRU();
-  Partitioned_LRU(stats stat, const size_t& num_partitions);
+  Partitioned_LRU(stats stat, 
+                  const size_t& num_partitions, 
+                  const size_t& max_overall_request_size);
   ~Partitioned_LRU();
   
   // Performs request key lookup by hashing into the corresponding partition
@@ -43,6 +45,7 @@ public:
 
 private:
   size_t m_num_partitions;
+  size_t m_max_overall_request_size;
   std::vector<std::unique_ptr<Partition>> m_p_partitions;
 };
 

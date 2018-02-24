@@ -1,6 +1,10 @@
 #!/bin/bash
 
-partitions="1 8 16 1024 16384 1048577"
+# Measures partitioning over life of Memcachier trace with varying number of
+# partitions. Also includes a run with the original LRU implementation for
+# comparison.
+
+partitions="1 8 16 1024 16384"
 
 for partition in $partitions; do
   ~/projects/lsm-sim/lsm-sim -a 19 \
@@ -14,5 +18,4 @@ done
                            -p lru \
                            -v \
                            -f ~/traces/app19 > LRU_19.data 2>&1 &
-
 wait
