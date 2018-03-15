@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
 
     bool warmup_period_active = r.time < args.hit_start_time;
     Policy->process_request(&r, warmup_period_active);
-    assert(r.key_sz + r.val_sz < 3200);
+    //assert(r.key_sz + r.val_sz < 3200);
 
     /// This is used to measure the number of requests with overall size greater
     /// than some number, in this case he smallest cache size parittioned 16384
@@ -572,7 +572,10 @@ void parse_stdin(Args& args, int argc, char** argv)
         args.num_partitions = atoi(optarg);
         break;
       case 'R':
-        args.max_overall_request_size = atol(optarg);
+        if (atol(optarg))
+        {
+          args.max_overall_request_size = atol(optarg);  
+        }
         break;
       case 'G':
         args.global_mem = 1048576 * atol(optarg);
@@ -584,19 +587,20 @@ void parse_stdin(Args& args, int argc, char** argv)
 void list_input_parameters(const Args& args)
 {
   // List input parameters
-  std::cerr << "performing trace analysis on apps " << args.app_str << std::endl
-            << "with steal weights of " << args.app_steal_sizes_str << std::endl
-            << "Policy " << Policy_names[args.policy_type] << std::endl
-            << "using trace file " << args.trace << std::endl
-            << "rounding " << (args.roundup ? "on" : "off") << std::endl
-            << "utilization rate " << args.lsm_util << std::endl
+  std::cerr << "performing trace analysis on app " << args.app_str << std::endl
+            << "partitions " << args.num_partitions << std::endl
+            << "policy " << Policy_names[args.policy_type] << std::endl
+            << "trace " << args.trace << std::endl
             << "start counting hits at t = " << args.hit_start_time << std::endl
-            << "Request limit " << args.Request_limit << std::endl
             << "global mem " << args.global_mem << std::endl
-            << "use tax " << args.use_tax << std::endl
-            << "tax rate " << args.tax_rate << std::endl
-            << "cleaning width " << args.cleaning_width << std::endl
             << "max overall request size " << args.max_overall_request_size 
+  //          << "Request limit " << args.Request_limit << std::endl
+  //          << "utilization rate " << args.lsm_util << std::endl
+  //          << "rounding " << (args.roundup ? "on" : "off") << std::endl
+  //          << "use tax " << args.use_tax << std::endl
+  //          << "tax rate " << args.tax_rate << std::endl
+  //          << "cleaning width " << args.cleaning_width << std::endl
+  //          << "with steal weights of " << args.app_steal_sizes_str << std::endl
             << std::endl;
 
   if (args.policy_type == SHADOWSLAB) 

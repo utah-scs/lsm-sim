@@ -5,7 +5,7 @@
 app="19"
 policy="partitioned_LRU"
 cache_sizes="50 100 500 1000"           # in MiB
-num_partitions="1 8 16 1024 16384"
+num_partitions="1 8 16 1024 8192 16384"
 max_overall_request_size="3200"         # 50*1024*1024 / 16384 
 
 for cache_size in $cache_sizes
